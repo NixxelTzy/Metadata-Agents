@@ -10,8 +10,8 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "Adobe Stock AI Studio",
-  description: "Generate foto & metadata Adobe Stock menggunakan DeepSeek AI",
+  title: "Stock AI Studio",
+  description: "Generate metadata Adobe Stock menggunakan Groq AI",
 };
 
 export const viewport: Viewport = {

@@ -222,7 +222,7 @@ export default function AIChat() {
           </button>
         </div>
         <p className="aichat__hint">
-          Enter kirim · Shift+Enter baris baru · Didukung oleh DeepSeek AI
+          Enter kirim · Shift+Enter baris baru · Didukung oleh Groq AI ⚡
         </p>
       </div>
     </div>

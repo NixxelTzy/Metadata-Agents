@@ -5,11 +5,11 @@
  * Untuk dev lokal: isi di .env.local (sudah di .gitignore)
  */
 
-/** DeepSeek API key */
-export function getDeepSeekApiKey(): string {
-  const key = process.env.DEEPSEEK_API_KEY;
+/** Groq API key */
+export function getGroqApiKey(): string {
+  const key = process.env.GROQ_API_KEY;
   if (!key?.trim()) {
-    console.warn("[WARN] DEEPSEEK_API_KEY tidak ditemukan. Set di environment variables.");
+    console.warn("[WARN] GROQ_API_KEY tidak ditemukan. Set di environment variables.");
   }
   return key?.trim() ?? "";
 }

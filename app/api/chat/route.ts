@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { callDeepSeek, type DeepSeekMessage } from "@/lib/deepseek";
+import { callGroq, type GroqMessage } from "@/lib/groq";
 
 const SYSTEM_PROMPT = `You are an elite AI assistant with deep expertise in:
 - Software development (all programming languages, frameworks, architectures)
@@ -35,8 +35,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Messages diperlukan" }, { status: 400 });
     }
 
-    // Convert to DeepSeek format
-    const deepseekMessages: DeepSeekMessage[] = [
+    const groqMessages: GroqMessage[] = [
       { role: "system", content: SYSTEM_PROMPT },
       ...messages.map((m) => ({
         role: m.role as "user" | "assistant",
@@ -44,14 +43,14 @@ export async function POST(request: NextRequest) {
       })),
     ];
 
-    const result = await callDeepSeek(deepseekMessages, {
+    const result = await callGroq(groqMessages, {
       temperature: 0.7,
       max_tokens: 8192,
     });
 
     return NextResponse.json({
       content: result.text,
-      model: `DeepSeek (${result.modelUsed})`,
+      model: `Groq (${result.modelUsed})`,
     });
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Server error";

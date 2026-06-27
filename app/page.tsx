@@ -92,7 +92,7 @@ export default function Home() {
           <div className="sidebar__logo-icon">🎨</div>
           <div>
             <div className="sidebar__logo-text">Stock AI Studio</div>
-            <div className="sidebar__logo-sub">Powered by DeepSeek AI</div>
+            <div className="sidebar__logo-sub">Powered by Groq AI</div>
           </div>
           {!device.isDesktop && (
             <button type="button" className="sidebar__close" onClick={() => setSidebarOpen(false)} aria-label="Tutup">✕</button>

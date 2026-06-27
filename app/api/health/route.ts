@@ -1,15 +1,15 @@
 import { NextResponse } from "next/server";
-import { getDeepSeekApiKey } from "@/lib/config";
+import { getGroqApiKey } from "@/lib/config";
 
 export const dynamic = "force-dynamic";
 
 export async function GET() {
-  const key = getDeepSeekApiKey();
+  const key = getGroqApiKey();
   const hasKey = key.length > 0;
 
   return NextResponse.json({
     status: hasKey ? "ok" : "degraded",
-    ai: "deepseek",
+    ai: "groq",
     keyConfigured: hasKey,
     timestamp: new Date().toISOString(),
     uptime: process.uptime(),

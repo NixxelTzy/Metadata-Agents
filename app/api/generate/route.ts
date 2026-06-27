@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { MAX_IMAGES } from "@/lib/utils";
-import { callDeepSeek, type DeepSeekMessage } from "@/lib/deepseek";
+import { callGroq, type GroqMessage } from "@/lib/groq";
 
 export const maxDuration = 300;
 
@@ -33,30 +33,21 @@ Your task: Analyze the provided stock photo with extreme precision and generate 
 - NO generic phrases like "beautiful", "amazing", "great"
 - NO questions, ellipsis, or punctuation
 - Must be unique and instantly describe this specific image
-- Examples of GOOD titles:
-  * "Young Woman Working on Laptop in Modern Coffee Shop"
-  * "Aerial View of Green Forest with Morning Fog at Sunrise"
-  * "Close-up of Fresh Strawberries with Water Droplets on White Background"
 
 ═══ KEYWORDS RULES ═══
 - Provide EXACTLY 30–35 keywords in English
 - RELEVANCE IS MANDATORY: every keyword must directly relate to actual visual content
 - NO hallucinated content: only describe what is genuinely visible in the image
 - Structure your keywords in this priority order:
-  1. PRIMARY (8–10): exact subjects, objects, people visible (e.g., "woman", "laptop", "coffee cup")
-  2. DESCRIPTIVE (6–8): colors, textures, materials, lighting (e.g., "warm light", "wooden table", "bokeh")
-  3. CONTEXTUAL (5–7): location, setting, environment (e.g., "coffee shop", "urban", "interior")
-  4. CONCEPTUAL (5–7): emotions, concepts, themes (e.g., "productivity", "relaxation", "lifestyle")
-  5. COMMERCIAL (4–5): use-cases, audience (e.g., "business", "freelance", "remote work")
-  6. TECHNICAL (2–3): photo style (e.g., "portrait", "candid", "stock photo")
+  1. PRIMARY (8–10): exact subjects, objects, people visible
+  2. DESCRIPTIVE (6–8): colors, textures, materials, lighting
+  3. CONTEXTUAL (5–7): location, setting, environment
+  4. CONCEPTUAL (5–7): emotions, concepts, themes
+  5. COMMERCIAL (4–5): use-cases, audience
+  6. TECHNICAL (2–3): photo style
 - Use SINGULAR form for nouns unless plural is more searchable
 - Each keyword = 1–3 words maximum
 - No duplicates, no brand names
-
-═══ QUALITY STANDARDS ═══
-- Title and keywords must be PERFECTLY CONSISTENT with each other
-- If you are unsure about a detail, use precise observable facts only
-- Prioritize specificity over generality at all times
 
 Respond ONLY with valid JSON — no explanation, no markdown:
 {"title": "Exact descriptive title here", "keywords": ["keyword1", "keyword2", ...]}`;
@@ -71,7 +62,7 @@ function extractJsonFromText(text: string): string {
   return trimmed;
 }
 
-async function generateMetadataWithDeepSeek(
+async function generateMetadata(
   base64DataUrl: string,
   filename: string,
   visualHints?: string
@@ -84,7 +75,7 @@ async function generateMetadataWithDeepSeek(
     ? `Analyze this stock photo and generate Adobe Stock title and keywords following the rules.\n\nFilename: ${filename}\nVisual hints: ${visualHints}`
     : `Analyze this stock photo and generate Adobe Stock title and keywords following the rules.\n\nFilename: ${filename}`;
 
-  const messages: DeepSeekMessage[] = [
+  const messages: GroqMessage[] = [
     { role: "system", content: SYSTEM_PROMPT },
     {
       role: "user",
@@ -95,16 +86,14 @@ async function generateMetadataWithDeepSeek(
     },
   ];
 
-  const result = await callDeepSeek(messages, {
+  const result = await callGroq(messages, {
     temperature: 0.3,
     max_tokens: 2048,
+    vision: true,
   });
 
   const jsonText = extractJsonFromText(result.text);
-  const parsed = JSON.parse(jsonText) as {
-    title?: string;
-    keywords?: string[];
-  };
+  const parsed = JSON.parse(jsonText) as { title?: string; keywords?: string[] };
 
   if (!parsed.title || !Array.isArray(parsed.keywords)) {
     throw new Error("Format respons AI tidak valid");
@@ -120,16 +109,13 @@ async function generateMetadataWithDeepSeek(
     title: parsed.title.trim(),
     keywords,
     modelUsed: result.modelUsed,
-    attempts: 1, // DeepSeek client tidak memiliki logika retry saat ini
+    attempts: 1,
     stabilized: true,
   };
 }
 
-const DELAY_BETWEEN_IMAGES_MS = 800;
-
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
+const DELAY_BETWEEN_IMAGES_MS = 500;
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 export async function POST(request: NextRequest) {
   try {
@@ -138,25 +124,14 @@ export async function POST(request: NextRequest) {
     const stabilized = body.stabilized !== false;
 
     if (!Array.isArray(images) || images.length === 0) {
-      return NextResponse.json(
-        { error: "Minimal 1 foto diperlukan" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "Minimal 1 foto diperlukan" }, { status: 400 });
     }
-
     if (images.length > MAX_IMAGES) {
-      return NextResponse.json(
-        { error: `Maksimal ${MAX_IMAGES} foto per permintaan` },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: `Maksimal ${MAX_IMAGES} foto per permintaan` }, { status: 400 });
     }
-
     for (const img of images) {
       if (!img.filename || !img.dataUrl?.startsWith("data:image/")) {
-        return NextResponse.json(
-          { error: "Format gambar tidak valid" },
-          { status: 400 }
-        );
+        return NextResponse.json({ error: "Format gambar tidak valid" }, { status: 400 });
       }
     }
 
@@ -164,13 +139,8 @@ export async function POST(request: NextRequest) {
 
     for (let i = 0; i < images.length; i++) {
       const image = images[i];
-
       try {
-        const result = await generateMetadataWithDeepSeek(
-          image.dataUrl,
-          image.filename,
-          image.visualHints
-        );
+        const result = await generateMetadata(image.dataUrl, image.filename, image.visualHints);
         results.push({ ...result, stabilized });
       } catch (error) {
         results.push({
@@ -181,19 +151,13 @@ export async function POST(request: NextRequest) {
           stabilized,
         });
       }
-
-      if (stabilized && i < images.length - 1) {
-        await sleep(DELAY_BETWEEN_IMAGES_MS);
-      }
+      if (stabilized && i < images.length - 1) await sleep(DELAY_BETWEEN_IMAGES_MS);
     }
 
     return NextResponse.json({ results, stabilized });
   } catch (error) {
     return NextResponse.json(
-      {
-        error:
-          error instanceof Error ? error.message : "Terjadi kesalahan server",
-      },
+      { error: error instanceof Error ? error.message : "Terjadi kesalahan server" },
       { status: 500 }
     );
   }
