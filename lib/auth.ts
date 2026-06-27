@@ -16,7 +16,7 @@ export interface JwtPayload {
   userId: string;
   email: string;
   username: string;
-  role: "user" | "premium";
+  role: "user" | "premium" | "admin";
 }
 
 export function signToken(payload: JwtPayload): string {

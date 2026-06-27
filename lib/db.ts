@@ -17,7 +17,7 @@ export interface User {
   email: string;
   username: string;
   passwordHash: string;
-  role: "user" | "premium";
+  role: "user" | "premium" | "admin";
   createdAt: string;
 }
 

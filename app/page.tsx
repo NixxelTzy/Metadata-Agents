@@ -20,7 +20,7 @@ interface UserInfo {
   userId: string;
   email: string;
   username: string;
-  role: "user" | "premium";
+  role: "user" | "premium" | "admin";
 }
 
 export default function Home() {
@@ -153,7 +153,7 @@ export default function Home() {
             <div className="sidebar__profile-info">
               <span className="sidebar__profile-name">{user?.username ?? "Loading..."}</span>
               <span className={`sidebar__profile-badge sidebar__profile-badge--${user?.role ?? "user"}`}>
-                {user?.role === "premium" ? "✦ Premium" : "● Free"}
+                {user?.role === "admin" ? "👑 Admin" : user?.role === "premium" ? "✦ Premium" : "● Free"}
               </span>
             </div>
             <span className="sidebar__profile-chevron">{profileOpen ? "▴" : "▾"}</span>
@@ -176,7 +176,7 @@ export default function Home() {
               <div className="sidebar__dropdown-row">
                 <span className="sidebar__dropdown-label">Tipe Akun</span>
                 <span className={`sidebar__profile-badge sidebar__profile-badge--${user?.role ?? "user"}`}>
-                  {user?.role === "premium" ? "✦ Premium" : "Free"}
+                  {user?.role === "admin" ? "👑 Admin" : user?.role === "premium" ? "✦ Premium" : "Free"}
                 </span>
               </div>
 

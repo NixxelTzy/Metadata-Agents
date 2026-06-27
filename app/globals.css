@@ -218,6 +218,12 @@ body {
   border: 1px solid #fcd34d;
 }
 
+.sidebar__profile-badge--admin {
+  background: linear-gradient(135deg, #e0e7ff, #c7d2fe);
+  color: #3730a3;
+  border: 1px solid #818cf8;
+}
+
 .sidebar__profile-chevron {
   font-size: 10px;
   color: var(--text-muted);

@@ -6,12 +6,20 @@
  */
 
 /** Groq API key */
-export function getGroqApiKey(): string {
-  const key = process.env.GROQ_API_KEY;
-  if (!key?.trim()) {
-    console.warn("[WARN] GROQ_API_KEY tidak ditemukan. Set di environment variables.");
+export function getGroqApiKeys(): string[] {
+  const keys: string[] = [];
+  for (let i = 1; i <= 10; i++) {
+    const key = process.env[`GROQ_API_KEY_${i}`];
+    if (key?.trim()) keys.push(key.trim());
   }
-  return key?.trim() ?? "";
+  if (keys.length === 0) {
+    const fallback = process.env.GROQ_API_KEY;
+    if (fallback?.trim()) keys.push(fallback.trim());
+  }
+  if (keys.length === 0) {
+    console.warn("[WARN] Tidak ada GROQ_API_KEY yang ditemukan. Set di environment variables.");
+  }
+  return keys;
 }
 
 /** Konfigurasi Upstash Redis */

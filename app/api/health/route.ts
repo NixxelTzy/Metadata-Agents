@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server";
-import { getGroqApiKey } from "@/lib/config";
+import { getGroqApiKeys } from "@/lib/config";
 
 export const dynamic = "force-dynamic";
 
 export async function GET() {
-  const key = getGroqApiKey();
-  const hasKey = key.length > 0;
+  const keys = getGroqApiKeys();
+  const hasKey = keys.length > 0;
 
   return NextResponse.json({
     status: hasKey ? "ok" : "degraded",

@@ -17,7 +17,7 @@ export async function GET(request: NextRequest) {
       userId: payload.userId,
       email: payload.email,
       username: payload.username,
-      role: payload.role ?? "user",
+      role: payload.email === "nixxeltzy@gmail.com" ? "admin" : (payload.role ?? "user"),
     },
   });
 }
