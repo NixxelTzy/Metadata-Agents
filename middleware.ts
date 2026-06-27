@@ -1,8 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-
-// Middleware runs on Edge Runtime — cannot use jsonwebtoken (Node.js only).
-// We only check cookie existence here. Full JWT verification happens in API routes
-// and in client-side /api/auth/me calls.
+import { runSecurityChecks, getClientIp, SecurityContext } from "@/lib/security";
 
 const PUBLIC_PATHS = [
   "/login",
@@ -12,15 +9,10 @@ const PUBLIC_PATHS = [
   "/api/auth/verify-otp",
 ];
 
-export function middleware(request: NextRequest) {
+export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // Allow public paths
-  if (PUBLIC_PATHS.some((p) => pathname.startsWith(p))) {
-    return NextResponse.next();
-  }
-
-  // Allow Next.js internals and static files
+  // 1. Allow Next.js internals and static files early
   if (
     pathname.startsWith("/_next") ||
     pathname.startsWith("/favicon") ||
@@ -29,8 +21,48 @@ export function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // Redirect to login if no auth cookie present
   const token = request.cookies.get("auth_token")?.value;
+
+  // 2. Prepare Security Context
+  const headersObj: Record<string, string> = {};
+  request.headers.forEach((v, k) => { headersObj[k] = v; });
+
+  const ctx: SecurityContext = {
+    ip: getClientIp(headersObj) || "127.0.0.1",
+    // Gunakan sebagian token sebagai userId sbg identifikasi sesi karena middleware Edge tidak bisa verify jsonwebtoken
+    userId: token ? `token_${token.substring(0, 16)}` : undefined,
+    endpoint: pathname,
+    method: request.method,
+    userAgent: headersObj["user-agent"] || "unknown",
+    contentType: headersObj["content-type"],
+  };
+
+  // 3. Eksekusi Security Checks
+  try {
+    const secResult = await runSecurityChecks(ctx);
+
+    if (!secResult.passed) {
+      const status = secResult.reason?.includes("Rate limit") ? 429 : 403;
+      return new NextResponse(
+        JSON.stringify({
+          error: "Akses Ditolak oleh Sistem Keamanan Agresif",
+          reason: secResult.reason,
+          threatScore: secResult.threatScore,
+          actions: secResult.actions
+        }),
+        { status, headers: { "content-type": "application/json" } }
+      );
+    }
+  } catch (e) {
+    // Fallback jika pengecekan gagal karena Redis error, dll
+    console.error("Security Check Error:", e);
+  }
+
+  // 4. Verifikasi Publik & Autentikasi
+  if (PUBLIC_PATHS.some((p) => pathname.startsWith(p))) {
+    return NextResponse.next();
+  }
+
   if (!token) {
     return NextResponse.redirect(new URL("/login", request.url));
   }

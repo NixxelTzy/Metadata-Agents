@@ -44,12 +44,7 @@ export default function LoginPage() {
 
   return (
     <div className="auth-page">
-      {/* Decorative background */}
-      <div className="auth-bg">
-        <div className="auth-bg__orb auth-bg__orb--1" />
-        <div className="auth-bg__orb auth-bg__orb--2" />
-        <div className="auth-bg__orb auth-bg__orb--3" />
-      </div>
+      {/* Clean background is handled by CSS now */}
 
       <div className="auth-card">
         <div className="auth-logo">
