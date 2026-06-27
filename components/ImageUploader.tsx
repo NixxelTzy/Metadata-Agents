@@ -206,14 +206,15 @@ export default function ImageUploader({ onTokensUpdated }: Props = {}) {
       return;
     }
 
-    const header = "Filename,Title,Keywords\n";
+    const header = "Filename,Title,Keywords,Category,Releases\n";
     const csvRows = validResults.map(r => {
       const filename = r.filename;
       // Adobe Stock CSV mengharuskan title dan keywords diapit kutip
       // jika mengandung koma, tapi lebih aman untuk selalu mengapitnya.
       const title = `"${r.title.replace(/"/g, '""')}"`;
       const keywords = `"${r.keywords.join(',').replace(/"/g, '""')}"`;
-      return [filename, title, keywords].join(',');
+      // Category dan Releases dibiarkan kosong sesuai format jika tidak ada isinya
+      return [filename, title, keywords, "", ""].join(',');
     });
 
     const csvContent = header + csvRows.join("\n");

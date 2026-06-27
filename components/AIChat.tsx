@@ -26,14 +26,27 @@ function formatContent(content: string) {
         </div>
       );
     }
-    const inlineParts = part.split(/(`[^`]+`)/g);
+    const inlineParts = part.split(/(\*\*.*?\*\*|\*.*?\*|_.*?_|~.*?~|`[^`]+`)/g);
     return (
       <span key={i}>
-        {inlineParts.map((p, j) =>
-          p.startsWith("`") && p.endsWith("`")
-            ? <code key={j} className="chat-inline-code">{p.slice(1, -1)}</code>
-            : <span key={j}>{p}</span>
-        )}
+        {inlineParts.map((p, j) => {
+          if (p.startsWith("**") && p.endsWith("**") && p.length >= 4) {
+            return <strong key={j}>{p.slice(2, -2)}</strong>;
+          }
+          if (p.startsWith("*") && p.endsWith("*") && p.length >= 2) {
+            return <em key={j}>{p.slice(1, -1)}</em>;
+          }
+          if (p.startsWith("_") && p.endsWith("_") && p.length >= 2) {
+            return <em key={j}>{p.slice(1, -1)}</em>;
+          }
+          if (p.startsWith("~") && p.endsWith("~") && p.length >= 2) {
+            return <del key={j}>{p.slice(1, -1)}</del>;
+          }
+          if (p.startsWith("`") && p.endsWith("`") && p.length >= 2) {
+            return <code key={j} className="chat-inline-code">{p.slice(1, -1)}</code>;
+          }
+          return <span key={j}>{p}</span>;
+        })}
       </span>
     );
   });
