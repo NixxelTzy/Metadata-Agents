@@ -12,6 +12,7 @@ export interface MetadataResult {
   attempts?: number;
   stabilized?: boolean;
   modelUsed?: string;
+  usage?: { promptTokens: number; completionTokens: number; totalTokens: number };
 }
 
 interface ImagePayload {
@@ -111,6 +112,7 @@ async function generateMetadata(
     modelUsed: result.modelUsed,
     attempts: 1,
     stabilized: true,
+    usage: result.usage,
   };
 }
 
@@ -154,7 +156,11 @@ export async function POST(request: NextRequest) {
       if (stabilized && i < images.length - 1) await sleep(DELAY_BETWEEN_IMAGES_MS);
     }
 
-    return NextResponse.json({ results, stabilized });
+    return NextResponse.json({ results, stabilized, totalUsage: {
+      promptTokens: results.reduce((s, r) => s + (r.usage?.promptTokens || 0), 0),
+      completionTokens: results.reduce((s, r) => s + (r.usage?.completionTokens || 0), 0),
+      totalTokens: results.reduce((s, r) => s + (r.usage?.totalTokens || 0), 0),
+    }});
   } catch (error) {
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Terjadi kesalahan server" },

@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useState, useRef, useCallback } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import ImageUploader from "@/components/ImageUploader";
 import ServerMonitor from "@/components/ServerMonitor";
 import AIChat from "@/components/AIChat";
 import { useDevice } from "@/lib/useDevice";
 import { useRouter } from "next/navigation";
+import { getUsage, getUsagePercent, getDailyLimit, formatTokens, resetUsage } from "@/lib/tokenStore";
 
 type Tab = "metadata" | "chat";
 const ADMIN_EMAIL = "nixxeltzy@gmail.com";
@@ -30,6 +31,9 @@ export default function Home() {
   const [monitorOpen, setMonitorOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
+  // Token usage state — di-refresh setiap kali ada chat baru atau dropdown dibuka
+  const [tokenUsage, setTokenUsage] = useState(() => getUsage());
+  const [tokenPct, setTokenPct] = useState(() => getUsagePercent());
   const device = useDevice();
   const profileRef = useRef<HTMLDivElement>(null);
 
@@ -40,9 +44,21 @@ export default function Home() {
       .catch(() => {});
   }, []);
 
+  // Refresh token saat dropdown dibuka
+  useEffect(() => {
+    if (profileOpen) {
+      setTokenUsage(getUsage());
+      setTokenPct(getUsagePercent());
+    }
+  }, [profileOpen]);
+
+  const refreshTokens = useCallback(() => {
+    setTokenUsage(getUsage());
+    setTokenPct(getUsagePercent());
+  }, []);
+
   const isAdmin = user?.email === ADMIN_EMAIL;
 
-  // Tutup profile dropdown saat klik di luar
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (profileRef.current && !profileRef.current.contains(e.target as Node)) {
@@ -74,6 +90,9 @@ export default function Home() {
     }
   }, [router]);
 
+  // Progress bar color
+  const pctColor = tokenPct >= 85 ? "#dc2626" : tokenPct >= 60 ? "#d97706" : "#16a34a";
+
   const currentTitle = monitorOpen
     ? "📡 Server Monitoring"
     : TAB_CONFIG.find((t) => t.id === activeTab)?.label ?? "";
@@ -102,12 +121,9 @@ export default function Home() {
         <div className="sidebar__section-label">Tools</div>
         <nav className="sidebar__nav">
           {TAB_CONFIG.map((tab) => (
-            <button
-              key={tab.id}
-              type="button"
+            <button key={tab.id} type="button"
               className={`sidebar__item ${activeTab === tab.id && !monitorOpen ? "sidebar__item--active" : ""}`}
-              onClick={() => handleTabChange(tab.id)}
-            >
+              onClick={() => handleTabChange(tab.id)}>
               <span className="sidebar__icon">{tab.icon}</span>
               {tab.label}
             </button>
@@ -118,11 +134,9 @@ export default function Home() {
           <>
             <div className="sidebar__section-label">Admin</div>
             <nav className="sidebar__nav">
-              <button
-                type="button"
+              <button type="button"
                 className={`sidebar__item ${monitorOpen ? "sidebar__item--active" : ""}`}
-                onClick={() => { setMonitorOpen((v) => !v); if (!device.isDesktop) setSidebarOpen(false); }}
-              >
+                onClick={() => { setMonitorOpen((v) => !v); if (!device.isDesktop) setSidebarOpen(false); }}>
                 <span className="sidebar__icon">📡</span>
                 Server Monitor
               </button>
@@ -132,13 +146,9 @@ export default function Home() {
 
         {/* ── Profile section ── */}
         <div className="sidebar__profile-area" ref={profileRef}>
-          <button
-            type="button"
-            className="sidebar__profile-btn"
+          <button type="button" className="sidebar__profile-btn"
             onClick={() => setProfileOpen((v) => !v)}
-            aria-expanded={profileOpen}
-            aria-haspopup="menu"
-          >
+            aria-expanded={profileOpen} aria-haspopup="menu">
             <div className="sidebar__avatar">{userInitial}</div>
             <div className="sidebar__profile-info">
               <span className="sidebar__profile-name">{user?.username ?? "Loading..."}</span>
@@ -151,6 +161,7 @@ export default function Home() {
 
           {profileOpen && (
             <div className="sidebar__profile-dropdown">
+              {/* Header */}
               <div className="sidebar__profile-dropdown-header">
                 <div className="sidebar__avatar sidebar__avatar--lg">{userInitial}</div>
                 <div>
@@ -158,20 +169,65 @@ export default function Home() {
                   <div className="sidebar__dropdown-email">{user?.email}</div>
                 </div>
               </div>
+
               <div className="sidebar__dropdown-divider" />
+
+              {/* Tipe akun */}
               <div className="sidebar__dropdown-row">
                 <span className="sidebar__dropdown-label">Tipe Akun</span>
                 <span className={`sidebar__profile-badge sidebar__profile-badge--${user?.role ?? "user"}`}>
                   {user?.role === "premium" ? "✦ Premium" : "Free"}
                 </span>
               </div>
+
               <div className="sidebar__dropdown-divider" />
-              <button
-                type="button"
-                className="sidebar__logout-btn"
-                onClick={handleLogout}
-                disabled={loggingOut}
-              >
+
+              {/* Token Usage Section */}
+              <div className="sidebar__token-section">
+                <div className="sidebar__token-header">
+                  <span className="sidebar__token-title">⚡ Token Hari Ini</span>
+                  <span className="sidebar__token-pct" style={{ color: pctColor }}>{tokenPct}%</span>
+                </div>
+
+                {/* Progress bar */}
+                <div className="sidebar__token-bar">
+                  <div className="sidebar__token-bar-fill"
+                    style={{ width: `${tokenPct}%`, background: pctColor }} />
+                </div>
+
+                {/* Stats */}
+                <div className="sidebar__token-stats">
+                  <div className="sidebar__token-stat">
+                    <span className="sidebar__token-stat-label">Total</span>
+                    <span className="sidebar__token-stat-val">{formatTokens(tokenUsage.totalTokens)}</span>
+                  </div>
+                  <div className="sidebar__token-stat">
+                    <span className="sidebar__token-stat-label">Input</span>
+                    <span className="sidebar__token-stat-val">{formatTokens(tokenUsage.promptTokens)}</span>
+                  </div>
+                  <div className="sidebar__token-stat">
+                    <span className="sidebar__token-stat-label">Output</span>
+                    <span className="sidebar__token-stat-val">{formatTokens(tokenUsage.completionTokens)}</span>
+                  </div>
+                  <div className="sidebar__token-stat">
+                    <span className="sidebar__token-stat-label">Limit</span>
+                    <span className="sidebar__token-stat-val">{formatTokens(getDailyLimit())}</span>
+                  </div>
+                </div>
+
+                <div className="sidebar__token-footer">
+                  <span className="sidebar__token-note">Reset otomatis tiap hari</span>
+                  <button type="button" className="sidebar__token-reset"
+                    onClick={() => { resetUsage(); refreshTokens(); }}>
+                    Reset
+                  </button>
+                </div>
+              </div>
+
+              <div className="sidebar__dropdown-divider" />
+
+              <button type="button" className="sidebar__logout-btn"
+                onClick={handleLogout} disabled={loggingOut}>
                 {loggingOut ? "⏳ Logging out..." : "→ Keluar"}
               </button>
             </div>
@@ -185,12 +241,8 @@ export default function Home() {
           <header className="topbar">
             <button type="button" className="topbar__menu" onClick={() => setSidebarOpen(true)} aria-label="Menu">☰</button>
             <div className="topbar__title">{currentTitle}</div>
-            <button
-              type="button"
-              className="topbar__avatar"
-              onClick={() => setProfileOpen((v) => !v)}
-              aria-label="Profile"
-            >
+            <button type="button" className="topbar__avatar"
+              onClick={() => setProfileOpen((v) => !v)} aria-label="Profile">
               {userInitial}
             </button>
           </header>
@@ -200,9 +252,9 @@ export default function Home() {
           {isAdmin && monitorOpen ? (
             <ServerMonitor />
           ) : activeTab === "metadata" ? (
-            <ImageUploader />
+            <ImageUploader onTokensUpdated={refreshTokens} />
           ) : (
-            <AIChat />
+            <AIChat onTokensUpdated={refreshTokens} />
           )}
         </main>
       </div>

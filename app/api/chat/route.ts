@@ -50,7 +50,8 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       content: result.text,
-      model: `Groq (${result.modelUsed})`,
+      model: result.modelUsed,
+      usage: result.usage,
     });
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Server error";

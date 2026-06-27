@@ -116,7 +116,7 @@ export default function RegisterPage() {
           </div>
           <div>
             <div className="auth-logo__title">Stock AI Studio</div>
-            <div className="auth-logo__sub">Powered by Gemini AI</div>
+            <div className="auth-logo__sub">Powered by Groq AI</div>
           </div>
         </div>
 

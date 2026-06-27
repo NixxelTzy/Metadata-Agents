@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { addUsage, formatTokens } from "@/lib/tokenStore";
 
 interface Message {
   id: string;
@@ -8,10 +9,10 @@ interface Message {
   content: string;
   model?: string;
   timestamp: number;
+  tokens?: { prompt: number; completion: number; total: number };
 }
 
 function formatContent(content: string) {
-  // Render code blocks
   const parts = content.split(/(```[\s\S]*?```)/g);
   return parts.map((part, i) => {
     if (part.startsWith("```")) {
@@ -25,7 +26,6 @@ function formatContent(content: string) {
         </div>
       );
     }
-    // Render inline code
     const inlineParts = part.split(/(`[^`]+`)/g);
     return (
       <span key={i}>
@@ -39,11 +39,17 @@ function formatContent(content: string) {
   });
 }
 
-export default function AIChat() {
+interface Props {
+  onTokensUpdated?: () => void;
+}
+
+export default function AIChat({ onTokensUpdated }: Props) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  // Token total untuk sesi ini
+  const [sessionTokens, setSessionTokens] = useState({ prompt: 0, completion: 0, total: 0 });
   const bottomRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -69,10 +75,7 @@ export default function AIChat() {
     setLoading(true);
     setError("");
 
-    // Reset textarea height
-    if (textareaRef.current) {
-      textareaRef.current.style.height = "auto";
-    }
+    if (textareaRef.current) textareaRef.current.style.height = "auto";
 
     try {
       const history = [...messages, userMsg].map((m) => ({
@@ -86,11 +89,28 @@ export default function AIChat() {
         body: JSON.stringify({ messages: history }),
       });
 
-      const data = await res.json() as { content?: string; model?: string; error?: string };
+      const data = await res.json() as {
+        content?: string;
+        model?: string;
+        error?: string;
+        usage?: { promptTokens: number; completionTokens: number; totalTokens: number };
+      };
 
       if (!res.ok) {
         setError(data.error ?? "Gagal mendapat respons");
         return;
+      }
+
+      // Catat token usage
+      const u = data.usage;
+      if (u) {
+        addUsage(u.promptTokens, u.completionTokens);
+        setSessionTokens((prev) => ({
+          prompt: prev.prompt + u.promptTokens,
+          completion: prev.completion + u.completionTokens,
+          total: prev.total + u.totalTokens,
+        }));
+        onTokensUpdated?.();
       }
 
       const assistantMsg: Message = {
@@ -99,6 +119,7 @@ export default function AIChat() {
         content: data.content ?? "",
         model: data.model,
         timestamp: Date.now(),
+        tokens: u ? { prompt: u.promptTokens, completion: u.completionTokens, total: u.totalTokens } : undefined,
       };
 
       setMessages((prev) => [...prev, assistantMsg]);
@@ -128,11 +149,11 @@ export default function AIChat() {
   const handleClear = () => {
     setMessages([]);
     setError("");
+    setSessionTokens({ prompt: 0, completion: 0, total: 0 });
   };
 
   return (
     <div className={`aichat ${isEmpty ? "aichat--empty" : ""}`}>
-      {/* Messages area */}
       <div className="aichat__body">
         {isEmpty ? (
           <div className="aichat__welcome">
@@ -146,12 +167,8 @@ export default function AIChat() {
                 "Apa itu Machine Learning dan cara kerjanya?",
                 "Buatkan sorting algorithm quicksort dalam Python",
               ].map((s) => (
-                <button
-                  key={s}
-                  type="button"
-                  className="aichat__suggestion"
-                  onClick={() => { setInput(s); textareaRef.current?.focus(); }}
-                >
+                <button key={s} type="button" className="aichat__suggestion"
+                  onClick={() => { setInput(s); textareaRef.current?.focus(); }}>
                   {s}
                 </button>
               ))}
@@ -162,11 +179,14 @@ export default function AIChat() {
             {messages.map((msg) => (
               <div key={msg.id} className={`aichat__msg aichat__msg--${msg.role}`}>
                 <div className="aichat__msg-bubble">
-                  <div className="aichat__msg-content">
-                    {formatContent(msg.content)}
-                  </div>
-                  {msg.model && (
-                    <div className="aichat__msg-meta">model: {msg.model}</div>
+                  <div className="aichat__msg-content">{formatContent(msg.content)}</div>
+                  {/* Token info — hanya tampil di pesan assistant */}
+                  {msg.role === "assistant" && msg.tokens && (
+                    <div className="aichat__msg-tokens">
+                      <span>↑ {formatTokens(msg.tokens.prompt)}</span>
+                      <span>↓ {formatTokens(msg.tokens.completion)}</span>
+                      <span className="aichat__msg-tokens-total">{formatTokens(msg.tokens.total)} token</span>
+                    </div>
                   )}
                 </div>
               </div>
@@ -175,28 +195,29 @@ export default function AIChat() {
             {loading && (
               <div className="aichat__msg aichat__msg--assistant">
                 <div className="aichat__msg-bubble">
-                  <div className="aichat__typing">
-                    <span /><span /><span />
-                  </div>
+                  <div className="aichat__typing"><span /><span /><span /></div>
                 </div>
               </div>
             )}
 
-            {error && (
-              <div className="aichat__error">{error}</div>
-            )}
-
+            {error && <div className="aichat__error">{error}</div>}
             <div ref={bottomRef} />
           </div>
         )}
       </div>
 
-      {/* Input area */}
       <div className={`aichat__footer ${isEmpty ? "aichat__footer--centered" : ""}`}>
         {!isEmpty && (
           <div className="aichat__toolbar">
+            {/* Token sesi */}
+            {sessionTokens.total > 0 && (
+              <div className="aichat__session-tokens">
+                <span className="aichat__session-tokens-label">Sesi ini</span>
+                <span className="aichat__session-tokens-val">{formatTokens(sessionTokens.total)} token</span>
+              </div>
+            )}
             <button type="button" className="aichat__clear" onClick={handleClear}>
-              🗑 Bersihkan chat
+              🗑 Bersihkan
             </button>
           </div>
         )}
@@ -211,18 +232,13 @@ export default function AIChat() {
             rows={1}
             disabled={loading}
           />
-          <button
-            type="button"
-            className="btn--send"
-            onClick={handleSend}
-            disabled={loading || !input.trim()}
-            aria-label="Kirim"
-          >
+          <button type="button" className="btn--send" onClick={handleSend}
+            disabled={loading || !input.trim()} aria-label="Kirim">
             {loading ? <span className="spinner" /> : "↑"}
           </button>
         </div>
         <p className="aichat__hint">
-          Enter kirim · Shift+Enter baris baru · Didukung oleh Groq AI ⚡
+          Enter kirim · Shift+Enter baris baru · Groq AI ⚡
         </p>
       </div>
     </div>

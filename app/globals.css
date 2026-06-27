@@ -810,3 +810,274 @@ body {
   .aichat__suggestions { gap: 6px; }
   .aichat__suggestion { font-size: 12px; padding: 6px 12px; }
 }
+
+/* ── Token Usage (Profile Dropdown) ──────────────────────── */
+.sidebar__token-section {
+  padding: 10px 14px 12px;
+}
+
+.sidebar__token-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.sidebar__token-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.sidebar__token-pct {
+  font-size: 13px;
+  font-weight: 700;
+  font-family: monospace;
+}
+
+/* Progress bar */
+.sidebar__token-bar {
+  width: 100%;
+  height: 6px;
+  background: var(--surface-2);
+  border-radius: 999px;
+  overflow: hidden;
+  margin-bottom: 10px;
+}
+
+.sidebar__token-bar-fill {
+  height: 100%;
+  border-radius: 999px;
+  transition: width 0.4s ease, background 0.3s;
+}
+
+/* Stats grid */
+.sidebar__token-stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px 8px;
+  margin-bottom: 8px;
+}
+
+.sidebar__token-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 5px 8px;
+}
+
+.sidebar__token-stat-label {
+  font-size: 9px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+}
+
+.sidebar__token-stat-val {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text);
+  font-family: monospace;
+}
+
+/* Footer row */
+.sidebar__token-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.sidebar__token-note {
+  font-size: 10px;
+  color: var(--text-muted);
+}
+
+.sidebar__token-reset {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 2px 8px;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.12s;
+}
+.sidebar__token-reset:hover { color: var(--error); border-color: #fecaca; background: #fef2f2; }
+
+/* ── Token per pesan (AI Chat) ────────────────────────────── */
+.aichat__msg-tokens {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 5px;
+  padding-top: 5px;
+  border-top: 1px solid rgba(0,0,0,0.06);
+  font-size: 10px;
+  color: var(--text-muted);
+  font-family: monospace;
+}
+
+.aichat__msg-tokens-total {
+  margin-left: auto;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+/* Session token counter */
+.aichat__session-tokens {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-right: auto;
+}
+
+.aichat__session-tokens-label {
+  font-weight: 500;
+}
+
+.aichat__session-tokens-val {
+  font-family: monospace;
+  font-weight: 600;
+  color: var(--text-secondary);
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  padding: 1px 6px;
+  border-radius: 4px;
+}
+
+/* ── Auth — Extended Styles ───────────────────────────────── */
+
+/* Decorative background orbs */
+.auth-bg {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+  z-index: 0;
+}
+
+.auth-bg__orb {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(80px);
+  opacity: 0.07;
+}
+
+.auth-bg__orb--1 {
+  width: 500px;
+  height: 500px;
+  background: #0d0d0d;
+  top: -100px;
+  right: -100px;
+}
+
+.auth-bg__orb--2 {
+  width: 400px;
+  height: 400px;
+  background: #444;
+  bottom: -80px;
+  left: -80px;
+}
+
+.auth-bg__orb--3 {
+  width: 300px;
+  height: 300px;
+  background: #888;
+  top: 40%;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+/* Auth card needs z-index above background */
+.auth-card { position: relative; z-index: 1; }
+
+/* Logo icon — SVG mode */
+.auth-logo__icon {
+  width: 36px;
+  height: 36px;
+  background: var(--text);
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  flex-shrink: 0;
+}
+
+/* Input icon (left-side icon inside input) */
+.auth-input-wrap { position: relative; }
+.auth-input-wrap input { padding-right: 44px; padding-left: 38px; }
+
+.auth-input-icon {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-muted);
+  pointer-events: none;
+  display: flex;
+  align-items: center;
+}
+
+/* Eye button stays on the right */
+.auth-input-wrap .auth-eye { right: 10px; left: auto; }
+
+/* Footer text */
+.auth-footer-text {
+  margin-top: 16px;
+  font-size: 11px;
+  color: var(--text-muted);
+  text-align: center;
+  line-height: 1.5;
+}
+
+/* Step indicator (register) */
+.auth-steps {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  margin-bottom: 20px;
+}
+
+.auth-steps__dot {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 2px solid var(--border);
+  background: var(--surface);
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: all 0.2s;
+}
+
+.auth-steps__dot--active {
+  border-color: var(--text);
+  background: var(--text);
+  color: white;
+}
+
+.auth-steps__dot--done {
+  border-color: var(--success);
+  background: var(--success);
+  color: white;
+}
+
+.auth-steps__line {
+  flex: 1;
+  height: 2px;
+  background: var(--border);
+  margin: 0 6px;
+}

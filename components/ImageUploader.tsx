@@ -4,6 +4,7 @@ import { useCallback, useRef, useState } from "react";
 import { MAX_IMAGES, compressImage, extractImageHints } from "@/lib/utils";
 import type { MetadataResult } from "@/app/api/generate/route";
 import ResultCard from "./ResultCard";
+import { addUsage } from "@/lib/tokenStore";
 
 interface ImagePreview {
   id: string;
@@ -12,7 +13,11 @@ interface ImagePreview {
   visualHints: string;
 }
 
-export default function ImageUploader() {
+interface Props {
+  onTokensUpdated?: () => void;
+}
+
+export default function ImageUploader({ onTokensUpdated }: Props = {}) {
   const [images, setImages] = useState<ImagePreview[]>([]);
   const [results, setResults] = useState<MetadataResult[]>([]);
   const [loading, setLoading] = useState(false);
@@ -122,6 +127,11 @@ export default function ImageUploader() {
             });
 
             const data = await response.json();
+            
+            if (data.totalUsage) {
+              addUsage(data.totalUsage.promptTokens, data.totalUsage.completionTokens);
+              onTokensUpdated?.();
+            }
 
             if (!response.ok) {
               // Jika API mengembalikan status error, buat hasil error secara manual
@@ -168,6 +178,11 @@ export default function ImageUploader() {
         });
 
         const data = await response.json();
+        
+        if (data.totalUsage) {
+          addUsage(data.totalUsage.promptTokens, data.totalUsage.completionTokens);
+          onTokensUpdated?.();
+        }
 
         if (!response.ok) {
           throw new Error(data.error || "Gagal menghubungi server");

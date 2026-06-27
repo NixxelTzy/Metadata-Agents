@@ -2,16 +2,14 @@
  * lib/groq.ts
  * Groq AI client — ultra-fast inference.
  * API key dibaca dari GROQ_API_KEY environment variable.
- * Model: llama-3.3-70b-versatile (chat) | llama-3.2-90b-vision-preview (vision)
  */
 
 import { getGroqApiKey } from "@/lib/config";
 
 const GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions";
 
-// Model terbaik Groq saat ini
-const CHAT_MODEL   = "llama-3.3-70b-versatile";   // text-only, cepat, pintar
-const VISION_MODEL = "meta-llama/llama-4-scout-17b-16e-instruct"; // vision (gambar)
+const CHAT_MODEL   = "llama-3.3-70b-versatile";
+const VISION_MODEL = "meta-llama/llama-4-scout-17b-16e-instruct";
 
 export interface GroqMessage {
   role: "user" | "assistant" | "system";
@@ -26,27 +24,28 @@ export interface GroqMessage {
 export interface GroqOptions {
   temperature?: number;
   max_tokens?: number;
-  vision?: boolean; // true → pakai vision model
+  vision?: boolean;
+}
+
+export interface GroqUsage {
+  promptTokens: number;
+  completionTokens: number;
+  totalTokens: number;
 }
 
 export interface GroqResult {
   text: string;
   modelUsed: string;
+  usage: GroqUsage;
 }
 
-/**
- * Panggil Groq API.
- * Auto-pilih model chat atau vision tergantung opsi.
- */
 export async function callGroq(
   messages: GroqMessage[],
   opts: GroqOptions = {}
 ): Promise<GroqResult> {
   const apiKey = getGroqApiKey();
   if (!apiKey) {
-    throw new Error(
-      "Groq API key tidak dikonfigurasi. Set GROQ_API_KEY di environment variables."
-    );
+    throw new Error("Groq API key tidak dikonfigurasi. Set GROQ_API_KEY di environment variables.");
   }
 
   const { temperature = 0.3, max_tokens = 8192, vision = false } = opts;
@@ -58,13 +57,7 @@ export async function callGroq(
       "Content-Type": "application/json",
       "Authorization": `Bearer ${apiKey}`,
     },
-    body: JSON.stringify({
-      model,
-      messages,
-      temperature,
-      max_tokens,
-      stream: false,
-    }),
+    body: JSON.stringify({ model, messages, temperature, max_tokens, stream: false }),
   });
 
   if (!response.ok) {
@@ -73,7 +66,6 @@ export async function callGroq(
       const errBody = await response.json() as { error?: { message?: string } };
       if (errBody?.error?.message) errorMsg += `: ${errBody.error.message}`;
     } catch { /* ignore */ }
-
     if (response.status === 401) throw new Error("Groq API key tidak valid (401). Cek GROQ_API_KEY.");
     if (response.status === 429) throw new Error("Rate limit Groq tercapai (429). Coba lagi sebentar.");
     if (response.status === 413) throw new Error("Request terlalu besar (413). Kurangi ukuran gambar.");
@@ -83,17 +75,21 @@ export async function callGroq(
   const data = await response.json() as {
     choices?: Array<{ message?: { content?: string } }>;
     model?: string;
+    usage?: { prompt_tokens?: number; completion_tokens?: number; total_tokens?: number };
   };
 
   const text = data.choices?.[0]?.message?.content;
   if (!text) throw new Error("Respons Groq kosong atau tidak valid.");
 
-  return { text, modelUsed: data.model ?? model };
+  const usage: GroqUsage = {
+    promptTokens: data.usage?.prompt_tokens ?? 0,
+    completionTokens: data.usage?.completion_tokens ?? 0,
+    totalTokens: data.usage?.total_tokens ?? 0,
+  };
+
+  return { text, modelUsed: data.model ?? model, usage };
 }
 
-/**
- * Convenience: single text message
- */
 export async function askGroq(
   userMessage: string,
   systemPrompt?: string,
