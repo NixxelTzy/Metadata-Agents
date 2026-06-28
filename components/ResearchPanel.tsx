@@ -44,6 +44,171 @@ export default function ResearchPanel() {
     "concepts" | "product" | "events" | "templates"
   >("concepts");
 
+  // Auto-search state (placeholder behavior)
+  const [isSearching, setIsSearching] = useState(false);
+  const [searchError, setSearchError] = useState<string>("");
+  const [adobeStockLinks, setAdobeStockLinks] = useState<string[]>([]);
+
+  const buildAdobeStockSearchUrl = (query: string) => {
+    // Note: This project does not do scraping/crawling.
+    // We generate a search URL the user can open.
+    const q = encodeURIComponent(query.trim());
+    // Use a stable query/search page pattern.
+    return `https://www.adobestock.com/search/?k=${q}`;
+  };
+
+  const extractKeywordsHeuristic = (url: string) => {
+    // Very small heuristic: use query tokens from URL slug/path.
+    // This is a fallback for when AI isn't available.
+    try {
+      const clean = url
+        .replace(/^https?:\/\//i, "")
+        .replace(/[^a-z0-9]+/gi, " ")
+        .trim()
+        .toLowerCase();
+      const parts = clean.split(/\s+/).filter(Boolean);
+      // Take unique-ish tokens (cap)
+      return Array.from(new Set(parts)).slice(0, 6);
+    } catch {
+      return [] as string[];
+    }
+  };
+
+  const runStartSearchProduct = async () => {
+    setSearchError("");
+    setAdobeStockLinks([]);
+
+    const url = cleanUrl(adobePhotoUrl);
+    if (!url) {
+      setSearchError("Masukkan URL photo terlebih dulu.");
+      return;
+    }
+
+    setIsSearching(true);
+    try {
+      // Build queries (AI first). If AI fails, fallback to heuristic.
+      const fallbackTokens = extractKeywordsHeuristic(url);
+
+      // Use existing AI endpoint (/api/generate) to create search query strings.
+      // We cannot scrape AdobeStock; we only generate search queries.
+      const prompt = {
+        queryType: "adobestock-search-queries",
+        target: "product",
+        input: { adobePhotoUrl: url },
+        instructions:
+          "Generate 5 concise Adobe Stock search queries in English. Avoid punctuation. Return ONLY JSON: { queries: string[] } with exactly 5 strings."
+      };
+
+      const res = await fetch("/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          messages: [
+            {
+              role: "user",
+              content: JSON.stringify(prompt),
+            },
+          ],
+        }),
+      });
+
+      let queries: string[] = [];
+      if (res.ok) {
+        const data = (await res.json()) as { content?: string };
+        const text = data?.content ?? "";
+        const match = text.match(/\{[\s\S]*\}/);
+        if (match) {
+          const parsed = JSON.parse(match[0]) as { queries?: string[] };
+          if (Array.isArray(parsed.queries) && parsed.queries.length) {
+            queries = parsed.queries.slice(0, 5).map((q) => String(q).trim()).filter(Boolean);
+          }
+        }
+      }
+
+      if (!queries.length) {
+        const base = fallbackTokens.length ? fallbackTokens.join(" ") : "stock photo concept";
+        queries = [
+          base,
+          `${base} minimal workspace`,
+          `${base} business technology`,
+          `${base} office hands`,
+          `${base} modern lifestyle`,
+        ];
+      }
+
+      const links = queries.map((q) => buildAdobeStockSearchUrl(q));
+      setAdobeStockLinks(links);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Gagal menjalankan riset produk";
+      setSearchError(msg);
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
+  const runStartSearchEvent = async () => {
+    setSearchError("");
+    setAdobeStockLinks([]);
+
+    setIsSearching(true);
+    try {
+      const selectedName = eventPlans[0]?.name ?? "event";
+      const prompt = {
+        queryType: "adobestock-search-queries",
+        target: "event",
+        input: {
+          eventRegion,
+          eventSeason,
+          eventName: selectedName,
+        },
+        instructions:
+          "Generate 5 concise Adobe Stock search queries in English for event photos. Return ONLY JSON: { queries: string[] } with exactly 5 strings."
+      };
+
+      const res = await fetch("/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          messages: [
+            { role: "user", content: JSON.stringify(prompt) },
+          ],
+        }),
+      });
+
+      let queries: string[] = [];
+      if (res.ok) {
+        const data = (await res.json()) as { content?: string };
+        const text = data?.content ?? "";
+        const match = text.match(/\{[\s\S]*\}/);
+        if (match) {
+          const parsed = JSON.parse(match[0]) as { queries?: string[] };
+          if (Array.isArray(parsed.queries) && parsed.queries.length) {
+            queries = parsed.queries.slice(0, 5).map((q) => String(q).trim()).filter(Boolean);
+          }
+        }
+      }
+
+      if (!queries.length) {
+        const base = `${eventRegion} ${eventSeason} event`;
+        queries = [
+          base,
+          `${base} webinar conference`,
+          `${base} audience collaboration`,
+          `${base} business event lifestyle`,
+          `${base} modern meeting scene`,
+        ];
+      }
+
+      const links = queries.map((q) => buildAdobeStockSearchUrl(q));
+      setAdobeStockLinks(links);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Gagal menjalankan riset event";
+      setSearchError(msg);
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
   // Inputs
   const [domainCategory, setDomainCategory] = useState("Technology");
   const [targetAudience, setTargetAudience] = useState("Small businesses");
@@ -463,14 +628,49 @@ export default function ResearchPanel() {
                     onChange={(e) => setAdobePhotoUrl(e.target.value)}
                     placeholder="https://www.adobestock.com/..."
                     style={{ width: "100%", padding: 11, borderRadius: 8, border: "1px solid var(--border)" }}
+                    disabled={isSearching}
                   />
                 </label>
 
                 <div style={{ fontSize: 13, color: "var(--text-muted)" }}>
                   {productResearch.summary}
                 </div>
+
+                <button
+                  type="button"
+                  className="btn btn--primary"
+                  disabled={isSearching || !cleanUrl(adobePhotoUrl)}
+                  onClick={runStartSearchProduct}
+                >
+                  {isSearching ? "⏳ Start Riset..." : "▶ Start Riset Produk"}
+                </button>
               </div>
             </div>
+
+            {adobeStockLinks.length > 0 && (
+              <div className="mon-section">
+                <div className="mon-section__title">Hasil pencarian (buka URL)</div>
+                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                  {adobeStockLinks.map((u, i) => (
+                    <div key={u} className="mon-info-row" style={{ border: "1px solid var(--border)", borderRadius: 10, padding: 10 }}>
+                      <span style={{ fontFamily: "monospace", color: "var(--text-muted)", fontSize: 12 }}>#{i + 1}</span>
+                      <a href={u} target="_blank" rel="noreferrer" style={{ color: "var(--text)", fontWeight: 700, fontSize: 13, textDecoration: "none" }}>
+                        Buka hasil pencarian
+                      </a>
+                    </div>
+                  ))}
+
+                  <div style={{ display: "flex", gap: 8, marginTop: 6 }}>
+                    <button type="button" className="btn btn--secondary" onClick={() => window.open(adobeStockLinks[0], "_blank")}>
+                      Buka 1st
+                    </button>
+                    <button type="button" className="btn btn--ghost" onClick={() => setAdobeStockLinks([])}>
+                      Hapus hasil
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
 
             <div className="mon-section">
               <div className="mon-section__title">Angle yang bisa diulang</div>
@@ -536,6 +736,7 @@ export default function ResearchPanel() {
                     value={eventRegion}
                     onChange={(e) => setEventRegion(e.target.value)}
                     style={{ width: "100%", padding: 11, borderRadius: 8, border: "1px solid var(--border)", background: "var(--surface)" }}
+                    disabled={isSearching}
                   >
                     <option>Global</option>
                     <option>Indonesia</option>
@@ -554,6 +755,7 @@ export default function ResearchPanel() {
                     value={eventSeason}
                     onChange={(e) => setEventSeason(e.target.value)}
                     style={{ width: "100%", padding: 11, borderRadius: 8, border: "1px solid var(--border)", background: "var(--surface)" }}
+                    disabled={isSearching}
                   >
                     <option>Upcoming 3 months</option>
                     <option>Next 6 months</option>
@@ -561,8 +763,34 @@ export default function ResearchPanel() {
                     <option>Seasonal campaigns</option>
                   </select>
                 </label>
+
+                <button
+                  type="button"
+                  className="btn btn--primary"
+                  disabled={isSearching}
+                  onClick={runStartSearchEvent}
+                  style={{ gridColumn: "1 / -1" }}
+                >
+                  {isSearching ? "⏳ Start Riset..." : "▶ Start Riset Event"}
+                </button>
               </div>
             </div>
+
+            {adobeStockLinks.length > 0 && (
+              <div className="mon-section">
+                <div className="mon-section__title">Hasil pencarian (buka URL)</div>
+                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                  {adobeStockLinks.map((u, i) => (
+                    <div key={u} className="mon-info-row" style={{ border: "1px solid var(--border)", borderRadius: 10, padding: 10 }}>
+                      <span style={{ fontFamily: "monospace", color: "var(--text-muted)", fontSize: 12 }}>#{i + 1}</span>
+                      <a href={u} target="_blank" rel="noreferrer" style={{ color: "var(--text)", fontWeight: 700, fontSize: 13, textDecoration: "none" }}>
+                        Buka hasil pencarian
+                      </a>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {eventPlans.map((ep) => (
               <div key={ep.id} className="mon-section">
