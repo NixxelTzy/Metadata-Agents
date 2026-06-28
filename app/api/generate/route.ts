@@ -66,7 +66,8 @@ function extractJsonFromText(text: string): string {
 async function generateMetadata(
   base64DataUrl: string,
   filename: string,
-  visualHints?: string
+  visualHints?: string,
+  attempt: number = 1
 ): Promise<MetadataResult> {
   if (!base64DataUrl.startsWith("data:image/")) {
     throw new Error("Format data URL tidak valid");
@@ -110,8 +111,8 @@ async function generateMetadata(
     title: parsed.title.trim(),
     keywords,
     modelUsed: result.modelUsed,
-    attempts: 1,
     stabilized: true,
+    attempts: attempt,
     usage: result.usage,
   };
 }
@@ -142,16 +143,24 @@ export async function POST(request: NextRequest) {
     for (let i = 0; i < images.length; i++) {
       const image = images[i];
       try {
-        const result = await generateMetadata(image.dataUrl, image.filename, image.visualHints);
+        const result = await generateMetadata(image.dataUrl, image.filename, image.visualHints, 1);
         results.push({ ...result, stabilized });
       } catch (error) {
-        results.push({
-          filename: image.filename,
-          title: "",
-          keywords: [],
-          error: error instanceof Error ? error.message : "Gagal memproses gambar",
-          stabilized,
-        });
+        // Retry sekali untuk kasus parse/response tidak valid
+        try {
+          const result = await generateMetadata(image.dataUrl, image.filename, image.visualHints, 2);
+          results.push({ ...result, stabilized });
+        } catch (error2) {
+          results.push({
+            filename: image.filename,
+            title: "",
+            keywords: [],
+            error:
+              (error2 instanceof Error ? error2.message : "Gagal memproses gambar") ||
+              (error instanceof Error ? error.message : "Gagal memproses gambar"),
+            stabilized,
+          });
+        }
       }
       if (stabilized && i < images.length - 1) await sleep(DELAY_BETWEEN_IMAGES_MS);
     }

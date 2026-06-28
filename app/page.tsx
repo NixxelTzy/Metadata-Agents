@@ -4,15 +4,17 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import ImageUploader from "@/components/ImageUploader";
 import ServerMonitor from "@/components/ServerMonitor";
 import AIChat from "@/components/AIChat";
+import ResearchPanel from "@/components/ResearchPanel";
 import { useDevice } from "@/lib/useDevice";
 import { useRouter } from "next/navigation";
 import { getUsage, getUsagePercent, getDailyLimit, formatTokens, resetUsage } from "@/lib/tokenStore";
 
-type Tab = "metadata" | "chat";
+type Tab = "metadata" | "chat" | "research";
 const ADMIN_EMAIL = "nixxeltzy@gmail.com";
 
 const TAB_CONFIG: { id: Tab; icon: string; label: string }[] = [
   { id: "metadata", icon: "🏷️", label: "Metadata" },
+  { id: "research", icon: "🔎", label: "Riset" },
   { id: "chat",     icon: "🤖", label: "AI Chat" },
 ];
 
@@ -253,6 +255,8 @@ export default function Home() {
             <ServerMonitor />
           ) : activeTab === "metadata" ? (
             <ImageUploader onTokensUpdated={refreshTokens} />
+          ) : activeTab === "research" ? (
+            <ResearchPanel />
           ) : (
             <AIChat onTokensUpdated={refreshTokens} />
           )}

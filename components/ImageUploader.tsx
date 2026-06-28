@@ -100,15 +100,15 @@ export default function ImageUploader({ onTokensUpdated }: Props = {}) {
     setLoading(true);
     setError("");
     setResults([]);
+
     const collected: MetadataResult[] = [];
 
     try {
       if (stabilized) {
+        // Proses 1 foto per 1 foto, dan lanjut sampai habis
         for (let i = 0; i < images.length; i++) {
           const img = images[i];
-          setProgress(
-            `Mode Stabil: Memproses foto ${i + 1}/${images.length}...`
-          );
+          setProgress(`Mode Stabil: Memproses foto ${i + 1}/${images.length}...`);
 
           try {
             const response = await fetch("/api/generate", {
@@ -127,14 +127,13 @@ export default function ImageUploader({ onTokensUpdated }: Props = {}) {
             });
 
             const data = await response.json();
-            
+
             if (data.totalUsage) {
               addUsage(data.totalUsage.promptTokens, data.totalUsage.completionTokens);
               onTokensUpdated?.();
             }
 
             if (!response.ok) {
-              // Jika API mengembalikan status error, buat hasil error secara manual
               collected.push({
                 filename: img.file.name,
                 title: "",
@@ -143,11 +142,10 @@ export default function ImageUploader({ onTokensUpdated }: Props = {}) {
                 stabilized: true,
               });
             } else {
-              // Jika sukses, tambahkan hasil dari API
-              collected.push(...data.results);
+              // API mengembalikan array hasil dengan 1 item
+              collected.push(...(data.results as MetadataResult[]));
             }
           } catch (loopError) {
-            // Menangani error jaringan atau JSON parsing untuk gambar ini
             collected.push({
               filename: img.file.name,
               title: "",
@@ -163,6 +161,7 @@ export default function ImageUploader({ onTokensUpdated }: Props = {}) {
         const success = collected.filter((r) => !r.error).length;
         setProgress(`Selesai! ${success}/${images.length} foto berhasil`);
       } else {
+        // Mode cepat (bulk)
         setProgress(`Memproses ${images.length} foto (mode cepat)...`);
 
         const payload = images.map((img) => ({
@@ -178,7 +177,7 @@ export default function ImageUploader({ onTokensUpdated }: Props = {}) {
         });
 
         const data = await response.json();
-        
+
         if (data.totalUsage) {
           addUsage(data.totalUsage.promptTokens, data.totalUsage.completionTokens);
           onTokensUpdated?.();
@@ -188,7 +187,7 @@ export default function ImageUploader({ onTokensUpdated }: Props = {}) {
           throw new Error(data.error || "Gagal menghubungi server");
         }
 
-        setResults(data.results);
+        setResults(data.results as MetadataResult[]);
         setProgress(`Selesai! ${data.results.length} foto diproses`);
       }
     } catch (err) {
@@ -200,20 +199,21 @@ export default function ImageUploader({ onTokensUpdated }: Props = {}) {
   };
 
   const exportCsv = () => {
-    const validResults = results.filter((r) => !r.error && r.title && r.keywords);
-    if (validResults.length === 0) {
-      setError("Tidak ada data valid untuk diekspor.");
-      return;
-    }
+    if (images.length === 0) return;
 
     const header = "Filename,Title,Keywords,Category,Releases\n";
-    const csvRows = validResults.map(r => {
-      const filename = r.filename;
-      // Adobe Stock CSV mengharuskan title dan keywords diapit kutip
-      // jika mengandung koma, tapi lebih aman untuk selalu mengapitnya.
-      const title = `"${r.title.replace(/"/g, '""')}"`;
-      const keywords = `"${r.keywords.join(',').replace(/"/g, '""')}"`;
-      // Category dan Releases dibiarkan kosong sesuai format jika tidak ada isinya
+
+    // Ekspor SEMUA foto yang dipilih user (termasuk yang gagal).
+    // Mapping berdasarkan index UI supaya nama foto (filename) selalu nyambung.
+    const csvRows = images.map((img, idx) => {
+      const r = results[idx];
+
+      const filename = `"${img.file.name.replace(/"/g, '""')}"`;
+      const title = r?.title ? `"${r.title.replace(/"/g, '""')}"` : "\"\"";
+
+      const keywordsArr = Array.isArray(r?.keywords) ? r!.keywords : [];
+      const keywords = `"${keywordsArr.join(',').replace(/"/g, '""')}"`;
+
       return [filename, title, keywords, "", ""].join(',');
     });
 
@@ -221,6 +221,7 @@ export default function ImageUploader({ onTokensUpdated }: Props = {}) {
     const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
     const link = document.createElement("a");
     const url = URL.createObjectURL(blob);
+
     link.setAttribute("href", url);
     link.setAttribute("download", "adobe_stock_metadata.csv");
     document.body.appendChild(link);
@@ -259,9 +260,7 @@ export default function ImageUploader({ onTokensUpdated }: Props = {}) {
         <div className="dropzone__icon">📷</div>
         <p className="dropzone__title">Seret & lepas foto di sini</p>
         <p className="dropzone__subtitle">atau klik untuk memilih file</p>
-        <p className="dropzone__hint">
-          Maksimal {MAX_IMAGES} foto · JPG, PNG, WEBP
-        </p>
+        <p className="dropzone__hint">Maksimal {MAX_IMAGES} foto · JPG, PNG, WEBP</p>
       </section>
 
       {images.length > 0 && (
@@ -304,20 +303,14 @@ export default function ImageUploader({ onTokensUpdated }: Props = {}) {
               <span className="stabilizer-toggle__text">
                 <strong>Mode Stabil</strong>
                 <small>
-                  Proses lebih lambat dengan penanganan error individual per
-                  foto.
+                  Proses lebih lambat dengan penanganan error individual per foto.
                 </small>
               </span>
             </label>
           </div>
 
           <div className="actions">
-            <button
-              type="button"
-              className="btn btn--primary"
-              onClick={generate}
-              disabled={loading}
-            >
+            <button type="button" className="btn btn--primary" onClick={generate} disabled={loading}>
               {loading ? (
                 <>
                   <span className="spinner" />
@@ -338,7 +331,12 @@ export default function ImageUploader({ onTokensUpdated }: Props = {}) {
         <section className="results-section">
           <div className="results-header">
             <h2>Hasil Metadata</h2>
-            <button type="button" className="btn btn--secondary" onClick={exportCsv} disabled={results.filter(r => !r.error).length === 0}>
+            <button
+              type="button"
+              className="btn btn--secondary"
+              onClick={exportCsv}
+              disabled={results.filter((r) => !r.error).length === 0}
+            >
               ⬇ Export .csv
             </button>
           </div>
@@ -353,3 +351,4 @@ export default function ImageUploader({ onTokensUpdated }: Props = {}) {
     </div>
   );
 }
+
