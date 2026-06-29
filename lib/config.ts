@@ -5,7 +5,7 @@
  * Untuk dev lokal: isi di .env.local (sudah di .gitignore)
  */
 
-/** Groq API key */
+/** Groq API key (untuk fitur metadata/chat umum) */
 export function getGroqApiKeys(): string[] {
   const keys: string[] = [];
   for (let i = 1; i <= 10; i++) {
@@ -24,6 +24,35 @@ export function getGroqApiKeys(): string[] {
     console.warn("[WARN] Tidak ada GROQ_API_KEY yang ditemukan. Set di environment variables.");
   }
   return keys;
+}
+
+/**
+ * Groq API key KHUSUS untuk fitur Riset (RESEARCH_ENGINE & RESEARCH_ENGINE_DEEP).
+ * Membaca GROQ_API_KEY_RISET secara prioritas.
+ * Fallback ke key umum agar tidak error di environment yang belum diset.
+ *
+ * Di Vercel: Settings → Environment Variables → GROQ_API_KEY_RISET
+ */
+export function getGroqRisetApiKey(): string {
+  // Prioritas 1: key khusus riset
+  const risetKey = process.env.GROQ_API_KEY_RISET;
+  if (risetKey?.trim()) return risetKey.trim();
+
+  // Prioritas 2: fallback ke key umum pertama yang tersedia
+  const generalKeys = getGroqApiKeys();
+  if (generalKeys.length > 0) {
+    console.warn(
+      "[WARN] GROQ_API_KEY_RISET tidak ditemukan. " +
+      "Fitur riset menggunakan key umum sebagai fallback. " +
+      "Set GROQ_API_KEY_RISET di Vercel/env untuk isolasi key yang benar."
+    );
+    return generalKeys[0];
+  }
+
+  throw new Error(
+    "Groq API key untuk fitur riset tidak tersedia. " +
+    "Set GROQ_API_KEY_RISET di Vercel → Environment Variables."
+  );
 }
 
 /** Konfigurasi Upstash Redis */

@@ -79,7 +79,14 @@ export default function ResearchPanel() {
     }
   };
 
+  const [risetUsage, setRisetUsage] = useState<{ promptTokens: number; completionTokens: number; totalTokens: number }>({
+    promptTokens: 0,
+    completionTokens: 0,
+    totalTokens: 0,
+  });
+
   const runStartSearchProduct = async () => {
+    setRisetUsage({ promptTokens: 0, completionTokens: 0, totalTokens: 0 });
     setSearchError("");
     setAdobeStockLinks([]);
 
@@ -122,8 +129,17 @@ export default function ResearchPanel() {
 
       let queries: string[] = [];
       if (res.ok) {
-        const data = (await res.json()) as { content?: string };
+        const data = (await res.json()) as { content?: string; usage?: { promptTokens?: number; completionTokens?: number; totalTokens?: number } };
         const text = data?.content ?? "";
+        const usage = data?.usage;
+        if (usage) {
+          setRisetUsage({
+            promptTokens: usage.promptTokens ?? 0,
+            completionTokens: usage.completionTokens ?? 0,
+            totalTokens: usage.totalTokens ?? 0,
+          });
+        }
+
         const match = text.match(/\{[\s\S]*\}/);
         if (match) {
           const parsed = JSON.parse(match[0]) as { queries?: string[] };

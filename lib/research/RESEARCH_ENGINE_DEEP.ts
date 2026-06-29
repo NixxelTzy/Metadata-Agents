@@ -1,10 +1,10 @@
 /**
  * RESEARCH_ENGINE_DEEP.ts
  * ---------------------------------------------------------------------------------
- * Dedicated “deep research engine” for stock-photo research workflow.
+ * Dedicated "deep research engine" for stock-photo research workflow.
  *
  * Intentionally complex (~3000+ lines) and feature-rich:
- * - AI-assisted query planning (multi-pass)
+ * - AI-assisted query planning (multi-pass) via GROQ_API_KEY_RISET
  * - Query normalization + structured expansions
  * - Multi-signal ranking + diversity optimization
  * - Shot/template coverage analysis
@@ -15,10 +15,19 @@
  * IMPORTANT:
  * - This file is self-contained and does not require UI changes.
  * - Current project does not scrape providers; engine returns URL builders + plans.
+ *
+ * ─── GROQ API KEY ──────────────────────────────────────────────────────────────
+ * Fitur AI deep research ini menggunakan GROQ_API_KEY_RISET.
+ * Set di Vercel: Settings → Environment Variables → GROQ_API_KEY_RISET
+ * Nama env: GROQ_API_KEY_RISET
+ * ─────────────────────────────────────────────────────────────────────────────
  */
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable no-console */
+
+import { createGroqRisetAiClient } from "@/lib/groq-riset";
+
 
 export namespace ResearchEngineDeep {
   // ---------------------------------------------------------------------------------
@@ -659,22 +668,37 @@ export namespace ResearchEngineDeep {
   export namespace Prompts {
     export function buildQueryGeneratorSystem(target: ResearchTarget): string {
       const common = [
-        "You are an expert stock-photo search strategist and query engineer.",
-        "Return ONLY valid JSON.",
-        "No markdown. No extra keys.",
-        "Generate queries for stock search engines.",
-        "Queries must be in English.",
-        "Avoid punctuation characters and unnecessary stopwords.",
-        "Avoid brand names and copyrighted text.",
+        "You are an expert stock-photo search strategist, query engineer, and visual SEO specialist.",
+        "Return ONLY valid JSON — no markdown, no explanation, no extra text.",
+        "No extra keys. No wrapping text.",
+        "Generate search queries optimized for Adobe Stock discovery.",
+        "All queries MUST be in English.",
+        "Avoid ALL punctuation characters in queries (commas, periods, quotes, colons, parentheses).",
+        "Avoid brand names, trademarked text, and copyrighted references.",
+        "Each query MUST be distinct and cover a DIFFERENT visual angle, intent, or composition.",
+        "Queries must be commercially valuable — think about what a stock buyer needs.",
+        "Word count per query: 4 to 12 words preferred.",
+        "JSON output format: { \"queries\": [ { \"query\": string, \"intent\": string } ] }",
+        "intent must be one of: hero, detail, process, context, lifestyle, audience, decision, action, overview, comparison, demo, launch, webinar, conference",
       ].join("\n");
 
       if (target === "product") {
-        return common +
-          "\nTarget: product research. Emphasize workspace, laptop/screen, hands interaction, planning/workflow, soft studio/window lighting, minimal clean layout, negative space for banners.";
+        return (
+          common +
+          "\n\nTarget context: PRODUCT deep research." +
+          "\nPrioritize: minimal workspace, hands interacting with devices, screen/UI blurred metaphors," +
+          " soft studio or window lighting, negative space for banner copy, clean commercial lifestyle." +
+          "\nIntent distribution: emphasize hero + detail + process. Include lifestyle and context for variety."
+        );
       }
 
-      return common +
-        "\nTarget: event research. Emphasize webinar/conference, stage, microphone, audience collaboration, badges, projector/screen, decision moments, event ambience, cinematic crops.";
+      return (
+        common +
+        "\n\nTarget context: EVENT deep research." +
+        "\nPrioritize: webinar and conference ambiance, stage + microphone + signage," +
+        " audience collaboration, badge interactions, projector/screen, decision moments, cinematic crops, networking lifestyle." +
+        "\nIntent distribution: emphasize audience + conference + webinar. Include action and decision for variety."
+      );
     }
 
     export function buildQueryGeneratorUser(args: {
@@ -689,21 +713,28 @@ export namespace ResearchEngineDeep {
     }): string {
       const safeInputs = JSON.stringify(args.inputs ?? {}, null, 2);
       return [
-        `Pass: ${args.pass}`,
+        `Deep Research Pass: ${args.pass}`,
         `Target: ${args.target}`,
-        `Count: ${args.count}`,
-        `Subject hint: ${args.subjectHint}`,
-        `More specific: ${args.moreSpecific}`,
-        "Intent distribution target:",
+        `Number of queries needed: ${args.count}`,
+        `Subject hint (visual theme): ${args.subjectHint}`,
+        `More specific: ${args.moreSpecific ? "yes — use detailed visual descriptors" : "no — keep queries broad and general"}`,
+        "",
+        "Intent distribution target (approximate):",
         JSON.stringify(args.intentsTarget ?? {}, null, 2),
-        "Constraints:",
+        "",
+        "Query constraints:",
         JSON.stringify(args.constraints, null, 2),
-        "Additional inputs:",
+        "",
+        "Additional context inputs:",
         safeInputs,
+        "",
         "Rules:",
-        "- Output JSON exactly as { \"queries\": [ { \"query\": string, \"intent\": string } ] }",
-        "- intent must be one of the provided QueryIntent set",
-        "- Each query must be distinct and cover a different angle",
+        `- Output JSON: { "queries": [ { "query": string, "intent": string } ] }`,
+        "- intent must be one of the valid QueryIntent values listed in the system prompt",
+        `- Generate EXACTLY ${args.count} entries in the queries array`,
+        "- Each query must be distinct and cover a DIFFERENT visual angle or intent",
+        "- Queries should be optimized for commercial stock photo discoverability",
+        "- No markdown, no explanation — JSON only",
       ].join("\n");
     }
 
@@ -1553,6 +1584,38 @@ export namespace ResearchEngineDeep {
   // ---------------------------------------------------------------------------------
   // Main Orchestrator
   // ---------------------------------------------------------------------------------
+
+  /**
+   * Buat AiClient menggunakan GROQ_API_KEY_RISET.
+   * Pakai ini saat memanggil runJobDeep() atau runSearchPipelineDeep().
+   *
+   * @example
+   * import { ResearchEngineDeep } from "@/lib/research/RESEARCH_ENGINE_DEEP";
+   * const report = await ResearchEngineDeep.runJobDeep({
+   *   job,
+   *   aiClient: ResearchEngineDeep.createDefaultAiClient(),
+   * });
+   */
+  export function createDefaultAiClient(opts?: {
+    temperature?: number;
+    maxTokens?: number;
+  }): AiClient {
+    // Delegate ke groq-riset yang membaca GROQ_API_KEY_RISET
+    const groqClient = createGroqRisetAiClient({
+      temperature: opts?.temperature,
+      maxTokens: opts?.maxTokens,
+      allowFallbackModel: true,
+    });
+
+    return {
+      async complete(
+        messages: AiMessage[],
+        callOpts?: { temperature?: number; maxTokens?: number }
+      ): Promise<AiCompletionResult> {
+        return groqClient.complete(messages, callOpts);
+      },
+    };
+  }
 
   export async function runJobDeep(args: {
     job: ResearchJobDeep;

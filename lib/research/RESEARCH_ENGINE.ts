@@ -12,19 +12,28 @@
  *
  * The file provides:
  * - Strong typing
- * - Prompt builders (Groq-ready)
+ * - Prompt builders (Groq-ready, using GROQ_API_KEY_RISET)
  * - JSON extraction/validation helpers
  * - Query normalization & expansion
  * - Ranking + scoring heuristics
  * - Job orchestration with stabilization & retries
  * - Research report generation (concept/angles/keyword clusters)
  * - Optional caching interfaces
+ * - Groq Riset AI client factory (via GROQ_API_KEY_RISET)
  *
  * You can import and call runResearchJob(...) from an API route.
+ *
+ * ─── GROQ API KEY ──────────────────────────────────────────────────────────────
+ * Fitur AI pada engine ini menggunakan GROQ_API_KEY_RISET.
+ * Set di Vercel: Settings → Environment Variables → GROQ_API_KEY_RISET
+ * ─────────────────────────────────────────────────────────────────────────────
  */
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable no-console */
+
+import { createGroqRisetAiClient } from "@/lib/groq-riset";
+import type { AiClient as GroqRisetAiClient } from "@/lib/groq-riset";
 
 export namespace ResearchEngine {
   // ---------------------------------------------------------------------------------
@@ -355,28 +364,42 @@ export namespace ResearchEngine {
    */
   export class PromptRegistry {
     static buildAdobestockQueryGeneratorSystemPrompt(target: ResearchTarget): string {
-      // A long prompt to force consistent JSON outputs.
+      // Upgraded prompt — more explicit, more contextual, higher quality JSON output.
       const base = [
-        "You are a senior stock-photo SEO strategist.",
-        "Generate ONLY valid JSON with no extra keys.",
-        "Return content in English.",
-        "Do not hallucinate objects that are not in the provided hints.",
-        "If user provides a URL, use it only as a hint for visual style and possible objects.",
-        "Queries are for a stock search engine and should be readable by humans.",
-        "Avoid punctuation characters in queries.",
-        "Avoid brand names and copyrighted text.",
-        "Ensure each query is distinct and covers a different angle/intent.",
-        "Query word count: 4 to 10 words preferred.",
-        "Output JSON format: { \"queries\": string[] }"
+        "You are a senior stock-photo SEO strategist and visual content researcher.",
+        "Your job: generate DIVERSE, COMMERCIALLY VALUABLE search queries for Adobe Stock.",
+        "Return ONLY valid JSON — no markdown, no explanation, no extra keys.",
+        "All content must be in English.",
+        "DO NOT hallucinate objects not in the provided hints.",
+        "If a URL is provided, use it ONLY as a visual style hint — do not copy exact composition.",
+        "Queries must be human-readable and optimized for stock search engines.",
+        "Avoid ALL punctuation characters (commas, periods, quotes, parentheses).",
+        "Avoid brand names, trademarked text, and copyrighted references.",
+        "Each query MUST be distinct and cover a DIFFERENT visual angle or intent.",
+        "Preferred query word count: 4 to 10 words.",
+        "Output JSON format exactly: { \"queries\": string[] }",
+        "DO NOT include any other keys or wrapping text.",
       ].join("\n");
 
       if (target === "product") {
-        return base + "\nTarget: product research. Include workspace, hands, screen, minimal commercial lifestyle.";
+        return (
+          base +
+          "\n\nTarget context: PRODUCT research." +
+          "\nPrioritize: minimal workspace, hands interacting with device, screen/UI metaphors," +
+          " soft studio/window lighting, negative space for banner copy, clean lifestyle shots." +
+          "\nIntent mix: hero, detail (close/macro), process (workflow/planning), context (environment), lifestyle (morning/coffee)."
+        );
       }
       if (target === "event") {
-        return base + "\nTarget: event research. Include webinar, conference, audience interaction, stage and signage hints.";
+        return (
+          base +
+          "\n\nTarget context: EVENT research." +
+          "\nPrioritize: webinar/conference ambiance, stage + microphone, audience collaboration," +
+          " badge interaction, projector/screen, decision moments, cinematic crops, event lifestyle." +
+          "\nIntent mix: audience, conference stage, webinar virtual, action (hands/badge), decision moment."
+        );
       }
-      return base + "\nTarget: general research.";
+      return base + "\n\nTarget context: general stock photo research. Emphasize workspace, technology, and lifestyle.";
     }
 
     static buildAdobestockQueryGeneratorUserPrompt(args: {
@@ -392,30 +415,39 @@ export namespace ResearchEngine {
       const safeInput = JSON.stringify(input, null, 2);
 
       return [
-        `Target: ${target}`,
-        `Subject hint: ${subjectHint}`,
-        `Count: ${count}`,
-        `More specific: ${moreSpecific}`,
+        `Research target: ${target}`,
+        `Subject hint (visual theme): ${subjectHint}`,
+        `Number of queries needed: ${count}`,
+        `More specific queries: ${moreSpecific ? "yes — use detailed visual descriptors" : "no — keep general and broad"}`,
+        "",
         "Constraints:",
-        `- avoid punctuation: ${constraints.avoidPunctuation ? "yes" : "no"}`,
-        `- max words per query: ${constraints.maxWordsPerQuery ?? "none"}`,
-        `- min words per query: ${constraints.minWordsPerQuery ?? "none"}`,
-        `- must include: ${constraints.mustInclude?.join(", ") ?? "none"}`,
-        `- must avoid: ${constraints.mustAvoid?.join(", ") ?? "none"}`,
-        "Input hints:",
+        `  - Avoid punctuation: ${constraints.avoidPunctuation ? "yes" : "no"}`,
+        `  - Max words per query: ${constraints.maxWordsPerQuery ?? 10}`,
+        `  - Min words per query: ${constraints.minWordsPerQuery ?? 4}`,
+        `  - Must include tokens: ${constraints.mustInclude?.join(", ") ?? "none"}`,
+        `  - Must avoid tokens: ${constraints.mustAvoid?.join(", ") ?? "none"}`,
+        "",
+        "Additional context/input hints:",
         safeInput,
-        "Generate queries now.",
-        `Return exactly ${count} strings in queries array.`
+        "",
+        "Instructions:",
+        `  - Generate EXACTLY ${count} unique search queries.`,
+        "  - Each query must cover a DIFFERENT visual angle, intent, or composition.",
+        "  - No two queries should be nearly identical.",
+        "  - Optimize for commercial stock photo discoverability.",
+        `  - Return JSON: { "queries": ["query1", "query2", ...] } — no other keys.`,
       ].join("\n");
     }
 
     static buildResearchReportGeneratorSystemPrompt(): string {
       return [
-        "You are a research report writer for stock-photo market strategies.",
-        "Given query plan and ranking results, produce a structured report suitable for a creator.",
-        "Return ONLY valid JSON.",
-        "Do not include markdown.",
+        "You are an expert research report writer for stock-photo market strategies.",
+        "Given a query plan and ranking results, produce a structured actionable report for a stock creator.",
+        "Your report must help the creator identify: best angles, keyword clusters, template ideas, and compliance notes.",
+        "Return ONLY valid JSON. Do not include markdown or explanation.",
         "The JSON must match the requested keys precisely.",
+        "Language: use Indonesian (Bahasa Indonesia) for all summary and angle descriptions.",
+        "Keywords: always in English.",
       ].join("\n");
     }
 
@@ -1282,6 +1314,38 @@ export namespace ResearchEngine {
     temperature?: number;
     maxTokens?: number;
   };
+
+  /**
+   * Buat AiClient menggunakan GROQ_API_KEY_RISET.
+   * Pakai ini saat memanggil runResearchJob().
+   *
+   * @example
+   * import { ResearchEngine } from "@/lib/research/RESEARCH_ENGINE";
+   * const report = await ResearchEngine.runResearchJob({
+   *   job,
+   *   options: { aiClient: ResearchEngine.createDefaultAiClient(), useAi: true },
+   * });
+   */
+  export function createDefaultAiClient(opts?: {
+    temperature?: number;
+    maxTokens?: number;
+  }): AiClient {
+    // Delegate ke groq-riset yang membaca GROQ_API_KEY_RISET
+    const groqClient = createGroqRisetAiClient({
+      temperature: opts?.temperature,
+      maxTokens: opts?.maxTokens,
+      allowFallbackModel: true,
+    });
+
+    return {
+      async complete(
+        messages: AiMessage[],
+        callOpts?: { temperature?: number; maxTokens?: number }
+      ): Promise<AiCompletionResult> {
+        return groqClient.complete(messages, callOpts);
+      },
+    };
+  }
 
   export async function runResearchJob(args: {
     job: ResearchJob;
