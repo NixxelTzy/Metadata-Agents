@@ -321,7 +321,7 @@ export namespace ResearchEngineDeep {
   export const AdobeStockAdapter: SearchProviderAdapter = {
     provider: "adobestock",
     buildSearchUrl(query: string) {
-      const base = "https://www.adobestock.com/search/";
+      const base = "https://stock.adobe.com/search/";
       const q = encodeURIComponent(query.trim());
       return { provider: "adobestock", url: `${base}?k=${q}` };
     },
@@ -1195,7 +1195,7 @@ export namespace ResearchEngineDeep {
   }
 
   export function validateUrlAdobestock(url: string): { ok: boolean; reason?: string } {
-    const base = "https://www.adobestock.com/search/";
+    const base = "https://stock.adobe.com/search/";
     if (!url.startsWith(base)) return { ok: false, reason: "Base mismatch" };
     if (!url.includes("?k=")) return { ok: false, reason: "Missing ?k" };
     if (/[\s]/.test(url)) return { ok: false, reason: "Whitespace" };
@@ -1623,7 +1623,21 @@ export namespace ResearchEngineDeep {
     cache?: CacheAdapter | null;
     ttlSeconds?: number;
   }): Promise<ResearchReportDeep> {
-    const { job, aiClient, cache } = args;
+    const { job, cache } = args;
+
+    // ─── AUTO-INJECT AI CLIENT (AI 100%) ──────────────────────────────────────
+    // Selalu buat AiClient dari GROQ_API_KEY_RISET jika useAi = true
+    // dan tidak ada aiClient yang di-pass secara manual.
+    const effectiveAiClient: AiClient | null = (() => {
+      if (!job.mode.useAi) return null;
+      if (args.aiClient !== undefined) return args.aiClient;
+      try {
+        return createDefaultAiClient({ temperature: 0.35, maxTokens: 2048 });
+      } catch (e) {
+        console.warn("[ResearchEngineDeep] Failed to auto-create AI client:", e);
+        return null;
+      }
+    })();
 
     const cacheKey = `deep:${job.jobId}:${job.target}:${job.count}:${job.moreSpecific}`;
     if (cache) {
@@ -1633,21 +1647,95 @@ export namespace ResearchEngineDeep {
 
     const steps: Array<{ type: string; detail: string }> = [];
 
-    steps.push({ type: "query-plan", detail: job.mode.useAi ? "AI or fallback heuristic" : "Heuristic only" });
+    // ─── STEP 1: QUERY PLAN ────────────────────────────────────────────────────
+    steps.push({
+      type: "query-plan",
+      detail: effectiveAiClient ? "AI multi-pass (GROQ_API_KEY_RISET)" : "Heuristic only",
+    });
 
-    let plan = await buildQueryPlanDeep({ job, aiClient: aiClient ?? null });
+    let plan = await buildQueryPlanDeep({ job, aiClient: effectiveAiClient ?? null });
 
+    // ─── STEP 2: AI MULTI-PASS QUERY REFINEMENT ───────────────────────────────
+    // Jika AI tersedia, jalankan refinement pass kedua untuk meningkatkan kualitas
+    if (effectiveAiClient && job.mode.useAi && job.mode.multiPass) {
+      try {
+        plan = await aiRefineQueryPlanDeep({
+          ai: effectiveAiClient,
+          plan,
+          job,
+        });
+        steps.push({ type: "ai-refine", detail: `Multi-pass AI refinement: ${plan.queries.length} queries refined` });
+      } catch (e) {
+        console.warn("[ResearchEngineDeep] AI multi-pass refinement failed:", e);
+        steps.push({ type: "ai-refine", detail: "AI refinement failed, using original plan" });
+      }
+    }
+
+    // ─── STEP 3: COMPLIANCE ────────────────────────────────────────────────────
     steps.push({ type: "compliance", detail: "Simulate compliance risk from query content" });
     const compliance = simulateComplianceRisk(job, plan);
 
+    // ─── STEP 4: AI COMPLIANCE ENHANCEMENT ────────────────────────────────────
+    if (effectiveAiClient && compliance.overallRisk !== "low") {
+      try {
+        const aiCompliance = await aiEnhanceComplianceDeep({
+          ai: effectiveAiClient,
+          plan,
+          compliance,
+          job,
+        });
+        steps.push({ type: "ai-compliance", detail: `AI compliance check: risk=${aiCompliance.finalRisk}, ${aiCompliance.fixedCount} queries fixed` });
+        // Update plan dengan queries yang sudah di-fix compliance-nya
+        if (aiCompliance.fixedPlan) plan = aiCompliance.fixedPlan;
+      } catch (e) {
+        console.warn("[ResearchEngineDeep] AI compliance enhancement failed:", e);
+      }
+    }
+
+    // ─── STEP 5: RANK ──────────────────────────────────────────────────────────
     steps.push({ type: "rank", detail: "Multi-signal scoring without provider scraping" });
     const { ranked, coverage } = rankDeep({ job, queryPlan: plan, compliance });
 
-    // Multi-pass reranking/diversity optimization
+    // ─── STEP 6: DIVERSITY RERANK ──────────────────────────────────────────────
     steps.push({ type: "rerank", detail: "Diversify greedy selection from ranked candidates" });
     const { reranked, steps: rerankSteps } = diversifyAndRerank({ job, ranked, queryPlan: plan, compliance });
 
-    // Ensure we return top-N
+    // ─── STEP 7: AI SHOT PLAN GENERATOR ───────────────────────────────────────
+    let aiShotPlan: AiShotPlan | null = null;
+    if (effectiveAiClient) {
+      try {
+        aiShotPlan = await aiGenerateShotPlanDeep({
+          ai: effectiveAiClient,
+          target: job.target,
+          queries: plan.queries.map((q) => q.normalized),
+          moreSpecific: job.moreSpecific,
+          inputs: job.inputs,
+        });
+        steps.push({ type: "ai-shot-plan", detail: `Shot plan generated: ${aiShotPlan.shots.length} shots` });
+      } catch (e) {
+        console.warn("[ResearchEngineDeep] AI shot plan failed:", e);
+        steps.push({ type: "ai-shot-plan", detail: "AI shot plan failed, skipped" });
+      }
+    }
+
+    // ─── STEP 8: AI CONTEXTUAL REPORT ENRICHMENT ──────────────────────────────
+    let aiEnrichment: AiReportEnrichment | null = null;
+    if (effectiveAiClient) {
+      try {
+        aiEnrichment = await aiEnrichReportDeep({
+          ai: effectiveAiClient,
+          target: job.target,
+          plan,
+          ranked: reranked,
+          inputs: job.inputs,
+        });
+        steps.push({ type: "ai-enrichment", detail: "AI narrative, angles, and keyword enrichment complete" });
+      } catch (e) {
+        console.warn("[ResearchEngineDeep] AI report enrichment failed:", e);
+        steps.push({ type: "ai-enrichment", detail: "AI enrichment failed, skipped" });
+      }
+    }
+
     const finalRanked = reranked.slice(0, plan.count);
 
     const report: ResearchReportDeep = {
@@ -1662,10 +1750,423 @@ export namespace ResearchEngineDeep {
       rerankSteps,
     };
 
+    // Inject AI enrichments ke report
+    if (aiShotPlan) (report as any).__aiShotPlan = aiShotPlan;
+    if (aiEnrichment) (report as any).__aiEnrichment = aiEnrichment;
+    (report as any).__aiClient = effectiveAiClient ? "GROQ_API_KEY_RISET" : null;
+
     if (cache) await cache.set(cacheKey, report, args.ttlSeconds ?? 3600);
 
     return report;
   }
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // AI DEEP HELPER TYPES
+  // ─────────────────────────────────────────────────────────────────────────────
+
+  export type AiShotPlan = {
+    shots: Array<{
+      id: string;
+      intent: string;
+      description: string;
+      composition: string;
+      lighting: string;
+      props: string[];
+      query: string;
+      url: string;
+    }>;
+    coverageNote: string;
+  };
+
+  export type AiReportEnrichment = {
+    narrative: string;
+    keywordClusters: Array<{ label: string; keywords: string[] }>;
+    angles: string[];
+    templateSuggestions: string[];
+    complianceTips: string[];
+  };
+
+  export type AiComplianceEnhancement = {
+    finalRisk: RiskLevel;
+    fixedCount: number;
+    fixedPlan: QueryPlan | null;
+    flaggedItems: string[];
+  };
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // AI DEEP HELPER: Multi-Pass Query Refinement
+  // Runs a second AI pass to improve query diversity and quality
+  // ─────────────────────────────────────────────────────────────────────────────
+
+  export async function aiRefineQueryPlanDeep(args: {
+    ai: AiClient;
+    plan: QueryPlan;
+    job: ResearchJobDeep;
+  }): Promise<QueryPlan> {
+    const { ai, plan, job } = args;
+
+    const currentQueries = plan.queries.map((q) => q.normalized);
+
+    const systemPrompt = [
+      "You are an expert Adobe Stock search query optimizer.",
+      "You will receive a list of search queries and must IMPROVE their quality.",
+      "Improvements needed:",
+      "  1. Ensure full diversity — no two queries should be semantically similar",
+      "  2. Ensure each query covers a DIFFERENT visual angle or intent",
+      "  3. Remove any punctuation characters",
+      "  4. Optimize word count: 4-12 words per query",
+      "  5. Ensure commercial value — queries should find sellable stock content",
+      "Return ONLY valid JSON: { \"refined\": string[] }",
+      `Return exactly ${job.count} refined queries.`,
+      "All in English.",
+    ].join("\n");
+
+    const userPrompt = [
+      `Target: ${job.target} — deep research pass (refinement)`,
+      `Subject hint: ${plan.subjectHint}`,
+      `More specific: ${job.moreSpecific ? "yes" : "no"}`,
+      "",
+      "Current queries to refine:",
+      currentQueries.map((q, i) => `  ${i + 1}. ${q}`).join("\n"),
+      "",
+      "Constraints:",
+      `  - Avoid punctuation: yes`,
+      `  - Min words: ${plan.constraints.minWords ?? 4}`,
+      `  - Max words: ${plan.constraints.maxWords ?? 12}`,
+      `  - Must avoid: ${(plan.constraints.mustAvoid ?? []).join(", ") || "none"}`,
+      "",
+      "Produce refined queries that are MORE DIVERSE and HIGHER QUALITY.",
+    ].join("\n");
+
+    const res = await ai.complete(
+      [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userPrompt },
+      ],
+      { temperature: 0.4, maxTokens: 2048 }
+    );
+
+    const parsed = extractJson(res.text) as { refined: string[] };
+    const refined = (parsed?.refined ?? []).filter((q) => typeof q === "string" && q.trim().length > 0);
+
+    if (refined.length < 2) return plan; // Refinement tidak berhasil, pakai original
+
+    const newQueries: QuerySpec[] = refined.slice(0, job.count).map((raw, idx) => {
+      const normalized = normalizeQuery(raw, plan.constraints.avoidPunctuation);
+      const intent = plan.queries[idx]?.intent ?? "hero";
+      return {
+        ...plan.queries[idx],
+        id: `${job.jobId}-r${idx + 1}`,
+        raw,
+        normalized,
+        intent,
+        lang: "en",
+        platform: "adobestock",
+      } as QuerySpec;
+    });
+
+    console.log(`[ResearchEngineDeep] AI refinement: ${currentQueries.length} → ${newQueries.length} queries`);
+
+    return { ...plan, queries: newQueries };
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // AI DEEP HELPER: Compliance Enhancement
+  // AI memeriksa dan memperbaiki query yang melanggar compliance Adobe Stock
+  // ─────────────────────────────────────────────────────────────────────────────
+
+  export async function aiEnhanceComplianceDeep(args: {
+    ai: AiClient;
+    plan: QueryPlan;
+    compliance: ComplianceReport;
+    job: ResearchJobDeep;
+  }): Promise<AiComplianceEnhancement> {
+    const { ai, plan, compliance, job } = args;
+
+    const riskyItems = compliance.checks.filter((c) => !c.passed && c.level !== "low");
+    if (riskyItems.length === 0) {
+      return { finalRisk: compliance.overallRisk, fixedCount: 0, fixedPlan: null, flaggedItems: [] };
+    }
+
+    const systemPrompt = [
+      "You are an Adobe Stock compliance and content moderation expert.",
+      "Given flagged compliance issues in stock photo search queries, fix them.",
+      "Return ONLY valid JSON:",
+      "{ \"fixed\": [ { \"index\": number, \"query\": string, \"reason\": string } ], \"finalRisk\": \"low\" | \"medium\" | \"high\" }",
+      "Fix queries by:",
+      "  - Removing brand names and trademarked terms",
+      "  - Replacing celebrity/person references with generic terms",
+      "  - Removing copyrighted text or logos",
+      "  - Keeping the commercial intent intact",
+    ].join("\n");
+
+    const userPrompt = [
+      `Target: ${job.target}`,
+      `Overall compliance risk: ${compliance.overallRisk}`,
+      "",
+      "Flagged items:",
+      JSON.stringify(riskyItems.slice(0, 10), null, 2),
+      "",
+      "All queries:",
+      plan.queries.map((q, i) => `  [${i}] ${q.normalized}`).join("\n"),
+    ].join("\n");
+
+    try {
+      const res = await ai.complete(
+        [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: userPrompt },
+        ],
+        { temperature: 0.1, maxTokens: 2048 }
+      );
+
+      const parsed = extractJson(res.text) as {
+        fixed: Array<{ index: number; query: string; reason: string }>;
+        finalRisk: string;
+      };
+
+      const fixedItems = parsed?.fixed ?? [];
+      const newQueries = [...plan.queries];
+
+      for (const fix of fixedItems) {
+        if (fix.index >= 0 && fix.index < newQueries.length && fix.query?.trim()) {
+          newQueries[fix.index] = {
+            ...newQueries[fix.index],
+            raw: fix.query,
+            normalized: normalizeQuery(fix.query, true),
+          };
+        }
+      }
+
+      const validRisks: RiskLevel[] = ["low", "medium", "high"];
+      const finalRisk: RiskLevel = validRisks.includes(parsed?.finalRisk as RiskLevel)
+        ? (parsed.finalRisk as RiskLevel)
+        : compliance.overallRisk;
+
+      return {
+        finalRisk,
+        fixedCount: fixedItems.length,
+        fixedPlan: { ...plan, queries: newQueries },
+        flaggedItems: riskyItems.map((it) => it.checkId),
+      };
+    } catch (e) {
+      console.warn("[ResearchEngineDeep] AI compliance enhancement error:", e);
+      return {
+        finalRisk: compliance.overallRisk,
+        fixedCount: 0,
+        fixedPlan: null,
+        flaggedItems: [],
+      };
+    }
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // AI DEEP HELPER: Shot Plan Generator
+  // AI buat rencana shooting lengkap: angle, komposisi, props, search URL
+  // ─────────────────────────────────────────────────────────────────────────────
+
+  export async function aiGenerateShotPlanDeep(args: {
+    ai: AiClient;
+    target: ResearchTarget;
+    queries: string[];
+    moreSpecific: boolean;
+    inputs: Record<string, JsonValue>;
+  }): Promise<AiShotPlan> {
+    const { ai, target, queries, moreSpecific, inputs } = args;
+
+    const systemPrompt = [
+      "You are a professional Adobe Stock creative director and art director.",
+      "Create a detailed shot plan based on research queries.",
+      "Each shot must be immediately actionable by a photographer/creator.",
+      "Return ONLY valid JSON — no markdown, no explanation:",
+      "{ \"shots\": [ { \"id\": string, \"intent\": string, \"description\": string, \"composition\": string, \"lighting\": string, \"props\": string[], \"query\": string } ], \"coverageNote\": string }",
+      `Generate ${Math.min(queries.length, 10)} shots.`,
+      "intent: one of hero, detail, process, context, lifestyle, audience, conference, webinar, decision, action",
+      "description: 1-2 sentence practical shot brief",
+      "composition: e.g. 'rule of thirds, negative space left side'",
+      "lighting: e.g. 'soft window light from left, diffused'",
+      "props: list of physical items needed",
+      "query: the exact search query this shot maps to",
+      "coverageNote: 1 sentence on what visual gaps remain",
+    ].join("\n");
+
+    const userPrompt = [
+      `Target: ${target}`,
+      `Specificity: ${moreSpecific ? "detailed/specific shots" : "broad/general shots"}`,
+      "",
+      "Research queries:",
+      queries.map((q, i) => `  ${i + 1}. ${q}`).join("\n"),
+      "",
+      "Context:",
+      JSON.stringify(inputs, null, 2),
+    ].join("\n");
+
+    const res = await ai.complete(
+      [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userPrompt },
+      ],
+      { temperature: 0.4, maxTokens: 3000 }
+    );
+
+    const parsed = extractJson(res.text) as {
+      shots: Array<{
+        id: string;
+        intent: string;
+        description: string;
+        composition: string;
+        lighting: string;
+        props: string[];
+        query: string;
+      }>;
+      coverageNote: string;
+    };
+
+    const shots = (parsed?.shots ?? []).map((s, i) => ({
+      id: s.id || `shot-${i + 1}`,
+      intent: s.intent || "hero",
+      description: String(s.description || ""),
+      composition: String(s.composition || ""),
+      lighting: String(s.lighting || ""),
+      props: (s.props || []).map(String),
+      query: String(s.query || ""),
+      url: `https://stock.adobe.com/search/?k=${encodeURIComponent(String(s.query || "").trim())}`,
+    }));
+
+    return {
+      shots,
+      coverageNote: String(parsed?.coverageNote || ""),
+    };
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // AI DEEP HELPER: Report Enrichment
+  // AI menghasilkan narrative, keyword clusters, angles, template, compliance tips
+  // ─────────────────────────────────────────────────────────────────────────────
+
+  export async function aiEnrichReportDeep(args: {
+    ai: AiClient;
+    target: ResearchTarget;
+    plan: QueryPlan;
+    ranked: SearchCandidate[];
+    inputs: Record<string, JsonValue>;
+  }): Promise<AiReportEnrichment> {
+    const { ai, target, plan, ranked, inputs } = args;
+
+    const topQueries = plan.queries.slice(0, 6).map((q) => q.normalized);
+    const topUrls = ranked.slice(0, 4).map((c) => c.url);
+
+    const systemPrompt = [
+      "Kamu adalah analis strategi konten foto stok profesional yang menguasai pasar Adobe Stock.",
+      "Berikan enrichment lengkap untuk laporan riset dalam format JSON.",
+      "Return ONLY valid JSON — tidak ada markdown, tidak ada penjelasan tambahan.",
+      "Format JSON:",
+      "{ \"narrative\": string, \"keywordClusters\": [{ \"label\": string, \"keywords\": string[] }], \"angles\": string[], \"templateSuggestions\": string[], \"complianceTips\": string[] }",
+      "narrative: ringkasan dalam Bahasa Indonesia, 3-4 paragraf, actionable dan informatif",
+      "keywordClusters: 5-7 cluster, masing-masing 6-10 keywords dalam bahasa Inggris",
+      "angles: 5-7 sudut pengambilan gambar yang spesifik dan praktis (bahasa Inggris)",
+      "templateSuggestions: 3-5 saran template atau set foto (bahasa Indonesia)",
+      "complianceTips: 4-6 tips compliance Adobe Stock (bahasa Indonesia)",
+    ].join("\n");
+
+    const userPrompt = [
+      `Target riset: ${target}`,
+      `Jumlah query: ${plan.queries.length}`,
+      `Mode spesifik: ${plan.moreSpecific ? "ya" : "tidak"}`,
+      "",
+      "Top search queries:",
+      topQueries.map((q, i) => `  ${i + 1}. ${q}`).join("\n"),
+      "",
+      "Top search URLs:",
+      topUrls.map((u, i) => `  ${i + 1}. ${u}`).join("\n"),
+      "",
+      "Context input:",
+      JSON.stringify(inputs, null, 2),
+    ].join("\n");
+
+    const res = await ai.complete(
+      [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userPrompt },
+      ],
+      { temperature: 0.45, maxTokens: 3000 }
+    );
+
+    const parsed = extractJson(res.text) as {
+      narrative: string;
+      keywordClusters: Array<{ label: string; keywords: string[] }>;
+      angles: string[];
+      templateSuggestions: string[];
+      complianceTips: string[];
+    };
+
+    return {
+      narrative: String(parsed?.narrative ?? ""),
+      keywordClusters: (parsed?.keywordClusters ?? []).map((c) => ({
+        label: String(c.label ?? ""),
+        keywords: (c.keywords ?? []).map(String).slice(0, 10),
+      })),
+      angles: (parsed?.angles ?? []).map(String).slice(0, 7),
+      templateSuggestions: (parsed?.templateSuggestions ?? []).map(String).slice(0, 5),
+      complianceTips: (parsed?.complianceTips ?? []).map(String).slice(0, 6),
+    };
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // AI DEEP HELPER: Competitor Angle Analysis
+  // AI analisis angle visual dari konten kompetitor berdasarkan query
+  // ─────────────────────────────────────────────────────────────────────────────
+
+  export async function aiAnalyzeCompetitorAngles(args: {
+    ai: AiClient;
+    target: ResearchTarget;
+    queries: string[];
+    inputs: Record<string, JsonValue>;
+  }): Promise<{ angles: string[]; gaps: string[]; opportunities: string[] }> {
+    const { ai, target, queries, inputs } = args;
+
+    const systemPrompt = [
+      "You are a competitive intelligence analyst for Adobe Stock content strategy.",
+      "Analyze likely competitor content for these search queries and identify visual gaps and opportunities.",
+      "Return ONLY valid JSON:",
+      "{ \"angles\": string[], \"gaps\": string[], \"opportunities\": string[] }",
+      "angles: common visual angles competitors likely use (what to expect)",
+      "gaps: visual angles that are UNDERREPRESENTED in typical stock results",
+      "opportunities: specific shots or concepts with HIGH commercial potential but LOW competition",
+      "Generate 4-6 items per field.",
+      "All in English.",
+    ].join("\n");
+
+    const userPrompt = [
+      `Target: ${target}`,
+      "Research queries:",
+      queries.slice(0, 8).map((q, i) => `  ${i + 1}. ${q}`).join("\n"),
+      "",
+      "Context:",
+      JSON.stringify(inputs, null, 2),
+    ].join("\n");
+
+    const res = await ai.complete(
+      [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userPrompt },
+      ],
+      { temperature: 0.5, maxTokens: 1500 }
+    );
+
+    const parsed = extractJson(res.text) as {
+      angles: string[];
+      gaps: string[];
+      opportunities: string[];
+    };
+
+    return {
+      angles: (parsed?.angles ?? []).map(String).slice(0, 6),
+      gaps: (parsed?.gaps ?? []).map(String).slice(0, 6),
+      opportunities: (parsed?.opportunities ?? []).map(String).slice(0, 6),
+    };
+  }
+
 
   // ---------------------------------------------------------------------------------
   // Additional Deep Modules (to ensure file is very large & systematic)
@@ -1851,7 +2352,7 @@ export namespace ResearchEngineDeep {
       mode: {
         multiPass: true,
         diversityOptimization: true,
-        useAi: false,
+        useAi: true,
         retries: 0,
       },
       ranking: {
@@ -2033,7 +2534,7 @@ function normalizeAdobeStockSearchUrl(url: string): string {
     if (!trimmed) return trimmed;
 
     // Force canonical base to avoid locale paths like /id
-    const canonicalBase = "https://www.adobestock.com/search/";
+    const canonicalBase = "https://stock.adobe.com/search/";
 
     try {
       const u = new URL(trimmed);

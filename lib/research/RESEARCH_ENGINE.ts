@@ -738,7 +738,7 @@ export namespace ResearchEngine {
   // 9) URL Builder & Validation
   // ---------------------------------------------------------------------------------
 
-  export const ADOBE_STOCK_SEARCH_BASE = "https://www.adobestock.com/search/";
+  export const ADOBE_STOCK_SEARCH_BASE = "https://stock.adobe.com/search/";
 
   export function buildAdobeStockSearchUrl(query: string): string {
     const q = encodeURIComponent(query.trim());
@@ -1361,34 +1361,62 @@ export namespace ResearchEngine {
       if (cached) return cached;
     }
 
+    // ─── AUTO-INJECT AI CLIENT (AI 100%) ──────────────────────────────────────
+    // Jika job.strategy.useAi = true, engine selalu buat AiClient dari GROQ_API_KEY_RISET
+    // bahkan jika caller tidak menyediakan aiClient secara manual.
+    const effectiveAiClient: AiClient | null = (() => {
+      if (!job.strategy.useAi) return null;
+      if (args.options?.aiClient !== undefined) return args.options.aiClient;
+      // Auto-create dari GROQ_API_KEY_RISET
+      try {
+        return createDefaultAiClient({
+          temperature: job.strategy.aiStabilize.temperature,
+          maxTokens: job.strategy.aiStabilize.maxTokens,
+        });
+      } catch (e) {
+        console.warn("[ResearchEngine] Failed to auto-create AI client:", e);
+        return null;
+      }
+    })();
+
     // Subject hint
     const subjectHint = job.subjectHint ?? deriveSubjectHint(job);
-
     const subjectKeywords = getSubjectKeywordsForTarget(job.target, job.inputs);
 
-    // 1) Build query plan
+    // ─── 1) BUILD QUERY PLAN (AI-first, heuristic fallback) ───────────────────
     let queryPlan: QueryPlan;
-    if (job.strategy.useAi && args.options?.aiClient && job.strategy.allowHeuristicFallback) {
+    let aiUsed = false;
+
+    if (effectiveAiClient && job.strategy.useAi) {
       try {
         queryPlan = await buildAiQueryPlan({
-          ai: args.options.aiClient,
+          ai: effectiveAiClient,
           target: job.target,
           count: job.count,
           moreSpecific: job.moreSpecific,
           subjectHint,
           inputs: job.inputs,
           retryCount: job.strategy.retryCount,
-          stabilizer: { temperature: job.strategy.aiStabilize.temperature, maxTokens: job.strategy.aiStabilize.maxTokens },
+          stabilizer: {
+            temperature: job.strategy.aiStabilize.temperature,
+            maxTokens: job.strategy.aiStabilize.maxTokens,
+          },
         });
+        aiUsed = true;
+        console.log(`[ResearchEngine] AI query plan generated: ${queryPlan.queries.length} queries`);
       } catch (e) {
-        console.log("[ResearchEngine] AI query plan failed, falling back to heuristic:", e);
-        queryPlan = buildHeuristicQueryPlan({
-          target: job.target,
-          count: job.count,
-          moreSpecific: job.moreSpecific,
-          subjectHint,
-          inputs: job.inputs,
-        });
+        console.warn("[ResearchEngine] AI query plan failed, falling back to heuristic:", e);
+        if (job.strategy.allowHeuristicFallback) {
+          queryPlan = buildHeuristicQueryPlan({
+            target: job.target,
+            count: job.count,
+            moreSpecific: job.moreSpecific,
+            subjectHint,
+            inputs: job.inputs,
+          });
+        } else {
+          throw e;
+        }
       }
     } else {
       queryPlan = buildHeuristicQueryPlan({
@@ -1400,11 +1428,63 @@ export namespace ResearchEngine {
       });
     }
 
-    // 2) Rank results
+    // ─── 2) AI QUERY SELF-HEALING (validasi + regenerasi query buruk) ─────────
+    if (effectiveAiClient && aiUsed) {
+      queryPlan = await aiSelfHealQueryPlan({
+        ai: effectiveAiClient,
+        plan: queryPlan,
+        job,
+      });
+    }
+
+    // ─── 3) RANK RESULTS ──────────────────────────────────────────────────────
     const ranked = rankSearchResults({ target: job.target, queryPlan, subjectKeywords });
 
-    // 3) Report
+    // ─── 4) AI KEYWORD ENRICHMENT ─────────────────────────────────────────────
+    let enrichedKeywordClusters: Array<{ label: string; keywords: string[] }> | null = null;
+    if (effectiveAiClient) {
+      try {
+        enrichedKeywordClusters = await aiEnrichKeywordClusters({
+          ai: effectiveAiClient,
+          target: job.target,
+          queries: queryPlan.queries.map((q) => q.normalized ?? q.raw).filter(Boolean) as string[],
+          inputs: job.inputs,
+        });
+      } catch (e) {
+        console.warn("[ResearchEngine] AI keyword enrichment failed:", e);
+      }
+    }
+
+    // ─── 5) BUILD BASE REPORT ─────────────────────────────────────────────────
     const report = deterministicReport({ job, queryPlan, rankedResults: ranked });
+
+    // Inject enriched keywords jika AI berhasil
+    if (enrichedKeywordClusters && enrichedKeywordClusters.length > 0) {
+      report.export.seoKeywordStarterPacks = enrichedKeywordClusters;
+    }
+
+    // ─── 6) AI NARRATIVE SUMMARY ──────────────────────────────────────────────
+    if (effectiveAiClient) {
+      try {
+        const narrative = await aiGenerateNarrativeSummary({
+          ai: effectiveAiClient,
+          target: job.target,
+          queryPlan,
+          ranked,
+          inputs: job.inputs,
+        });
+        // Simpan di field summary jika ada, atau inject ke metadata
+        if (narrative) {
+          (report as any).__aiNarrative = narrative;
+        }
+      } catch (e) {
+        console.warn("[ResearchEngine] AI narrative summary failed:", e);
+      }
+    }
+
+    // Attach AI usage flag ke report metadata
+    (report as any).__aiUsed = aiUsed;
+    (report as any).__aiClient = effectiveAiClient ? "GROQ_API_KEY_RISET" : null;
 
     if (job.cache.enabled) {
       await cacheAdapter.set(cacheKey, report, job.cache.ttlSeconds);
@@ -1412,6 +1492,313 @@ export namespace ResearchEngine {
 
     return report;
   }
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // AI HELPER: Query Self-Healing
+  // Memeriksa setiap query, jika kata terlalu pendek/buruk → regenerasi via AI
+  // ─────────────────────────────────────────────────────────────────────────────
+
+  export async function aiSelfHealQueryPlan(args: {
+    ai: AiClient;
+    plan: QueryPlan;
+    job: ResearchJob;
+  }): Promise<QueryPlan> {
+    const { ai, plan, job } = args;
+
+    const WORD_MIN = plan.constraints.minWordsPerQuery ?? 4;
+    const WORD_MAX = plan.constraints.maxWordsPerQuery ?? 12;
+
+    const badIndices: number[] = [];
+    for (let i = 0; i < plan.queries.length; i++) {
+      const norm = plan.queries[i].normalized ?? "";
+      const wc = wordCount(norm);
+      if (wc < WORD_MIN || wc > WORD_MAX) badIndices.push(i);
+      // Juga flag jika query mengandung tanda baca yang tidak diinginkan
+      if (plan.constraints.avoidPunctuation && /[,.!?:;'"()[\]{}]/.test(norm)) {
+        if (!badIndices.includes(i)) badIndices.push(i);
+      }
+    }
+
+    if (badIndices.length === 0) return plan; // Semua query sudah baik
+
+    console.log(`[ResearchEngine] AI Self-Heal: ${badIndices.length} query(ies) perlu diperbaiki.`);
+
+    const badQueries = badIndices.map((i) => {
+      const norm = plan.queries[i].normalized ?? "";
+      return {
+        index: i,
+        query: norm,
+        issue: wordCount(norm) < WORD_MIN
+          ? `too short (${wordCount(norm)} words, min ${WORD_MIN})`
+          : wordCount(norm) > WORD_MAX
+          ? `too long (${wordCount(norm)} words, max ${WORD_MAX})`
+          : "contains punctuation",
+      };
+    });
+
+    const healPrompt = [
+      "You are a stock photo search query optimizer.",
+      "Fix the following queries so they are:",
+      `- Between ${WORD_MIN} and ${WORD_MAX} words`,
+      "- No punctuation characters at all",
+      "- Commercially relevant for Adobe Stock searches",
+      "- In English",
+      "",
+      "Return ONLY valid JSON: { \"fixed\": [ { \"index\": number, \"query\": string } ] }",
+      "",
+      "Queries to fix:",
+      JSON.stringify(badQueries, null, 2),
+      "",
+      "Target context: " + job.target,
+      "Subject hint: " + (job.subjectHint ?? ""),
+    ].join("\n");
+
+    try {
+      const res = await ai.complete(
+        [
+          { role: "system", content: "You are a stock photo search query optimizer. Return only valid JSON." },
+          { role: "user", content: healPrompt },
+        ],
+        { temperature: 0.2, maxTokens: 1024 }
+      );
+
+      const parsed = JSON.parse(extractJsonObject(res.text)) as {
+        fixed: Array<{ index: number; query: string }>;
+      };
+
+      const newQueries = [...plan.queries];
+      for (const fix of parsed.fixed ?? []) {
+        if (fix.index >= 0 && fix.index < newQueries.length && isNonEmptyString(fix.query)) {
+          const healed = normalizeQuery(fix.query, { avoidPunctuation: true });
+          newQueries[fix.index] = {
+            ...newQueries[fix.index],
+            raw: fix.query,
+            normalized: healed,
+          };
+        }
+      }
+
+      return { ...plan, queries: newQueries };
+    } catch (e) {
+      console.warn("[ResearchEngine] AI Self-Heal failed, keeping original plan:", e);
+      return plan;
+    }
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // AI HELPER: Keyword Cluster Enrichment
+  // Menggunakan AI untuk menghasilkan keyword cluster yang kaya dan relevan
+  // ─────────────────────────────────────────────────────────────────────────────
+
+  export async function aiEnrichKeywordClusters(args: {
+    ai: AiClient;
+    target: ResearchTarget;
+    queries: string[];
+    inputs: Record<string, JsonValue>;
+  }): Promise<Array<{ label: string; keywords: string[] }>> {
+    const { ai, target, queries, inputs } = args;
+
+    const systemPrompt = [
+      "You are a stock photo SEO expert and keyword strategist.",
+      "Given a list of search queries for Adobe Stock, generate rich, commercially relevant keyword clusters.",
+      "Return ONLY valid JSON — no markdown, no explanation.",
+      "JSON format: { \"clusters\": [ { \"label\": string, \"keywords\": string[] } ] }",
+      "Generate 5 to 8 clusters.",
+      "Each cluster should have 6 to 12 keywords.",
+      "All keywords MUST be in English.",
+      "Keywords should be 1-3 words each.",
+      "No brand names, no copyrighted text.",
+      `Target: ${target} stock photos for Adobe Stock marketplace.`,
+    ].join("\n");
+
+    const userPrompt = [
+      `Research queries (${queries.length} queries):`,
+      queries.map((q, i) => `  ${i + 1}. ${q}`).join("\n"),
+      "",
+      "Additional context:",
+      JSON.stringify(inputs, null, 2),
+      "",
+      `Generate keyword clusters that cover: primary subjects, visual style, lighting, composition, use-case, audience, mood.`,
+    ].join("\n");
+
+    const res = await ai.complete(
+      [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userPrompt },
+      ],
+      { temperature: 0.3, maxTokens: 2048 }
+    );
+
+    const parsed = JSON.parse(extractJsonObject(res.text)) as {
+      clusters: Array<{ label: string; keywords: string[] }>;
+    };
+
+    return (parsed.clusters ?? []).map((c) => ({
+      label: String(c.label ?? "Keywords"),
+      keywords: (c.keywords ?? [])
+        .map((k) => String(k).trim().toLowerCase())
+        .filter(isNonEmptyString)
+        .slice(0, 12),
+    }));
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // AI HELPER: Narrative Summary Generator
+  // AI membuat ringkasan hasil riset dalam Bahasa Indonesia yang mudah dipahami
+  // ─────────────────────────────────────────────────────────────────────────────
+
+  export async function aiGenerateNarrativeSummary(args: {
+    ai: AiClient;
+    target: ResearchTarget;
+    queryPlan: QueryPlan;
+    ranked: SearchResult[];
+    inputs: Record<string, JsonValue>;
+  }): Promise<string> {
+    const { ai, target, queryPlan, ranked, inputs } = args;
+
+    const topQueries = queryPlan.queries.slice(0, 5).map((q) => q.normalized);
+    const topUrls = ranked.slice(0, 3).map((r) => r.url);
+
+    const systemPrompt = [
+      "Kamu adalah analis riset konten foto stok profesional.",
+      "Buat ringkasan hasil riset yang informatif, actionable, dan mudah dipahami dalam BAHASA INDONESIA.",
+      "Fokus pada: strategi pencarian terbaik, angle visual yang direkomendasikan, dan tips compliance.",
+      "Panjang ringkasan: 3-5 paragraf.",
+      "Jangan gunakan markdown, hanya teks biasa.",
+      "Akhiri dengan 3 rekomendasi aksi konkret untuk kreator.",
+    ].join("\n");
+
+    const userPrompt = [
+      `Target riset: ${target}`,
+      `Jumlah query yang dihasilkan: ${queryPlan.queries.length}`,
+      "",
+      "Top queries yang dihasilkan AI:",
+      topQueries.map((q, i) => `  ${i + 1}. ${q}`).join("\n"),
+      "",
+      "Top search URLs:",
+      topUrls.map((u, i) => `  ${i + 1}. ${u}`).join("\n"),
+      "",
+      "Distribusi intent query:",
+      JSON.stringify(queryPlan.intentDistribution ?? {}, null, 2),
+      "",
+      "Input riset:",
+      JSON.stringify(inputs, null, 2),
+    ].join("\n");
+
+    const res = await ai.complete(
+      [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userPrompt },
+      ],
+      { temperature: 0.5, maxTokens: 1024 }
+    );
+
+    return res.text.trim();
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // AI HELPER: AI-Powered Report Angles
+  // AI generate sudut pengambilan gambar yang relevan dan spesifik
+  // ─────────────────────────────────────────────────────────────────────────────
+
+  export async function aiGenerateAngles(args: {
+    ai: AiClient;
+    target: ResearchTarget;
+    queries: string[];
+    inputs: Record<string, JsonValue>;
+  }): Promise<string[]> {
+    const { ai, target, queries, inputs } = args;
+
+    const systemPrompt = [
+      "You are a professional stock photo art director.",
+      "Generate specific, actionable shooting angles and visual compositions for Adobe Stock.",
+      "Return ONLY valid JSON: { \"angles\": string[] }",
+      "Generate 6 to 8 angles.",
+      "Each angle description must be 1-2 sentences, practical and specific.",
+      "All content in English.",
+      `Target: ${target} content for Adobe Stock.`,
+    ].join("\n");
+
+    const userPrompt = [
+      "Based on these research queries:",
+      ...queries.slice(0, 8).map((q, i) => `  ${i + 1}. ${q}`),
+      "",
+      "And this context:",
+      JSON.stringify(inputs, null, 2),
+      "",
+      "Generate shooting angles that cover: hero wide shot, close detail, lifestyle, process, over-the-shoulder, top-down, studio, and environmental context.",
+    ].join("\n");
+
+    const res = await ai.complete(
+      [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userPrompt },
+      ],
+      { temperature: 0.4, maxTokens: 1024 }
+    );
+
+    const parsed = JSON.parse(extractJsonObject(res.text)) as { angles: string[] };
+    return (parsed.angles ?? [])
+      .map((a) => String(a).trim())
+      .filter(isNonEmptyString)
+      .slice(0, 8);
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // AI HELPER: AI Compliance Risk Checker
+  // AI memeriksa apakah query mengandung risiko kepatuhan Adobe Stock
+  // ─────────────────────────────────────────────────────────────────────────────
+
+  export async function aiCheckComplianceRisk(args: {
+    ai: AiClient;
+    queries: string[];
+    target: ResearchTarget;
+  }): Promise<{ risk: RiskLevel; flags: string[]; suggestions: string[] }> {
+    const { ai, queries, target } = args;
+
+    const systemPrompt = [
+      "You are an Adobe Stock compliance expert.",
+      "Review these stock photo search queries for compliance risks.",
+      "Risks include: brand names, trademarks, celebrity references, copyrighted content, unsafe composition hints.",
+      "Return ONLY valid JSON:",
+      "{ \"risk\": \"low\" | \"medium\" | \"high\", \"flags\": string[], \"suggestions\": string[] }",
+      "flags: list of specific risky words/phrases found.",
+      "suggestions: how to fix each flag.",
+    ].join("\n");
+
+    const userPrompt = [
+      `Target: ${target}`,
+      "Queries to review:",
+      queries.map((q, i) => `  ${i + 1}. ${q}`).join("\n"),
+    ].join("\n");
+
+    const res = await ai.complete(
+      [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userPrompt },
+      ],
+      { temperature: 0.1, maxTokens: 1024 }
+    );
+
+    const parsed = JSON.parse(extractJsonObject(res.text)) as {
+      risk: string;
+      flags: string[];
+      suggestions: string[];
+    };
+
+    const validRisks: RiskLevel[] = ["low", "medium", "high"];
+    const risk: RiskLevel = validRisks.includes(parsed.risk as RiskLevel)
+      ? (parsed.risk as RiskLevel)
+      : "low";
+
+    return {
+      risk,
+      flags: (parsed.flags ?? []).map(String),
+      suggestions: (parsed.suggestions ?? []).map(String),
+    };
+  }
+
+
 
   function makeCacheKey(job: ResearchJob): CacheKey {
     const stableInputs = JSON.stringify(job.inputs);
@@ -1830,7 +2217,7 @@ export namespace ResearchEngine {
       count: tpl.shots.length,
       moreSpecific: args.moreSpecific,
       strategy: {
-        useAi: false,
+        useAi: true,
         aiStabilize: { temperature: 0.3, maxTokens: 512 },
         retryCount: 0,
         allowHeuristicFallback: true,
