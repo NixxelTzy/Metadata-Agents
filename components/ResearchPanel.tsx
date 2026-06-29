@@ -48,6 +48,11 @@ export default function ResearchPanel() {
   const [isSearching, setIsSearching] = useState(false);
   const [searchError, setSearchError] = useState<string>("");
   const [adobeStockLinks, setAdobeStockLinks] = useState<string[]>([]);
+  const [adobeStockQueries, setAdobeStockQueries] = useState<string[]>([]);
+  const [resultCount, setResultCount] = useState<5 | 8 | 12>(5);
+  const [moreSpecific, setMoreSpecific] = useState(true);
+  const [lastRunKind, setLastRunKind] = useState<"product" | "event" | null>(null);
+
 
   const buildAdobeStockSearchUrl = (query: string) => {
     // Note: This project does not do scraping/crawling.
@@ -94,9 +99,12 @@ export default function ResearchPanel() {
       const prompt = {
         queryType: "adobestock-search-queries",
         target: "product",
-        input: { adobePhotoUrl: url },
+        input: { adobePhotoUrl: url, resultCount, moreSpecific },
         instructions:
-          "Generate 5 concise Adobe Stock search queries in English. Avoid punctuation. Return ONLY JSON: { queries: string[] } with exactly 5 strings."
+          `Generate ${resultCount} concise Adobe Stock search queries in English. Avoid punctuation. Return ONLY JSON: { queries: string[] } with exactly ${resultCount} strings. ` +
+          (moreSpecific
+            ? "Make them more specific/commercial: include subject + action + setting + lighting/composition cues when possible."
+            : "Keep them general but still relevant." )
       };
 
       const res = await fetch("/api/chat", {
@@ -137,7 +145,31 @@ export default function ResearchPanel() {
       }
 
       const links = queries.map((q) => buildAdobeStockSearchUrl(q));
-      setAdobeStockLinks(links);
+
+      // Auto-validate links (format, base, query param)
+      const vRes = await fetch("/api/validate/links", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ links, expectedBase: "https://www.adobestock.com/search/" }),
+      });
+
+      if (vRes.ok) {
+        const vData = (await vRes.json()) as {
+          results: { ok: boolean; link: string; reason?: string }[];
+        };
+
+        const valid = vData.results.filter((r) => r.ok).map((r) => r.link);
+        const invalid = vData.results.filter((r) => !r.ok);
+
+        if (valid.length) {
+          setAdobeStockLinks(valid);
+        } else {
+          setAdobeStockLinks(links);
+          if (invalid[0]?.reason) setSearchError(`Validasi gagal: ${invalid[0].reason}`);
+        }
+      } else {
+        setAdobeStockLinks(links);
+      }
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Gagal menjalankan riset produk";
       setSearchError(msg);
@@ -200,7 +232,29 @@ export default function ResearchPanel() {
       }
 
       const links = queries.map((q) => buildAdobeStockSearchUrl(q));
-      setAdobeStockLinks(links);
+
+      const vRes = await fetch("/api/validate/links", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ links, expectedBase: "https://www.adobestock.com/search/" }),
+      });
+
+      if (vRes.ok) {
+        const vData = (await vRes.json()) as {
+          results: { ok: boolean; link: string; reason?: string }[];
+        };
+        const valid = vData.results.filter((r) => r.ok).map((r) => r.link);
+        const invalid = vData.results.filter((r) => !r.ok);
+
+        if (valid.length) {
+          setAdobeStockLinks(valid);
+        } else {
+          setAdobeStockLinks(links);
+          if (invalid[0]?.reason) setSearchError(`Validasi gagal: ${invalid[0].reason}`);
+        }
+      } else {
+        setAdobeStockLinks(links);
+      }
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Gagal menjalankan riset event";
       setSearchError(msg);
