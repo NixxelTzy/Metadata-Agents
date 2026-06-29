@@ -321,7 +321,7 @@ export namespace ResearchEngineDeep {
   export const AdobeStockAdapter: SearchProviderAdapter = {
     provider: "adobestock",
     buildSearchUrl(query: string) {
-      const base = "https://stock.adobe.com/search/";
+      const base = "https://stock.adobe.com/search";
       const q = encodeURIComponent(query.trim());
       return { provider: "adobestock", url: `${base}?k=${q}` };
     },
@@ -1195,7 +1195,7 @@ export namespace ResearchEngineDeep {
   }
 
   export function validateUrlAdobestock(url: string): { ok: boolean; reason?: string } {
-    const base = "https://stock.adobe.com/search/";
+    const base = "https://stock.adobe.com/search";
     if (!url.startsWith(base)) return { ok: false, reason: "Base mismatch" };
     if (!url.includes("?k=")) return { ok: false, reason: "Missing ?k" };
     if (/[\s]/.test(url)) return { ok: false, reason: "Whitespace" };
@@ -2030,7 +2030,7 @@ export namespace ResearchEngineDeep {
       lighting: String(s.lighting || ""),
       props: (s.props || []).map(String),
       query: String(s.query || ""),
-      url: `https://stock.adobe.com/search/?k=${encodeURIComponent(String(s.query || "").trim())}`,
+      url: `https://stock.adobe.com/search?k=${encodeURIComponent(String(s.query || "").trim())}`,
     }));
 
     return {
@@ -2533,34 +2533,17 @@ function normalizeAdobeStockSearchUrl(url: string): string {
     const trimmed = (url ?? "").trim();
     if (!trimmed) return trimmed;
 
-    // Force canonical base to avoid locale paths like /id
-    const canonicalBase = "https://stock.adobe.com/search/";
-
     try {
       const u = new URL(trimmed);
-
-      // If url already points to adobe stock, keep pathname/search; otherwise discard.
-      const isAdobestock = (u.hostname || "").toLowerCase().includes("adobestock.com") || (u.hostname || "").toLowerCase().includes("adobe.com");
-      if (!isAdobestock) return trimmed;
-
-      // Remove locale prefixes from pathname
-      // examples:
-      //  - /id/search/  -> /search/
-      //  - /search/     -> /search/
-      const parts = u.pathname.split("/").filter(Boolean);
-      const idxSearch = parts.findIndex((p) => p === "search");
-      const rest = idxSearch >= 0 ? parts.slice(idxSearch + 1) : parts;
-      const normalizedPath = "search" + (rest.length ? "/" + rest.join("/") : "/");
-
-      // Recompose with canonical base and original query params
-      const q = u.search || "";
-      return `${canonicalBase}${normalizedPath.replace(/^search\/?/, "")}${q}`
-        .replace(/search\/?\/search\/?/g, "search/")
-        .replace(/\/+$/, "");
+      const k = u.searchParams.get("k");
+      if (k) {
+        return `https://stock.adobe.com/search?k=${encodeURIComponent(k)}`;
+      }
+      return trimmed;
     } catch {
       return trimmed;
     }
-  }
+}
 
   export function toAdobeStockUrls(ranked: SearchCandidate[], topN: number): string[] {
     return ranked.slice(0, topN).map((x) => normalizeAdobeStockSearchUrl(x.url));

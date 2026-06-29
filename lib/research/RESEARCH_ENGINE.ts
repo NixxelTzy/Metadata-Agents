@@ -738,12 +738,11 @@ export namespace ResearchEngine {
   // 9) URL Builder & Validation
   // ---------------------------------------------------------------------------------
 
-  export const ADOBE_STOCK_SEARCH_BASE = "https://stock.adobe.com/search/";
+  export const ADOBE_STOCK_SEARCH_BASE = "https://stock.adobe.com/search";
 
   export function buildAdobeStockSearchUrl(query: string): string {
     const q = encodeURIComponent(query.trim());
-    // Keep stable format matching the current UI validator
-    return `${ADOBE_STOCK_SEARCH_BASE}?k=${q}`.replace(/\?k=\s*/g, "?k=");
+    return `${ADOBE_STOCK_SEARCH_BASE}?k=${q}`;
   }
 
   export function validateAdobeStockSearchUrl(url: string): { ok: boolean; reason?: string } {

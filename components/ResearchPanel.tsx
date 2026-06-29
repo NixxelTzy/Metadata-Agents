@@ -59,7 +59,7 @@ export default function ResearchPanel() {
     // We generate a search URL the user can open.
     const q = encodeURIComponent(query.trim());
     // Use a stable query/search page pattern.
-    return `https://www.adobestock.com/search/?k=${q}`;
+    return `https://stock.adobe.com/search?k=${q}`;
   };
 
   const extractKeywordsHeuristic = (url: string) => {
@@ -166,7 +166,7 @@ export default function ResearchPanel() {
       const vRes = await fetch("/api/validate/links", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ links, expectedBase: "https://www.adobestock.com/search/" }),
+        body: JSON.stringify({ links, expectedBase: "https://stock.adobe.com/search" }),
       });
 
       if (vRes.ok) {
@@ -252,7 +252,7 @@ export default function ResearchPanel() {
       const vRes = await fetch("/api/validate/links", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ links, expectedBase: "https://www.adobestock.com/search/" }),
+        body: JSON.stringify({ links, expectedBase: "https://stock.adobe.com/search" }),
       });
 
       if (vRes.ok) {

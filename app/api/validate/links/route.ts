@@ -53,7 +53,7 @@ export async function POST(request: NextRequest) {
   try {
     const body = (await request.json()) as InputBody;
     const links = Array.isArray(body?.links) ? body.links : [];
-    const expectedBase = body?.expectedBase ?? "https://www.adobestock.com/search/";
+    const expectedBase = body?.expectedBase ?? "https://stock.adobe.com/search";
 
     if (!links.length) {
       return NextResponse.json({ error: "links harus array dan minimal 1" }, { status: 400 });
