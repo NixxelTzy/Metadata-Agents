@@ -260,11 +260,7 @@ export default function Home() {
           ) : activeTab === "research" ? (
             <ResearchPanel />
           ) : activeTab === "vector" ? (
-            <div style={{ padding: "24px", maxWidth: 1100, margin: "0 auto" }}>
-              <div style={{ marginBottom: 20 }}>
-                <h1 style={{ fontSize: 22, fontWeight: 900, margin: 0 }}>🎨 Vector Creator AI</h1>
-                <p style={{ fontSize: 13, color: "var(--text-muted)", margin: "6px 0 0 0" }}>Buat prompt vector art komersial berkualitas tinggi dengan AI — siap upload ke Adobe Stock</p>
-              </div>
+            <div style={{ padding: "24px 32px", maxWidth: 1400, margin: "0 auto", width: "100%", boxSizing: "border-box" }}>
               <VectorCreator />
             </div>
           ) : (
