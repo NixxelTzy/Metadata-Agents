@@ -138,7 +138,14 @@ export async function POST(request: NextRequest) {
       }
     }
 
+
     const results: MetadataResult[] = [];
+
+    // Track Groq usage per-image for accurate totals (komponen frontend tetap pakai sum dari results.usage)
+    let totalPromptTokens = 0;
+    let totalCompletionTokens = 0;
+    let totalTokens = 0;
+
 
     for (let i = 0; i < images.length; i++) {
       const image = images[i];

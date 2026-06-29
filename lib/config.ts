@@ -15,6 +15,10 @@ export function getGroqApiKeys(): string[] {
   if (keys.length === 0) {
     const fallback = process.env.GROQ_API_KEY;
     if (fallback?.trim()) keys.push(fallback.trim());
+
+    // Custom key alias (buat fitur riset)
+    const risetKey = process.env.GROQ_API_KEY_RISET;
+    if (risetKey?.trim()) keys.push(risetKey.trim());
   }
   if (keys.length === 0) {
     console.warn("[WARN] Tidak ada GROQ_API_KEY yang ditemukan. Set di environment variables.");

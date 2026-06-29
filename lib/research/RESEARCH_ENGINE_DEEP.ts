@@ -1965,8 +1965,41 @@ export namespace ResearchEngineDeep {
   // Export helpers for UI/API integration
   // ---------------------------------------------------------------------------------
 
+function normalizeAdobeStockSearchUrl(url: string): string {
+    const trimmed = (url ?? "").trim();
+    if (!trimmed) return trimmed;
+
+    // Force canonical base to avoid locale paths like /id
+    const canonicalBase = "https://www.adobestock.com/search/";
+
+    try {
+      const u = new URL(trimmed);
+
+      // If url already points to adobe stock, keep pathname/search; otherwise discard.
+      const isAdobestock = (u.hostname || "").toLowerCase().includes("adobestock.com") || (u.hostname || "").toLowerCase().includes("adobe.com");
+      if (!isAdobestock) return trimmed;
+
+      // Remove locale prefixes from pathname
+      // examples:
+      //  - /id/search/  -> /search/
+      //  - /search/     -> /search/
+      const parts = u.pathname.split("/").filter(Boolean);
+      const idxSearch = parts.findIndex((p) => p === "search");
+      const rest = idxSearch >= 0 ? parts.slice(idxSearch + 1) : parts;
+      const normalizedPath = "search" + (rest.length ? "/" + rest.join("/") : "/");
+
+      // Recompose with canonical base and original query params
+      const q = u.search || "";
+      return `${canonicalBase}${normalizedPath.replace(/^search\/?/, "")}${q}`
+        .replace(/search\/?\/search\/?/g, "search/")
+        .replace(/\/+$/, "");
+    } catch {
+      return trimmed;
+    }
+  }
+
   export function toAdobeStockUrls(ranked: SearchCandidate[], topN: number): string[] {
-    return ranked.slice(0, topN).map((x) => x.url);
+    return ranked.slice(0, topN).map((x) => normalizeAdobeStockSearchUrl(x.url));
   }
 
   // ---------------------------------------------------------------------------------
