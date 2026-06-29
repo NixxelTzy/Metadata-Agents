@@ -729,10 +729,582 @@ export default function VectorCreator() {
   };
 
   return (
-    <div style={{
-      display: "flex",
-      flexDirection: "column",
-      gap: 0,
+    <div style={{ display: "flex", flexDirection: "column", background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 16, overflow: "hidden" }}>
+
+      {/* ── Header ── */}
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 20px", background: "linear-gradient(135deg, rgba(74,144,226,0.15) 0%, rgba(123,90,224,0.1) 100%)", borderBottom: "1px solid var(--border)" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <span style={{ fontSize: 22 }}>🎨</span>
+          <div>
+            <div style={{ fontWeight: 900, fontSize: 16 }}>Vector Creator AI Pro</div>
+            <div style={{ fontSize: 11, color: "var(--text-muted)" }}>Adobe Stock Engine · SVG Sandbox · Before/After Viewer</div>
+          </div>
+        </div>
+      </div>
+
+      {/* ── Tab Navigation ── */}
+      <div style={{ display: "flex", borderBottom: "1px solid var(--border)", background: "rgba(255,255,255,0.01)", overflowX: "auto" }}>
+        {([
+          { id: "generate" as PanelTab, label: "⚡ Generator" },
+          { id: "composer" as PanelTab, label: "⚙️ Composer" },
+          { id: "magic" as PanelTab, label: "✨ Magic Ideas" },
+          { id: "analytics" as PanelTab, label: "📈 Analytics" },
+          { id: "history" as PanelTab, label: `📋 History (${history.length})` },
+        ]).map((t) => (
+          <button key={t.id} type="button" onClick={() => setPanelTab(t.id)} style={{ flexShrink: 0, padding: "12px 22px", background: panelTab === t.id ? "rgba(74,144,226,0.08)" : "transparent", border: "none", borderBottom: panelTab === t.id ? "2px solid #4a90e2" : "2px solid transparent", cursor: "pointer", color: panelTab === t.id ? "#4a90e2" : "var(--text-muted)", fontWeight: panelTab === t.id ? 800 : 500, fontSize: 12, transition: "all 0.2s", whiteSpace: "nowrap" }}>
+            {t.label}
+          </button>
+        ))}
+      </div>
+
+      {/* ── Compact Settings Bar ── */}
+      <div style={{ padding: "12px 18px", borderBottom: "1px solid var(--border)", background: "rgba(0,0,0,0.12)", display: "flex", flexDirection: "column", gap: 10 }}>
+
+        {/* Row 1: Mode · Style · Ratio · Complexity · Count */}
+        <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
+
+          {/* Mode */}
+          <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
+            <span style={{ fontSize: 10, color: "var(--text-muted)", fontWeight: 700, marginRight: 3 }}>MODE</span>
+            {([{ value: "prompt" as VectorMode, label: "✍️ Custom" }, { value: "noprompt" as VectorMode, label: "🤖 Auto" }]).map((m) => (
+              <button key={m.value} type="button" onClick={() => setMode(m.value)} style={{ padding: "5px 11px", background: mode === m.value ? "rgba(74,144,226,0.2)" : "rgba(255,255,255,0.03)", border: `1px solid ${mode === m.value ? "rgba(74,144,226,0.5)" : "var(--border)"}`, borderRadius: 20, cursor: "pointer", color: mode === m.value ? "#4a90e2" : "var(--text-muted)", fontWeight: mode === m.value ? 800 : 500, fontSize: 11, whiteSpace: "nowrap", transition: "all 0.2s" }}>
+                {m.label}
+              </button>
+            ))}
+          </div>
+
+          <div style={{ width: 1, height: 20, background: "var(--border)", flexShrink: 0 }} />
+
+          {/* Style */}
+          <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
+            <span style={{ fontSize: 10, color: "var(--text-muted)", fontWeight: 700, marginRight: 3 }}>STYLE</span>
+            {STYLE_OPTIONS.map((s) => (
+              <button key={s.value} type="button" onClick={() => setStyle(s.value)} style={{ padding: "5px 10px", background: style === s.value ? "rgba(123,90,224,0.2)" : "rgba(255,255,255,0.03)", border: `1px solid ${style === s.value ? "rgba(123,90,224,0.5)" : "var(--border)"}`, borderRadius: 20, cursor: "pointer", color: style === s.value ? "#7b5ae0" : "var(--text-muted)", fontWeight: style === s.value ? 800 : 500, fontSize: 11, whiteSpace: "nowrap", transition: "all 0.2s" }}>
+                {s.label}
+              </button>
+            ))}
+          </div>
+
+          <div style={{ width: 1, height: 20, background: "var(--border)", flexShrink: 0 }} />
+
+          {/* Ratio */}
+          <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
+            <span style={{ fontSize: 10, color: "var(--text-muted)", fontWeight: 700, marginRight: 3 }}>RASIO</span>
+            {ASPECT_RATIOS.map((r) => (
+              <button key={r.value} type="button" onClick={() => setRatio(r.value)} style={{ padding: "5px 9px", background: ratio === r.value ? "rgba(74,144,226,0.2)" : "rgba(255,255,255,0.03)", border: `1px solid ${ratio === r.value ? "rgba(74,144,226,0.5)" : "var(--border)"}`, borderRadius: 20, cursor: "pointer", color: ratio === r.value ? "#4a90e2" : "var(--text-muted)", fontWeight: ratio === r.value ? 800 : 500, fontSize: 11, whiteSpace: "nowrap", transition: "all 0.2s" }}>
+                {r.value}
+              </button>
+            ))}
+          </div>
+
+          <div style={{ width: 1, height: 20, background: "var(--border)", flexShrink: 0 }} />
+
+          {/* Complexity */}
+          <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
+            <span style={{ fontSize: 10, color: "var(--text-muted)", fontWeight: 700, marginRight: 3 }}>KOMPLEKSITAS</span>
+            {(["simple", "medium", "complex"] as Complexity[]).map((c) => (
+              <button key={c} type="button" onClick={() => setComplexity(c)} style={{ padding: "5px 10px", background: complexity === c ? "rgba(76,175,80,0.15)" : "rgba(255,255,255,0.03)", border: `1px solid ${complexity === c ? "rgba(76,175,80,0.4)" : "var(--border)"}`, borderRadius: 20, cursor: "pointer", color: complexity === c ? "#4caf50" : "var(--text-muted)", fontWeight: complexity === c ? 800 : 500, fontSize: 11, textTransform: "capitalize", transition: "all 0.2s" }}>
+                {c}
+              </button>
+            ))}
+          </div>
+
+          <div style={{ width: 1, height: 20, background: "var(--border)", flexShrink: 0 }} />
+
+          {/* Prompt count */}
+          <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
+            <span style={{ fontSize: 10, color: "var(--text-muted)", fontWeight: 700, marginRight: 3 }}>JUMLAH PROMPT</span>
+            {[2, 4, 6, 8].map((n) => (
+              <button key={n} type="button" onClick={() => setPromptCount(n)} style={{ padding: "5px 9px", background: promptCount === n ? "rgba(74,144,226,0.2)" : "rgba(255,255,255,0.03)", border: `1px solid ${promptCount === n ? "rgba(74,144,226,0.5)" : "var(--border)"}`, borderRadius: 20, cursor: "pointer", color: promptCount === n ? "#4a90e2" : "var(--text-muted)", fontWeight: promptCount === n ? 800 : 500, fontSize: 11, transition: "all 0.2s" }}>
+                {n}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Row 2: Toggles + Dropdowns */}
+        <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+
+          {/* Faceless Toggle */}
+          <button type="button" onClick={() => setFaceless(!faceless)} style={{ display: "flex", alignItems: "center", gap: 7, padding: "5px 13px", background: faceless ? "rgba(255,152,0,0.1)" : "rgba(255,255,255,0.02)", border: `1px solid ${faceless ? "rgba(255,152,0,0.4)" : "var(--border)"}`, borderRadius: 20, cursor: "pointer", fontSize: 11, fontWeight: faceless ? 800 : 500, color: faceless ? "#ff9800" : "var(--text-muted)", transition: "all 0.2s" }}>
+            <div style={{ width: 28, height: 14, background: faceless ? "#ff9800" : "rgba(255,255,255,0.1)", borderRadius: 7, position: "relative", transition: "all 0.2s", flexShrink: 0 }}>
+              <div style={{ position: "absolute", top: 2, left: faceless ? 16 : 2, width: 10, height: 10, background: "white", borderRadius: "50%", transition: "left 0.2s" }} />
+            </div>
+            Faceless Mode
+          </button>
+
+          {/* Consistency Toggle */}
+          <button type="button" onClick={() => setConsistency(!consistency)} style={{ display: "flex", alignItems: "center", gap: 7, padding: "5px 13px", background: consistency ? "rgba(74,144,226,0.1)" : "rgba(255,255,255,0.02)", border: `1px solid ${consistency ? "rgba(74,144,226,0.4)" : "var(--border)"}`, borderRadius: 20, cursor: "pointer", fontSize: 11, fontWeight: consistency ? 800 : 500, color: consistency ? "#4a90e2" : "var(--text-muted)", transition: "all 0.2s" }}>
+            <div style={{ width: 28, height: 14, background: consistency ? "#4a90e2" : "rgba(255,255,255,0.1)", borderRadius: 7, position: "relative", transition: "all 0.2s", flexShrink: 0 }}>
+              <div style={{ position: "absolute", top: 2, left: consistency ? 16 : 2, width: 10, height: 10, background: "white", borderRadius: "50%", transition: "left 0.2s" }} />
+            </div>
+            Konsistensi Warna
+          </button>
+
+          <div style={{ width: 1, height: 20, background: "var(--border)", flexShrink: 0 }} />
+
+          {/* Palette */}
+          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            <span style={{ fontSize: 10, color: "var(--text-muted)", fontWeight: 700, whiteSpace: "nowrap" }}>PALETTE:</span>
+            <select value={colorPalette} onChange={(e) => setColorPalette(e.target.value)} style={{ padding: "5px 8px", borderRadius: 8, border: "1px solid var(--border)", background: "var(--surface)", fontSize: 11, color: "var(--text)" }}>
+              {PALETTE_PRESETS.map((p) => <option key={p} value={p}>{p}</option>)}
+            </select>
+          </div>
+
+          {/* Target Use */}
+          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            <span style={{ fontSize: 10, color: "var(--text-muted)", fontWeight: 700, whiteSpace: "nowrap" }}>TARGET:</span>
+            <select value={targetUse} onChange={(e) => setTargetUse(e.target.value)} style={{ padding: "5px 8px", borderRadius: 8, border: "1px solid var(--border)", background: "var(--surface)", fontSize: 11, color: "var(--text)" }}>
+              {TARGET_USE_OPTIONS.map((t) => <option key={t} value={t}>{t}</option>)}
+            </select>
+          </div>
+        </div>
+      </div>
+
+      {/* ── Main Content — Full Width ── */}
+      <div style={{ padding: "18px 20px", display: "flex", flexDirection: "column", gap: 16 }}>
+
+        {error && (
+          <div style={{ color: "#ff4d4f", background: "rgba(255,77,79,0.08)", padding: 12, borderRadius: 8, fontSize: 13, border: "1px solid rgba(255,77,79,0.2)" }}>⚠️ {error}</div>
+        )}
+
+        {/* ═══════════════════════════════════════
+            TAB: GENERATOR
+        ═══════════════════════════════════════ */}
+        {panelTab === "generate" && (
+          <>
+            {/* Custom Prompt Mode */}
+            {mode === "prompt" && (
+              <div style={{ border: "1px solid var(--border)", borderRadius: 12, padding: 16, background: "rgba(255,255,255,0.01)" }}>
+                <div style={{ fontSize: 12, fontWeight: 800, marginBottom: 10, color: "#4a90e2" }}>✍️ Custom Prompt Mode</div>
+                <textarea
+                  value={userPrompt}
+                  onChange={(e) => setUserPrompt(e.target.value)}
+                  placeholder="Deskripsikan konsep vector yang ingin dibuat... (contoh: A minimalist flat vector illustration of a person working on a laptop in a cozy home office, surrounded by plants and warm lighting)"
+                  style={{ width: "100%", minHeight: 100, padding: "10px 12px", borderRadius: 8, border: "1px solid var(--border)", background: "var(--surface)", color: "var(--text)", fontSize: 13, lineHeight: "1.5", resize: "vertical", boxSizing: "border-box" }}
+                />
+                <div style={{ display: "flex", gap: 8, marginTop: 10, flexWrap: "wrap" }}>
+                  <button type="button" onClick={handleEnhance} disabled={isEnhancing || !userPrompt.trim()} style={{ padding: "8px 14px", background: "rgba(123,90,224,0.12)", border: "1px solid rgba(123,90,224,0.3)", borderRadius: 8, cursor: "pointer", fontSize: 12, fontWeight: 700, color: "#7b5ae0" }}>
+                    {isEnhancing ? "⏳ Enhancing..." : "✨ Enhance Prompt"}
+                  </button>
+                  <button type="button" onClick={saveCurrentPrompt} disabled={!userPrompt.trim()} style={{ padding: "8px 14px", background: "rgba(255,255,255,0.03)", border: "1px solid var(--border)", borderRadius: 8, cursor: "pointer", fontSize: 12, fontWeight: 700, color: "var(--text-muted)" }}>
+                    💾 Simpan Prompt
+                  </button>
+                  <button type="button" onClick={addToQueue} disabled={!userPrompt.trim()} style={{ padding: "8px 14px", background: "rgba(74,144,226,0.12)", border: "1px solid rgba(74,144,226,0.3)", borderRadius: 8, cursor: "pointer", fontSize: 12, fontWeight: 700, color: "#4a90e2" }}>
+                    📥 Add to Batch Queue
+                  </button>
+                </div>
+
+                {enhancedPrompt && (
+                  <div style={{ marginTop: 12, padding: 12, background: "rgba(123,90,224,0.06)", border: "1px solid rgba(123,90,224,0.2)", borderRadius: 10 }}>
+                    <div style={{ fontSize: 11, fontWeight: 800, color: "#7b5ae0", marginBottom: 8 }}>✨ Enhanced Prompt</div>
+                    <p style={{ fontSize: 13, margin: "0 0 10px 0", lineHeight: "1.5" }}>{enhancedPrompt.enhanced}</p>
+                    <div style={{ display: "flex", gap: 8 }}>
+                      <button type="button" onClick={() => { setUserPrompt(enhancedPrompt.enhanced); setEnhancedPrompt(null); }} style={{ padding: "6px 12px", background: "#7b5ae0", border: "none", borderRadius: 6, cursor: "pointer", fontSize: 11, fontWeight: 700, color: "white" }}>Gunakan Prompt Ini</button>
+                      <button type="button" onClick={() => copyToClipboard(enhancedPrompt.enhanced, "enhanced")} style={{ padding: "6px 12px", background: "rgba(255,255,255,0.04)", border: "1px solid var(--border)", borderRadius: 6, cursor: "pointer", fontSize: 11, fontWeight: 700, color: "var(--text-muted)" }}>
+                        {copiedId === "enhanced" ? "✓ Disalin!" : "📋 Copy"}
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {savedPrompts.length > 0 && (
+                  <div style={{ marginTop: 12 }}>
+                    <div style={{ fontSize: 11, fontWeight: 800, color: "var(--text-muted)", marginBottom: 8 }}>📋 Saved Prompts</div>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                      {savedPrompts.map((p, i) => (
+                        <button key={i} type="button" onClick={() => setUserPrompt(p)} style={{ padding: "5px 10px", background: "rgba(255,255,255,0.02)", border: "1px solid var(--border)", borderRadius: 6, cursor: "pointer", fontSize: 11, color: "var(--text-muted)", maxWidth: 220, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                          {p.slice(0, 45)}…
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Autopilot Mode */}
+            {mode === "noprompt" && (
+              <div style={{ border: "1px solid var(--border)", borderRadius: 12, padding: 16, background: "rgba(255,255,255,0.01)" }}>
+                <div style={{ fontSize: 12, fontWeight: 800, marginBottom: 12, color: "#4a90e2" }}>🤖 Autopilot — Pilih Tema Komersial</div>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: 8, marginBottom: 12 }}>
+                  {THEME_PRESETS.map((t) => (
+                    <button key={t} type="button" onClick={() => { setSelectedTheme(t); setCustomTheme(""); }} style={{ padding: "10px 14px", background: selectedTheme === t && !customTheme ? "rgba(74,144,226,0.15)" : "rgba(255,255,255,0.02)", border: `1px solid ${selectedTheme === t && !customTheme ? "rgba(74,144,226,0.4)" : "var(--border)"}`, borderRadius: 8, cursor: "pointer", fontSize: 12, fontWeight: selectedTheme === t && !customTheme ? 800 : 500, color: selectedTheme === t && !customTheme ? "#4a90e2" : "var(--text-muted)", textAlign: "left", transition: "all 0.2s" }}>
+                      {t}
+                    </button>
+                  ))}
+                </div>
+                <input value={customTheme} onChange={(e) => setCustomTheme(e.target.value)} placeholder="Atau ketik tema kustom sendiri..." style={{ width: "100%", padding: "9px 12px", borderRadius: 8, border: "1px solid var(--border)", background: "var(--surface)", fontSize: 12, color: "var(--text)", boxSizing: "border-box" }} />
+              </div>
+            )}
+
+            {/* Generate Button */}
+            <button type="button" onClick={handleGenerate} disabled={isGenerating} style={{ width: "100%", padding: "16px", background: isGenerating ? "rgba(74,144,226,0.3)" : "linear-gradient(135deg, #4a90e2, #7b5ae0)", border: "none", borderRadius: 12, cursor: isGenerating ? "not-allowed" : "pointer", color: "white", fontWeight: 900, fontSize: 16, letterSpacing: "0.03em", transition: "all 0.2s", boxShadow: isGenerating ? "none" : "0 4px 20px rgba(74,144,226,0.25)" }}>
+              {isGenerating ? "⏳ AI sedang merancang vector plan..." : "🚀 Generate Vector Plan"}
+            </button>
+
+            {/* Batch Queue */}
+            {batchQueue.length > 0 && (
+              <div style={{ background: "rgba(255,255,255,0.01)", border: "1px solid var(--border)", borderRadius: 12, padding: 14 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+                  <span style={{ fontSize: 11, fontWeight: 800, color: "var(--text-muted)" }}>📋 Batch Queue ({batchQueue.length})</span>
+                  <button onClick={processBatchQueue} disabled={isProcessingQueue} style={{ padding: "5px 12px", background: "#4a90e2", border: "none", borderRadius: 6, color: "white", fontWeight: 700, fontSize: 11, cursor: "pointer" }}>
+                    {isProcessingQueue ? "⏳ Processing..." : "▶ Process Queue"}
+                  </button>
+                </div>
+                <div style={{ display: "flex", flexDirection: "column", gap: 5, maxHeight: 120, overflowY: "auto" }}>
+                  {batchQueue.map((item, idx) => (
+                    <div key={item.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "7px 10px", background: "rgba(255,255,255,0.02)", border: "1px solid var(--border)", borderRadius: 8 }}>
+                      <span style={{ fontSize: 12 }}>#{idx + 1}: {item.prompt.slice(0, 60)}…</span>
+                      <span style={{ fontSize: 10, padding: "2px 6px", borderRadius: 4, fontWeight: 700, background: item.status === "completed" ? "rgba(76,175,80,0.15)" : item.status === "processing" ? "rgba(255,152,0,0.15)" : "rgba(255,255,255,0.05)", color: item.status === "completed" ? "#4caf50" : item.status === "processing" ? "#ff9800" : "var(--text-muted)" }}>{item.status.toUpperCase()}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Generated Plan Output */}
+            {generatedPlan && (
+              <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+                {/* Concept Overview */}
+                <div style={{ background: "linear-gradient(135deg, rgba(74,144,226,0.08), rgba(123,90,224,0.05))", border: "1px solid rgba(74,144,226,0.25)", borderRadius: 12, padding: 18 }}>
+                  <div style={{ fontSize: 10, fontWeight: 800, color: "#4a90e2", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 6 }}>🎯 Concept Overview</div>
+                  <h3 style={{ margin: "0 0 8px 0", fontSize: 20, fontWeight: 900 }}>{generatedPlan.plan?.conceptTitle}</h3>
+                  <p style={{ margin: "0 0 14px 0", fontSize: 13, color: "var(--text-muted)", lineHeight: "1.6" }}>{generatedPlan.plan?.commercialHook}</p>
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))", gap: 8 }}>
+                    {Object.entries(generatedPlan.plan?.styleGuide || {}).map(([k, v]) => (
+                      <div key={k} style={{ background: "rgba(255,255,255,0.03)", borderRadius: 8, padding: 10 }}>
+                        <div style={{ fontSize: 9, color: "var(--text-muted)", textTransform: "uppercase", fontWeight: 700 }}>{k}</div>
+                        <div style={{ fontSize: 12, marginTop: 3 }}>{String(v)}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Tips & Compliance */}
+                {(generatedPlan.setTips?.length > 0 || generatedPlan.complianceNotes?.length > 0) && (
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                    {generatedPlan.setTips?.length > 0 && (
+                      <div style={{ background: "rgba(255,255,255,0.01)", border: "1px solid var(--border)", borderRadius: 10, padding: 14 }}>
+                        <div style={{ fontSize: 11, fontWeight: 800, color: "var(--text-muted)", marginBottom: 8 }}>💡 Set Tips</div>
+                        {generatedPlan.setTips.map((tip: string, i: number) => (
+                          <div key={i} style={{ fontSize: 12, color: "var(--text-muted)", padding: "4px 0", borderBottom: i < generatedPlan.setTips.length - 1 ? "1px solid rgba(255,255,255,0.04)" : "none" }}>• {tip}</div>
+                        ))}
+                      </div>
+                    )}
+                    {generatedPlan.complianceNotes?.length > 0 && (
+                      <div style={{ background: "rgba(255,152,0,0.04)", border: "1px solid rgba(255,152,0,0.2)", borderRadius: 10, padding: 14 }}>
+                        <div style={{ fontSize: 11, fontWeight: 800, color: "#ff9800", marginBottom: 8 }}>⚠️ Compliance Notes</div>
+                        {generatedPlan.complianceNotes.map((note: string, i: number) => (
+                          <div key={i} style={{ fontSize: 12, color: "var(--text-muted)", padding: "4px 0" }}>• {note}</div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Prompt Cards */}
+                <div>
+                  <div style={{ fontSize: 12, fontWeight: 800, textTransform: "uppercase", color: "var(--text-muted)", marginBottom: 12, letterSpacing: "0.06em" }}>
+                    📝 Generated Prompts ({generatedPlan.prompts?.length ?? 0})
+                  </div>
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(400px, 1fr))", gap: 12 }}>
+                    {(generatedPlan.prompts || []).map((p, idx) => (
+                      <div key={p.id || idx} style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 12, padding: 16 }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                            <span style={{ fontSize: 11, fontWeight: 900, color: "#4a90e2" }}>#{idx + 1}</span>
+                            <span style={{ fontSize: 13, fontWeight: 700 }}>{p.label}</span>
+                          </div>
+                          <div style={{ display: "flex", gap: 5 }}>
+                            <button type="button" onClick={() => handleRenderSvg(p.prompt, p.label)} style={{ padding: "5px 12px", background: "rgba(74,144,226,0.15)", border: "1px solid rgba(74,144,226,0.3)", borderRadius: 6, cursor: "pointer", fontSize: 11, fontWeight: 700, color: "#4a90e2" }}>🎨 Render Visual</button>
+                            <button type="button" onClick={() => copyToClipboard(p.prompt, p.id)} style={{ padding: "5px 10px", background: copiedId === p.id ? "rgba(76,175,80,0.15)" : "rgba(255,255,255,0.04)", border: "1px solid var(--border)", borderRadius: 6, cursor: "pointer", fontSize: 11, fontWeight: 700, color: copiedId === p.id ? "#4caf50" : "var(--text-muted)" }}>
+                              {copiedId === p.id ? "✓" : "📋"}
+                            </button>
+                          </div>
+                        </div>
+
+                        <div style={{ background: "rgba(74,144,226,0.04)", border: "1px solid rgba(74,144,226,0.15)", borderRadius: 8, padding: 10, marginBottom: 10 }}>
+                          <div style={{ fontSize: 10, color: "#4a90e2", fontWeight: 700, marginBottom: 4 }}>PROMPT</div>
+                          <p style={{ fontSize: 12, margin: 0, lineHeight: "1.5" }}>{p.prompt}</p>
+                        </div>
+
+                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 10 }}>
+                          <div>
+                            <div style={{ fontSize: 10, color: "var(--text-muted)", fontWeight: 700, marginBottom: 3 }}>ADOBE STOCK TITLE</div>
+                            <div style={{ fontSize: 12, fontWeight: 600 }}>{p.metadata?.title}</div>
+                          </div>
+                          <div>
+                            <div style={{ fontSize: 10, color: "var(--text-muted)", fontWeight: 700, marginBottom: 3 }}>SPECS</div>
+                            <div style={{ fontSize: 11, color: "var(--text-muted)" }}>{p.technicalSpec?.ratio} · {p.technicalSpec?.complexity} · {p.technicalSpec?.colorCount} warna</div>
+                          </div>
+                        </div>
+
+                        <div>
+                          <div style={{ fontSize: 10, color: "var(--text-muted)", fontWeight: 700, marginBottom: 6 }}>KEYWORDS ({p.metadata?.keywords?.length ?? 0})</div>
+                          <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
+                            {(p.metadata?.keywords || []).slice(0, 14).map((k: string) => (
+                              <span key={k} className="keyword-tag" style={{ fontSize: 10 }}>{k}</span>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+          </>
+        )}
+
+        {/* ═══════════════════════════════════════
+            SVG BEFORE/AFTER VIEWER
+            (muncul di semua tab saat ada SVG)
+        ═══════════════════════════════════════ */}
+        {(isGeneratingSvg || beforeSvg || afterSvg) && (
+          <div style={{ background: "rgba(255,255,255,0.01)", border: "1px solid var(--border)", borderRadius: 14, padding: 18 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14, flexWrap: "wrap", gap: 10 }}>
+              <div>
+                <div style={{ fontSize: 11, fontWeight: 900, color: "#4a90e2", textTransform: "uppercase", letterSpacing: "0.05em" }}>🖥️ Vector Sandbox — Before / After Editor</div>
+                <div style={{ fontSize: 14, fontWeight: 700, marginTop: 3 }}>{svgTitle || "Memproses asset..."}</div>
+              </div>
+              {afterSvg && (
+                <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                  <select value={downloadRes} onChange={(e) => setDownloadRes(e.target.value as ResolutionOpt)} style={{ padding: "5px 8px", borderRadius: 6, border: "1px solid var(--border)", background: "var(--surface)", fontSize: 11, fontWeight: 700, color: "var(--text)" }}>
+                    <option value="1k">1K (1024px)</option>
+                    <option value="2k">2K (2048px)</option>
+                    <option value="3k">3K (3072px)</option>
+                    <option value="4k">4K Ultra HD</option>
+                    <option value="svg">SVG (Vector Asli)</option>
+                  </select>
+                  <button onClick={() => handleDownloadImage(beforeSvg, "before")} style={{ padding: "6px 13px", background: "rgba(255,255,255,0.04)", border: "1px solid var(--border)", borderRadius: 7, cursor: "pointer", fontSize: 11, fontWeight: 700 }}>💾 Download Before</button>
+                  <button onClick={() => handleDownloadImage(afterSvg, "after")} style={{ padding: "6px 13px", background: "linear-gradient(135deg, #4a90e2, #7b5ae0)", border: "none", borderRadius: 7, cursor: "pointer", fontSize: 11, fontWeight: 700, color: "white" }}>🚀 Download After</button>
+                </div>
+              )}
+            </div>
+
+            {isGeneratingSvg && (
+              <div style={{ height: 360, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.2)", borderRadius: 12, gap: 12 }}>
+                <div style={{ fontSize: 30 }} className="animate-spin">🔄</div>
+                <div style={{ fontSize: 13, color: "var(--text-muted)" }}>Menggambar vektor Before & After… (5-10 detik)</div>
+              </div>
+            )}
+
+            {!isGeneratingSvg && beforeSvg && afterSvg && (
+              <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+                {/* Slider */}
+                <div ref={containerRef} style={{ position: "relative", width: "100%", height: 440, borderRadius: 12, overflow: "hidden", background: "#0d0d0d", cursor: "ew-resize", userSelect: "none" }} onPointerDown={handlePointerDown}>
+                  <div style={{ position: "absolute", inset: 0, pointerEvents: "none" }} dangerouslySetInnerHTML={{ __html: beforeSvg }} />
+                  <div style={{ position: "absolute", top: 0, left: 0, width: `${sliderPosition}%`, height: "100%", overflow: "hidden", borderRight: "2px solid #4a90e2", pointerEvents: "none", zIndex: 2 }}>
+                    <div style={{ width: containerRef.current?.getBoundingClientRect().width || 800, height: "100%" }} dangerouslySetInnerHTML={{ __html: afterSvg }} />
+                  </div>
+                  <div style={{ position: "absolute", top: 12, right: 12, background: "rgba(0,0,0,0.65)", color: "white", padding: "4px 10px", borderRadius: 5, fontSize: 10, fontWeight: 700, zIndex: 5 }}>BEFORE (WIREFRAME)</div>
+                  <div style={{ position: "absolute", top: 12, left: 12, background: "rgba(74,144,226,0.85)", color: "white", padding: "4px 10px", borderRadius: 5, fontSize: 10, fontWeight: 700, zIndex: 5 }}>AFTER (HD VECTOR)</div>
+                  <div style={{ position: "absolute", top: 0, bottom: 0, left: `${sliderPosition}%`, width: 2, background: "#4a90e2", cursor: "ew-resize", transform: "translateX(-50%)", zIndex: 3 }}>
+                    <div style={{ position: "absolute", top: "50%", left: "50%", width: 36, height: 36, background: "#4a90e2", border: "3px solid white", borderRadius: "50%", transform: "translate(-50%, -50%)", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 2px 10px rgba(0,0,0,0.5)", fontSize: 11, color: "white", fontWeight: 900 }}>↔</div>
+                  </div>
+                </div>
+
+                {/* Color Sandbox */}
+                <div style={{ background: "rgba(255,255,255,0.02)", border: "1px solid var(--border)", borderRadius: 10, padding: 14 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10, flexWrap: "wrap", gap: 8 }}>
+                    <span style={{ fontSize: 11, fontWeight: 800, color: "var(--text-muted)" }}>🎨 Color Tweak Sandbox</span>
+                    <div style={{ display: "flex", gap: 5 }}>
+                      <button onClick={() => applyPaletteFilter("grayscale")} style={{ padding: "4px 9px", fontSize: 10, background: "rgba(255,255,255,0.03)", border: "1px solid var(--border)", borderRadius: 4, cursor: "pointer" }}>Grayscale</button>
+                      <button onClick={() => applyPaletteFilter("cyberpunk")} style={{ padding: "4px 9px", fontSize: 10, background: "rgba(157,0,255,0.12)", border: "1px solid rgba(157,0,255,0.3)", borderRadius: 4, cursor: "pointer", color: "#9d00ff", fontWeight: 700 }}>Cyberpunk</button>
+                      <button onClick={() => applyPaletteFilter("sunset")} style={{ padding: "4px 9px", fontSize: 10, background: "rgba(255,59,0,0.12)", border: "1px solid rgba(255,59,0,0.3)", borderRadius: 4, cursor: "pointer", color: "#ff3b00", fontWeight: 700 }}>Sunset</button>
+                      <button onClick={() => applyPaletteFilter("forest")} style={{ padding: "4px 9px", fontSize: 10, background: "rgba(43,140,86,0.12)", border: "1px solid rgba(43,140,86,0.3)", borderRadius: 4, cursor: "pointer", color: "#2b8c56", fontWeight: 700 }}>Forest</button>
+                    </div>
+                  </div>
+                  {detectedColors.length === 0 ? (
+                    <div style={{ fontSize: 11, color: "var(--text-muted)" }}>Tidak ada warna terdeteksi di SVG ini.</div>
+                  ) : (
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
+                      {detectedColors.map((color) => (
+                        <div key={color} style={{ display: "flex", alignItems: "center", gap: 5, background: "rgba(255,255,255,0.03)", padding: "4px 8px", borderRadius: 6, border: "1px solid var(--border)" }}>
+                          <div style={{ width: 14, height: 14, borderRadius: 3, background: color, border: "1px solid rgba(255,255,255,0.15)" }} />
+                          <span style={{ fontSize: 10, fontFamily: "monospace" }}>{color}</span>
+                          <input type="color" value={color} onChange={(e) => handleColorReplace(color, e.target.value)} style={{ width: 20, height: 16, border: "none", background: "none", cursor: "pointer", padding: 0 }} />
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* SVG Code Inspector */}
+                <div>
+                  <button type="button" onClick={() => setShowCodeInspector(!showCodeInspector)} style={{ background: "none", border: "none", color: "#4a90e2", fontSize: 11, fontWeight: 800, cursor: "pointer", padding: 0 }}>
+                    {showCodeInspector ? "▼ Tutup SVG Inspector" : "▶ SVG Code Inspector & Editor Manual"}
+                  </button>
+                  {showCodeInspector && (
+                    <div style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: 8 }}>
+                      <textarea value={editableSvgCode} onChange={(e) => { setEditableSvgCode(e.target.value); setAfterSvg(e.target.value); }} style={{ width: "100%", height: 200, padding: 10, borderRadius: 8, background: "#0d0d0d", color: "#4af2a1", fontFamily: "monospace", fontSize: 11, border: "1px solid var(--border)", boxSizing: "border-box" }} />
+                      <div style={{ display: "flex", gap: 6 }}>
+                        <button onClick={prettifySvgCode} style={{ padding: "6px 12px", background: "rgba(255,255,255,0.03)", border: "1px solid var(--border)", borderRadius: 6, cursor: "pointer", fontSize: 11, fontWeight: 700 }}>Prettify Code</button>
+                        <button onClick={cleanSvgCode} style={{ padding: "6px 12px", background: "rgba(255,255,255,0.03)", border: "1px solid var(--border)", borderRadius: 6, cursor: "pointer", fontSize: 11, fontWeight: 700 }}>Clean Metadata</button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ═══════════════════════════════════════
+            TAB: PROMPT COMPOSER
+        ═══════════════════════════════════════ */}
+        {panelTab === "composer" && (
+          <div style={{ display: "flex", flexDirection: "column", gap: 16, border: "1px solid var(--border)", borderRadius: 12, padding: 18, background: "rgba(255,255,255,0.01)" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <span style={{ fontSize: 14, fontWeight: 900, color: "#4a90e2" }}>⚙️ Advanced Prompt Composer</span>
+              <button onClick={handleSurpriseMe} style={{ padding: "7px 16px", background: "linear-gradient(135deg, #7b5ae0, #4a90e2)", border: "none", borderRadius: 20, color: "white", fontSize: 12, fontWeight: 800, cursor: "pointer" }}>🎲 Surprise Me!</button>
+            </div>
+
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+              {[
+                { label: "1. Subject & Scene", state: compSubject, setter: setCompSubject, options: COMPOSER_BANK.subjects },
+                { label: "2. Aesthetic & Layout", state: compAesthetic, setter: setCompAesthetic, options: COMPOSER_BANK.aesthetics },
+                { label: "3. Background Design", state: compBackground, setter: setCompBackground, options: COMPOSER_BANK.backgrounds },
+                { label: "4. Shading & Lighting", state: compLighting, setter: setCompLighting, options: COMPOSER_BANK.lightings },
+              ].map(({ label, state, setter, options }) => (
+                <div key={label}>
+                  <label style={{ fontSize: 11, color: "var(--text-muted)", display: "block", marginBottom: 5, fontWeight: 600 }}>{label}</label>
+                  <select value={state} onChange={(e) => setter(e.target.value)} style={{ width: "100%", padding: "9px 10px", borderRadius: 8, border: "1px solid var(--border)", background: "var(--surface)", color: "var(--text)", fontSize: 12 }}>
+                    {options.map((o) => <option key={o} value={o}>{o}</option>)}
+                  </select>
+                </div>
+              ))}
+            </div>
+
+            <div style={{ background: "rgba(74,144,226,0.05)", border: "1px solid rgba(74,144,226,0.2)", borderRadius: 10, padding: 14 }}>
+              <span style={{ fontSize: 10, color: "#4a90e2", fontWeight: 700, display: "block", marginBottom: 5, textTransform: "uppercase" }}>Composed Prompt Preview</span>
+              <p style={{ fontSize: 13, margin: 0, lineHeight: "1.6", color: "var(--text)" }}>{getComposedPrompt()}</p>
+            </div>
+
+            <div style={{ display: "flex", gap: 10 }}>
+              <button onClick={() => { setMode("composer"); setPanelTab("generate"); }} style={{ flex: 1, padding: "11px", background: "#4a90e2", border: "none", borderRadius: 8, color: "white", fontWeight: 800, fontSize: 13, cursor: "pointer" }}>Gunakan Prompt Ini → Generate</button>
+              <button onClick={addToQueue} style={{ padding: "11px 18px", background: "rgba(255,255,255,0.03)", border: "1px solid var(--border)", borderRadius: 8, color: "var(--text-muted)", fontWeight: 700, fontSize: 12, cursor: "pointer" }}>📥 Add to Queue</button>
+            </div>
+          </div>
+        )}
+
+        {/* ═══════════════════════════════════════
+            TAB: MAGIC IDEAS
+        ═══════════════════════════════════════ */}
+        {panelTab === "magic" && (
+          <>
+            <div style={{ background: "linear-gradient(135deg, rgba(123,90,224,0.08), rgba(74,144,226,0.05))", border: "1px solid rgba(123,90,224,0.2)", borderRadius: 12, padding: 18 }}>
+              <div style={{ fontSize: 14, fontWeight: 800, color: "#7b5ae0", marginBottom: 6 }}>✨ Magic Ideas Generator</div>
+              <p style={{ fontSize: 13, color: "var(--text-muted)", margin: "0 0 14px 0" }}>AI menghasilkan 6 konsep vector komersial siap pakai berdasarkan tema & style yang aktif.</p>
+              <button type="button" onClick={handleMagic} disabled={isMagicking} style={{ width: "100%", padding: "14px", background: isMagicking ? "rgba(123,90,224,0.3)" : "linear-gradient(135deg, #7b5ae0, #4a90e2)", border: "none", borderRadius: 10, cursor: isMagicking ? "not-allowed" : "pointer", color: "white", fontWeight: 900, fontSize: 15, boxShadow: isMagicking ? "none" : "0 4px 20px rgba(123,90,224,0.3)" }}>
+                {isMagicking ? "✨ AI sedang brainstorming..." : "✨ Generate Magic Ideas"}
+              </button>
+            </div>
+
+            {magicIdeas.length > 0 && (
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))", gap: 12 }}>
+                {magicIdeas.map((idea, idx) => (
+                  <div key={idea.id || idx} style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 12, padding: 16, display: "flex", flexDirection: "column" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
+                      <span style={{ fontSize: 10, padding: "2px 8px", background: idea.difficulty === "Easy" ? "rgba(76,175,80,0.1)" : idea.difficulty === "Medium" ? "rgba(255,152,0,0.1)" : "rgba(255,77,79,0.1)", color: idea.difficulty === "Easy" ? "#4caf50" : idea.difficulty === "Medium" ? "#ff9800" : "#ff4d4f", borderRadius: 4, fontWeight: 700 }}>{idea.difficulty}</span>
+                      <span style={{ fontSize: 10, color: "#4caf50", fontWeight: 800 }}>{idea.estimatedSales}</span>
+                    </div>
+                    <h4 style={{ margin: "0 0 8px 0", fontSize: 14, fontWeight: 800 }}>{idea.title}</h4>
+                    <p style={{ fontSize: 12, color: "var(--text-muted)", margin: "0 0 10px 0", lineHeight: "1.5", flex: 1 }}>{idea.description}</p>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 4, marginBottom: 12 }}>
+                      {(idea.tags || []).slice(0, 5).map((tag: string) => (
+                        <span key={tag} className="keyword-tag" style={{ fontSize: 9 }}>{tag}</span>
+                      ))}
+                    </div>
+                    <button type="button" onClick={() => useIdeaAsPrompt(idea)} style={{ width: "100%", padding: "8px", background: "rgba(74,144,226,0.12)", border: "1px solid rgba(74,144,226,0.25)", borderRadius: 8, cursor: "pointer", fontSize: 12, fontWeight: 700, color: "#4a90e2", transition: "all 0.2s" }}>
+                      Gunakan Ide Ini →
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </>
+        )}
+
+        {/* ═══════════════════════════════════════
+            TAB: ANALYTICS
+        ═══════════════════════════════════════ */}
+        {panelTab === "analytics" && (
+          <div style={{ display: "flex", flexDirection: "column", gap: 16, border: "1px solid var(--border)", borderRadius: 12, padding: 18 }}>
+            <div>
+              <div style={{ fontSize: 14, fontWeight: 900, color: "#4a90e2", marginBottom: 4 }}>📊 Stock Market Commercial Analytics</div>
+              <p style={{ fontSize: 12, color: "var(--text-muted)", margin: 0 }}>Analisis pasar untuk konsep vector yang sedang aktif.</p>
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: 10 }}>
+              {[
+                { label: "ESTIMATED STOCK RATING", value: generatedPlan ? "94 / 100" : "—", color: "#4caf50" },
+                { label: "MARKET DEMAND", value: generatedPlan ? "Very High 🔥" : "—", color: "#ff9800" },
+                { label: "COMPETITION INDEX", value: generatedPlan ? "Low Saturation" : "—", color: "#4a90e2" },
+                { label: "EST. LICENSE PRICE", value: generatedPlan ? "$12–$35" : "—", color: "#7b5ae0" },
+              ].map((m) => (
+                <div key={m.label} style={{ background: "rgba(255,255,255,0.02)", border: "1px solid var(--border)", borderRadius: 10, padding: 16 }}>
+                  <span style={{ fontSize: 9, color: "var(--text-muted)", display: "block", fontWeight: 700, marginBottom: 4 }}>{m.label}</span>
+                  <strong style={{ fontSize: 20, color: m.color }}>{m.value}</strong>
+                </div>
+              ))}
+            </div>
+            <div style={{ background: "rgba(255,255,255,0.02)", border: "1px solid var(--border)", borderRadius: 10, padding: 16 }}>
+              <span style={{ fontSize: 10, color: "var(--text-muted)", display: "block", marginBottom: 12, fontWeight: 700 }}>CATEGORY TAG DISTRIBUTION</span>
+              {generatedPlan ? (
+                <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                  {[{ label: "Conceptual Keywords", pct: 40, color: "#4a90e2" }, { label: "Descriptive Tagging", pct: 35, color: "#7b5ae0" }, { label: "Commercial Intent", pct: 25, color: "#4caf50" }].map((bar) => (
+                    <div key={bar.label}>
+                      <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, marginBottom: 5 }}>
+                        <span>{bar.label}</span>
+                        <span style={{ fontWeight: 700 }}>{bar.pct}%</span>
+                      </div>
+                      <div style={{ height: 8, background: "rgba(255,255,255,0.05)", borderRadius: 4, overflow: "hidden" }}>
+                        <div style={{ height: "100%", background: bar.color, width: `${bar.pct}%`, borderRadius: 4 }} />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div style={{ fontSize: 12, color: "var(--text-muted)", textAlign: "center", padding: "20px 0" }}>Belum ada plan aktif. Generate plan terlebih dahulu.</div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* ═══════════════════════════════════════
+            TAB: HISTORY
+        ═══════════════════════════════════════ */}
+        {panelTab === "history" && (
+          <div>
+            <div style={{ fontSize: 13, fontWeight: 800, color: "var(--text-muted)", marginBottom: 14 }}>📋 Riwayat Generate</div>
+            {history.length === 0 ? (
+              <div style={{ textAlign: "center", color: "var(--text-muted)", fontSize: 13, padding: "50px 0" }}>Belum ada riwayat. Coba generate vector terlebih dahulu.</div>
+            ) : (
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 10 }}>
+                {history.map((h) => (
+                  <div key={h.id} style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 10, padding: 14 }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
+                      <span style={{ fontSize: 10, color: "var(--text-muted)" }}>{h.timestamp}</span>
+                      <div style={{ display: "flex", gap: 5 }}>
+                        <span style={{ fontSize: 10, padding: "1px 6px", background: "rgba(74,144,226,0.1)", color: "#4a90e2", borderRadius: 4, fontWeight: 700 }}>{h.style}</span>
+                        <span style={{ fontSize: 10, padding: "1px 6px", background: "rgba(255,255,255,0.04)", borderRadius: 4 }}>{h.ratio}</span>
+                      </div>
+                    </div>
+                    <div style={{ fontWeight: 700, fontSize: 13 }}>{h.conceptTitle}</div>
+                    <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 4 }}>{h.promptCount} prompts · Mode: {h.mode}</div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+      </div>
+    </div>
+  );
+}
+
       background: "var(--surface)",
       border: "1px solid var(--border)",
       borderRadius: 16,
