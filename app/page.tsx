@@ -5,16 +5,18 @@ import ImageUploader from "@/components/ImageUploader";
 import ServerMonitor from "@/components/ServerMonitor";
 import AIChat from "@/components/AIChat";
 import ResearchPanel from "@/components/ResearchPanel";
+import VectorCreator from "@/components/VectorCreator";
 import { useDevice } from "@/lib/useDevice";
 import { useRouter } from "next/navigation";
 import { getUsage, getUsagePercent, getDailyLimit, formatTokens, resetUsage } from "@/lib/tokenStore";
 
-type Tab = "metadata" | "chat" | "research";
+type Tab = "metadata" | "chat" | "research" | "vector";
 const ADMIN_EMAIL = "nixxeltzy@gmail.com";
 
 const TAB_CONFIG: { id: Tab; icon: string; label: string }[] = [
   { id: "metadata", icon: "🏷️", label: "Metadata" },
   { id: "research", icon: "🔎", label: "Riset" },
+  { id: "vector",   icon: "🎨", label: "Vector" },
   { id: "chat",     icon: "🤖", label: "AI Chat" },
 ];
 
@@ -257,6 +259,14 @@ export default function Home() {
             <ImageUploader onTokensUpdated={refreshTokens} />
           ) : activeTab === "research" ? (
             <ResearchPanel />
+          ) : activeTab === "vector" ? (
+            <div style={{ padding: "24px", maxWidth: 1100, margin: "0 auto" }}>
+              <div style={{ marginBottom: 20 }}>
+                <h1 style={{ fontSize: 22, fontWeight: 900, margin: 0 }}>🎨 Vector Creator AI</h1>
+                <p style={{ fontSize: 13, color: "var(--text-muted)", margin: "6px 0 0 0" }}>Buat prompt vector art komersial berkualitas tinggi dengan AI — siap upload ke Adobe Stock</p>
+              </div>
+              <VectorCreator />
+            </div>
           ) : (
             <AIChat onTokensUpdated={refreshTokens} />
           )}
