@@ -1,0 +1,32 @@
+/* Research Panel responsive helpers */
+
+/* Wrapper */
+.research-panel {
+  max-width: 1040px;
+  margin: 0 auto;
+  width: 100%;
+  overflow-x: hidden;
+}
+
+/* Body + Tabs */
+.research-panel__body {
+  overflow-x: hidden;
+}
+
+.research-panel__tabs {
+  flex-wrap: wrap;
+}
+
+/* Grid 3 columns (2fr 1fr 1fr) -> responsive */
+@media (max-width: 900px) {
+  .research-panel__grid-3 {
+    grid-template-columns: 1fr 1fr !important;
+  }
+}
+
+@media (max-width: 600px) {
+  .research-panel__grid-3 {
+    grid-template-columns: 1fr !important;
+  }
+}
+

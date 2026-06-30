@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useRef, useEffect } from "react";
 
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
 // ─────────────────────────────────────────────────────────────────────────────
@@ -550,10 +551,10 @@ export default function VectorCreator() {
   const prettifySvgCode = () => {
     try {
       let formatted = "";
-      let reg = /(>)(<)(\/*)/g;
-      let xml = editableSvgCode.replace(reg, "$1\\r\\n$2$3");
+      const reg = /(>)(<)(\/*)/g;
+      let xml = editableSvgCode.replace(reg, "$1\n$2$3");
       let pad = 0;
-      xml.split("\\r\\n").forEach((node) => {
+      xml.split("\n").forEach((node) => {
         let indent = 0;
         if (node.match(/.+<\/\w[^>]*>$/)) {
           indent = 0;
@@ -565,7 +566,7 @@ export default function VectorCreator() {
           indent = 0;
         }
 
-        formatted += "  ".repeat(pad) + node + "\\r\\n";
+        formatted += "  ".repeat(pad) + node + "\n";
         pad += indent;
       });
       setEditableSvgCode(formatted.trim());
@@ -576,7 +577,8 @@ export default function VectorCreator() {
   const cleanSvgCode = () => {
     let clean = editableSvgCode
       .replace(/<!--[\s\S]*?-->/g, "")
-      .replace(/metadata|defs[^\/>]*\/>/gi, "")
+      .replace(/<metadata>[\s\S]*?<\/metadata>/gi, "")
+      .replace(/<defs>[\s\S]*?<\/defs>/gi, "")
       .trim();
     setEditableSvgCode(clean);
     setAfterSvg(clean);

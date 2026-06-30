@@ -1,0 +1,32 @@
+/* VectorCreator — styling utilities for responsive layout */
+
+.vector-creator {
+  width: 100%;
+}
+
+.vector-creator__tabs {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+@media (max-width: 768px) {
+  .vector-creator__top-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .vector-creator__control-grid {
+    grid-template-columns: 1fr !important;
+    gap: 14px !important;
+  }
+
+  .vector-creator__btn {
+    width: 100% !important;
+  }
+}
+
+/* Ensure textarea doesn't overflow */
+.vector-creator textarea {
+  max-width: 100%;
+}
+

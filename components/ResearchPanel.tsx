@@ -2,6 +2,10 @@
 
 import { useMemo, useState } from "react";
 
+// Note: UI responsif berada di app/research-panel.css
+
+
+
 type Concept = {
   id: string;
   title: string;
@@ -350,7 +354,9 @@ export default function ResearchPanel() {
   const displayEvents = customEvents.length > 0 ? customEvents : fallbackEvents;
 
   return (
-    <div className="uploader" style={{ paddingTop: 22 }}>
+    <div className="uploader research-panel" style={{ paddingTop: 22 }}>
+
+
       <div className="uploader__hero" style={{ marginBottom: 18 }}>
         <h2>Riset Pasar Adobe Stock (AI Autopilot 100%)</h2>
         <p>
@@ -360,7 +366,8 @@ export default function ResearchPanel() {
       </div>
 
       {/* Tabs */}
-      <div className="mon-tabs" style={{ paddingLeft: 0, paddingRight: 0 }}>
+      <div className="mon-tabs research-panel__tabs" style={{ paddingLeft: 0, paddingRight: 0 }}>
+
         <button className={`mon-tab ${tab === "concepts" ? "mon-tab--active" : ""}`} onClick={() => setTab("concepts")}>
           🔥 Konsep Terlaris (Ribuan Unduhan)
         </button>
@@ -381,7 +388,8 @@ export default function ResearchPanel() {
         </div>
       )}
 
-      <div className="mon-body" style={{ paddingTop: 14 }}>
+      <div className="mon-body research-panel__body" style={{ paddingTop: 14 }}>
+
         
         {/* ─────────────────────────────────────────────────────────────────────
             TAB: CONCEPTS (Konsep Terlaris)
@@ -555,8 +563,10 @@ export default function ResearchPanel() {
             {/* Narrative Analyst Dashboard (Autopilot/Discovery Output) */}
             {autopilotResult && (
               <>
-                <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr", gap: 12, marginBottom: 14 }}>
+                <div className="research-panel__grid-3" style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr", gap: 12, marginBottom: 14 }}>
+
                   {autopilotResult.trendDiscovered && (
+
                     <div style={{ background: "linear-gradient(135deg, rgba(74,144,226,0.15) 0%, rgba(80,227,194,0.05) 100%)", border: "1px solid rgba(74,144,226,0.3)", borderRadius: 12, padding: 16 }}>
                       <span style={{ fontSize: 9, fontWeight: 800, color: "#4a90e2", textTransform: "uppercase", letterSpacing: "0.08em" }}>🎯 Tren Terlaris Ditemukan</span>
                       <h3 style={{ margin: "5px 0 0 0", fontSize: 16, fontWeight: 900 }}>{autopilotResult.trendDiscovered}</h3>
@@ -808,7 +818,8 @@ export default function ResearchPanel() {
             {/* Custom AI Template Set Output */}
             {customTemplateSet && (
               <>
-                <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr", gap: 12, marginBottom: 14 }}>
+                <div className="research-panel__grid-3" style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr", gap: 12, marginBottom: 14 }}>
+
                   <div style={{ background: "rgba(74,144,226,0.05)", border: "1px solid rgba(74,144,226,0.2)", borderRadius: 12, padding: 16 }}>
                     <span style={{ fontSize: 9, fontWeight: 800, color: "#4a90e2", textTransform: "uppercase" }}>📐 Tema Set</span>
                     <h3 style={{ margin: "5px 0 0 0", fontSize: 16, fontWeight: 900 }}>{customTemplateSet.theme}</h3>
