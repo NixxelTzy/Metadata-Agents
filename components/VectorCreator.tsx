@@ -197,13 +197,13 @@ const STATIC_MAGIC_IDEAS: MagicIdea[] = [
 // ── Toggle Component ─────────────────────────────────────────────────────────
 function Toggle({ value, onChange, label, desc }: { value: boolean; onChange: (v: boolean) => void; label: string; desc?: string }) {
   return (
-    <div onClick={() => onChange(!value)} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 14px", background: value ? "rgba(74,144,226,0.08)" : "rgba(255,255,255,0.02)", border: `1px solid ${value ? "rgba(74,144,226,0.3)" : "var(--border)"}`, borderRadius: 10, cursor: "pointer", transition: "all 0.2s", userSelect: "none" }}>
-      <div>
-        <div style={{ fontWeight: 700, fontSize: 13 }}>{label}</div>
-        {desc && <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 2 }}>{desc}</div>}
+    <div className={`vc-toggle ${value ? "vc-toggle--active" : ""}`} onClick={() => onChange(!value)}>
+      <div className="vc-toggle__text-group">
+        <div className="vc-toggle__label">{label}</div>
+        {desc && <div className="vc-toggle__desc">{desc}</div>}
       </div>
-      <div style={{ width: 42, height: 22, background: value ? "#4a90e2" : "rgba(255,255,255,0.1)", borderRadius: 11, position: "relative", transition: "all 0.25s", flexShrink: 0, marginLeft: 12 }}>
-        <div style={{ position: "absolute", top: 2, left: value ? 22 : 2, width: 18, height: 18, background: "white", borderRadius: "50%", transition: "left 0.25s", boxShadow: "0 1px 3px rgba(0,0,0,0.3)" }} />
+      <div className="vc-toggle__switch">
+        <div className="vc-toggle__knob" />
       </div>
     </div>
   );
@@ -436,30 +436,21 @@ export default function VectorCreator() {
     img.src = url;
   };
 
-  // ── Render ──────────────────────────────────────────────────────────────────
-  const S = { // inline style helpers
-    panel: { background:"var(--surface)", border:"1px solid var(--border)", borderRadius:16, padding:"22px 24px", display:"flex", flexDirection:"column" as const, gap:18 },
-    label: { fontSize:11, fontWeight:800 as const, color:"var(--text-muted)", textTransform:"uppercase" as const, letterSpacing:"0.07em", display:"block" as const, marginBottom:7 },
-    chip: (active: boolean, color="74,144,226") => ({ padding:"9px 14px", background: active?`rgba(${color},0.15)`:"rgba(255,255,255,0.02)", border:`1px solid ${active?`rgba(${color},0.7)`:"var(--border)"}`, borderRadius:10, cursor:"pointer", fontWeight: active?800:500, fontSize:12, color: active?`rgba(${color},1)`:"var(--text)", transition:"all 0.18s" }),
-    input: { width:"100%", padding:"11px 14px", borderRadius:9, border:"1px solid var(--border)", background:"var(--surface)", color:"var(--text)", fontSize:13, outline:"none" as const },
-    gridBtn: (active: boolean) => ({ padding:"10px 6px", background: active?"rgba(74,144,226,0.14)":"rgba(255,255,255,0.02)", border:`1px solid ${active?"#4a90e2":"var(--border)"}`, borderRadius:9, cursor:"pointer", textAlign:"center" as const, transition:"all 0.18s" }),
-  };
-
   return (
-    <div style={{ display:"flex", flexDirection:"column", gap:24, width:"100%", paddingBottom:40 }}>
+    <div className="vc-container">
 
       {/* ── Header ─────────────────────────────────────────────────────────── */}
-      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", flexWrap:"wrap", gap:16 }}>
-        <div>
-          <h1 style={{ fontSize:22, fontWeight:900, margin:0, display:"flex", alignItems:"center", gap:8 }}>
+      <div className="vc-header">
+        <div className="vc-header__title-group">
+          <h1>
             🎨 Vector Studio AI
-            <span style={{ fontSize:11, fontWeight:700, background:"linear-gradient(135deg,#4a90e2,#7b5ae0)", color:"white", padding:"3px 10px", borderRadius:999, letterSpacing:"0.05em" }}>PRO</span>
+            <span className="vc-header__pro-badge">PRO</span>
           </h1>
-          <p style={{ fontSize:13, color:"var(--text-muted)", margin:"5px 0 0" }}>
+          <p className="vc-header__subtitle">
             Platform pembuatan vector komersial HD 1K–4K berbasis AI · Adobe Stock-ready metadata otomatis
           </p>
         </div>
-        <div style={{ display:"flex", background:"rgba(255,255,255,0.03)", padding:4, borderRadius:12, border:"1px solid var(--border)", flexWrap:"wrap", gap:2 }}>
+        <div className="mon-tabs">
           {([
             { id:"generate" as PanelTab,  label:"⚡ Studio"   },
             { id:"composer" as PanelTab,  label:"⚙️ Composer" },
@@ -467,7 +458,7 @@ export default function VectorCreator() {
             { id:"analytics"as PanelTab,  label:"📈 Analytics"},
             { id:"history"  as PanelTab,  label:`📋 History (${history.length})` },
           ]).map(t => (
-            <button key={t.id} type="button" onClick={() => setPanelTab(t.id)} style={{ padding:"8px 14px", background:panelTab===t.id?"#4a90e2":"transparent", border:"none", borderRadius:8, cursor:"pointer", color:panelTab===t.id?"white":"var(--text-muted)", fontWeight:panelTab===t.id?800:500, fontSize:12, transition:"all 0.2s", whiteSpace:"nowrap" as const }}>
+            <button key={t.id} type="button" onClick={() => setPanelTab(t.id)} className={`mon-tab ${panelTab === t.id ? "mon-tab--active" : ""}`}>
               {t.label}
             </button>
           ))}
@@ -475,49 +466,49 @@ export default function VectorCreator() {
       </div>
 
       {/* ── Error ──────────────────────────────────────────────────────────── */}
-      {error && <div style={{ color:"#ff4d4f", background:"rgba(255,77,79,0.08)", padding:"12px 16px", borderRadius:10, fontSize:13, border:"1px solid rgba(255,77,79,0.2)" }}>⚠️ {error}</div>}
+      {error && <div className="vc-error">⚠️ {error}</div>}
 
       {/* ── GENERATE TAB ───────────────────────────────────────────────────── */}
       {panelTab === "generate" && (
-        <div style={{ ...S.panel }}>
+        <div className="vc-panel">
 
           {/* Mode selector */}
-          <div style={{ display:"flex", alignItems:"center", gap:10, flexWrap:"wrap" }}>
-            <span style={S.label}>Mode:</span>
+          <div className="vc-chip-group">
+            <span className="vc-field-label" style={{ marginBottom: 0 }}>Mode:</span>
             {[
               { v:"noprompt" as VectorMode, label:"🤖 Autopilot (No Prompt)" },
               { v:"prompt"   as VectorMode, label:"✍️ Custom Prompt"         },
             ].map(m => (
-              <button key={m.v} type="button" onClick={() => setMode(m.v)} style={S.chip(mode===m.v)}>{m.label}</button>
+              <button key={m.v} type="button" onClick={() => setMode(m.v)} className={`vc-chip ${mode === m.v ? "vc-chip--active" : ""}`}>{m.label}</button>
             ))}
-            <div style={{ marginLeft:"auto", display:"flex", gap:8 }}>
-              <button onClick={() => setFaceless(!faceless)} style={S.chip(faceless,"255,152,0")}>🙈 Faceless</button>
-              <button onClick={() => setConsistency(!consistency)} style={S.chip(consistency)}>🔗 Consistency</button>
+            <div style={{ marginLeft:"auto" }} className="vc-chip-group">
+              <button onClick={() => setFaceless(!faceless)} className={`vc-chip ${faceless ? "vc-chip--active vc-chip--toggle" : ""}`}>🙈 Faceless</button>
+              <button onClick={() => setConsistency(!consistency)} className={`vc-chip ${consistency ? "vc-chip--active" : ""}`}>🔗 Consistency</button>
             </div>
           </div>
 
           {/* Style + Ratio */}
-          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:20 }}>
+          <div className="vc-grid-2">
             <div>
-              <span style={S.label}>Style Vector</span>
-              <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:8 }}>
+              <span className="vc-field-label">Style Vector</span>
+              <div className="vc-grid-3">
                 {STYLE_OPTIONS.map(s => (
-                  <button key={s.value} type="button" onClick={() => setStyle(s.value)} style={S.chip(style===s.value,"123,90,224")}>
-                    <div style={{ fontSize:18, marginBottom:3 }}>{s.icon}</div>
-                    <div style={{ fontWeight:800, fontSize:11 }}>{s.label}</div>
-                    <div style={{ fontSize:10, color:"var(--text-muted)", marginTop:2, lineHeight:1.3 }}>{s.desc.split(",")[0]}</div>
+                  <button key={s.value} type="button" onClick={() => setStyle(s.value)} className={`vc-chip vc-style-card ${style === s.value ? "vc-chip--active vc-chip--style" : ""}`}>
+                    <div className="vc-style-card__icon">{s.icon}</div>
+                    <div className="vc-style-card__label">{s.label}</div>
+                    <div className="vc-style-card__desc">{s.desc.split(",")[0]}</div>
                   </button>
                 ))}
               </div>
             </div>
             <div>
-              <span style={S.label}>Aspect Ratio</span>
-              <div style={{ display:"grid", gridTemplateColumns:"repeat(6,1fr)", gap:6 }}>
+              <span className="vc-field-label">Aspect Ratio</span>
+              <div className="vc-grid-6">
                 {ASPECT_RATIOS.map(r => (
-                  <button key={r.value} type="button" onClick={() => setRatio(r.value)} style={S.gridBtn(ratio===r.value)}>
-                    <div style={{ fontSize:15 }}>{r.icon}</div>
-                    <div style={{ fontSize:11, fontWeight:800, color:ratio===r.value?"#4a90e2":"var(--text)", marginTop:2 }}>{r.value}</div>
-                    <div style={{ fontSize:9, color:"var(--text-muted)" }}>{r.label}</div>
+                  <button key={r.value} type="button" onClick={() => setRatio(r.value)} className={`vc-ratio-btn ${ratio === r.value ? "vc-ratio-btn--active" : ""}`}>
+                    <div className="vc-ratio-btn__icon">{r.icon}</div>
+                    <div className="vc-ratio-btn__value">{r.value}</div>
+                    <div className="vc-ratio-btn__label">{r.label}</div>
                   </button>
                 ))}
               </div>
@@ -525,26 +516,26 @@ export default function VectorCreator() {
           </div>
 
           {/* Color + Settings row */}
-          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:14 }}>
+          <div className="vc-grid-3">
             <div>
-              <span style={S.label}>Color Palette</span>
-              <select value={colorPalette} onChange={e => setColorPalette(e.target.value)} style={S.input}>
+              <span className="vc-field-label">Color Palette</span>
+              <select value={colorPalette} onChange={e => setColorPalette(e.target.value)} className="vc-select">
                 {PALETTE_PRESETS.map(p => <option key={p} value={p}>{p}</option>)}
               </select>
             </div>
             <div>
-              <span style={S.label}>Complexity</span>
-              <select value={complexity} onChange={e => setComplexity(e.target.value as Complexity)} style={S.input}>
+              <span className="vc-field-label">Complexity</span>
+              <select value={complexity} onChange={e => setComplexity(e.target.value as Complexity)} className="vc-select">
                 <option value="simple">Simple — Clean icons, minimal shapes</option>
                 <option value="medium">Medium — Detailed illustration with props</option>
                 <option value="complex">Complex — Scene with multiple elements & depth</option>
               </select>
             </div>
             <div>
-              <span style={S.label}>Jumlah Prompt Output</span>
-              <div style={{ display:"flex", gap:6 }}>
+              <span className="vc-field-label">Jumlah Prompt Output</span>
+              <div className="vc-grid-4">
                 {[2,4,6,8].map(n => (
-                  <button key={n} type="button" onClick={() => setPromptCount(n)} style={{ ...S.chip(promptCount===n), flex:1, textAlign:"center" as const, padding:"9px 4px" }}>{n}</button>
+                  <button key={n} type="button" onClick={() => setPromptCount(n)} className={`vc-chip ${promptCount === n ? "vc-chip--active" : ""}`}>{n}</button>
                 ))}
               </div>
             </div>
@@ -552,10 +543,10 @@ export default function VectorCreator() {
 
           {/* Target Use */}
           <div>
-            <span style={S.label}>Target Platform</span>
-            <div style={{ display:"flex", flexWrap:"wrap", gap:6 }}>
+            <span className="vc-field-label">Target Platform</span>
+            <div className="vc-chip-group">
               {TARGET_USE_OPTIONS.map(t => (
-                <button key={t} type="button" onClick={() => setTargetUse(t)} style={{ ...S.chip(targetUse===t), padding:"6px 12px" }}>{t}</button>
+                <button key={t} type="button" onClick={() => setTargetUse(t)} className={`vc-chip ${targetUse === t ? "vc-chip--active" : ""}`}>{t}</button>
               ))}
             </div>
           </div>
@@ -563,40 +554,39 @@ export default function VectorCreator() {
           {/* Theme / Prompt input */}
           {mode === "noprompt" ? (
             <div>
-              <div style={{ display:"flex", justifyContent:"space-between", marginBottom:8 }}>
-                <span style={S.label}>Tema Vector Komersial</span>
-                <input value={customTheme} onChange={e => setCustomTheme(e.target.value)} placeholder="atau ketik tema custom..." style={{ ...S.input, width:"50%", fontSize:12 }} />
+              <div className="vc-header" style={{ alignItems: "center", marginBottom: 4 }}>
+                <span className="vc-field-label" style={{ marginBottom: 0 }}>Tema Vector Komersial</span>
+                <input value={customTheme} onChange={e => setCustomTheme(e.target.value)} placeholder="atau ketik tema custom..." className="vc-input" style={{ width: "auto", flexGrow: 1, maxWidth: "40%" }} />
               </div>
               <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(260px,1fr))", gap:8 }}>
                 {THEME_PRESETS.map(t => (
-                  <button key={t} type="button" onClick={() => { setSelectedTheme(t); setCustomTheme(""); }} style={{ ...S.chip(selectedTheme===t && !customTheme), textAlign:"left" as const, padding:"10px 14px", lineHeight:1.4 }}>{t}</button>
+                  <button key={t} type="button" onClick={() => { setSelectedTheme(t); setCustomTheme(""); }} className={`vc-chip ${selectedTheme === t && !customTheme ? "vc-chip--active" : ""}`} style={{ textAlign: "left" }}>{t}</button>
                 ))}
               </div>
             </div>
           ) : (
             <div>
-              <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:8 }}>
-                <span style={S.label}>Custom Prompt</span>
-                <button type="button" onClick={handleEnhance} disabled={isEnhancing} style={{ background:"none", border:"none", color:"#7b5ae0", fontSize:12, fontWeight:800, cursor:"pointer" }}>
+              <div className="vc-header" style={{ alignItems: "center", marginBottom: 0 }}>
+                <span className="vc-field-label" style={{ marginBottom: 0 }}>Custom Prompt</span>
+                <button type="button" onClick={handleEnhance} disabled={isEnhancing} className="btn btn--ghost" style={{ color: "#7b5ae0" }}>
                   {isEnhancing ? "✨ Enhancing..." : "✨ AI Enhance →"}
                 </button>
               </div>
-              <textarea value={userPrompt} onChange={e => setUserPrompt(e.target.value)}
+              <textarea value={userPrompt} onChange={e => setUserPrompt(e.target.value)} className="vc-textarea"
                 placeholder="Deskripsikan vector yang ingin dibuat secara detail — subjek, gaya, warna, komposisi, mood..."
-                style={{ ...S.input, height:90, resize:"vertical", lineHeight:1.6 }} />
+              />
               {enhancedPrompt && (
-                <div style={{ marginTop:10, background:"rgba(123,90,224,0.06)", border:"1px solid rgba(123,90,224,0.2)", borderRadius:10, padding:14 }}>
-                  <div style={{ fontSize:11, fontWeight:800, color:"#7b5ae0", marginBottom:6 }}>✨ AI-Enhanced Prompt:</div>
-                  <p style={{ fontSize:13, lineHeight:1.6, margin:0 }}>{enhancedPrompt.prompt}</p>
-                  <button onClick={() => setUserPrompt(enhancedPrompt.prompt)} style={{ marginTop:8, padding:"5px 12px", background:"#7b5ae0", border:"none", borderRadius:6, color:"white", fontSize:12, fontWeight:700, cursor:"pointer" }}>Gunakan Prompt Ini</button>
+                <div className="mon-section" style={{ marginTop: 12, background: "rgba(123,90,224,0.06)", borderColor: "rgba(123,90,224,0.2)" }}>
+                  <div className="mon-section__title" style={{ color: "#7b5ae0" }}>✨ AI-Enhanced Prompt:</div>
+                  <p style={{ margin: 0, fontSize: 13, lineHeight: 1.6 }}>{enhancedPrompt.prompt}</p>
+                  <button onClick={() => setUserPrompt(enhancedPrompt.prompt)} className="btn btn--primary" style={{ marginTop: 12, background: "#7b5ae0" }}>Gunakan Prompt Ini</button>
                 </div>
               )}
             </div>
           )}
 
           {/* Generate CTA */}
-          <button type="button" onClick={handleGenerate} disabled={isGenerating}
-            style={{ width:"100%", padding:"18px", background:isGenerating?"rgba(74,144,226,0.3)":"linear-gradient(135deg,#4a90e2 0%,#7b5ae0 100%)", border:"none", borderRadius:12, cursor:isGenerating?"not-allowed":"pointer", color:"white", fontWeight:900, fontSize:16, letterSpacing:"0.02em", boxShadow:"0 6px 24px rgba(74,144,226,0.35)", transition:"all 0.2s" }}>
+          <button type="button" onClick={handleGenerate} disabled={isGenerating} className="vc-generate-btn">
             {isGenerating ? "⏳ AI sedang merancang konsep & metadata..." : "📝 Generate Rencana + Metadata Adobe Stock"}
           </button>
         </div>
@@ -604,12 +594,12 @@ export default function VectorCreator() {
 
       {/* ── COMPOSER TAB ───────────────────────────────────────────────────── */}
       {panelTab === "composer" && (
-        <div style={{ ...S.panel }}>
+        <div className="vc-panel">
           <div>
-            <h3 style={{ margin:"0 0 4px", fontSize:18, fontWeight:900 }}>⚙️ Advanced Prompt Composer</h3>
-            <p style={{ fontSize:13, color:"var(--text-muted)", margin:0 }}>Bangun prompt detail dengan memilih komponen. AI akan menggabungkannya menjadi prompt komersial yang optimal.</p>
+            <h3 className="mon-section__title" style={{ fontSize: 18 }}>⚙️ Advanced Prompt Composer</h3>
+            <p className="vc-header__subtitle">Bangun prompt detail dengan memilih komponen. AI akan menggabungkannya menjadi prompt komersial yang optimal.</p>
           </div>
-          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:16 }}>
+          <div className="vc-grid-2">
             {[
               { label:"Subject / Protagonist", value: compSubject, set: setCompSubject, options: COMPOSER_BANK.subjects },
               { label:"Aesthetic / Art Style",  value: compAesthetic, set: setCompAesthetic, options: COMPOSER_BANK.aesthetics },
@@ -617,23 +607,23 @@ export default function VectorCreator() {
               { label:"Lighting & Atmosphere",    value: compLighting, set: setCompLighting, options: COMPOSER_BANK.lightings },
             ].map(field => (
               <div key={field.label}>
-                <span style={S.label}>{field.label}</span>
-                <select value={field.value} onChange={e => field.set(e.target.value)} style={S.input}>
+                <span className="vc-field-label">{field.label}</span>
+                <select value={field.value} onChange={e => field.set(e.target.value)} className="vc-select">
                   {field.options.map(o => <option key={o} value={o}>{o}</option>)}
                 </select>
               </div>
             ))}
           </div>
-          <div style={{ background:"rgba(74,144,226,0.05)", padding:16, borderRadius:12, border:"1px solid rgba(74,144,226,0.15)" }}>
-            <div style={{ fontSize:11, fontWeight:800, color:"#4a90e2", textTransform:"uppercase", marginBottom:8 }}>Preview Composed Prompt:</div>
-            <p style={{ margin:0, fontSize:13, lineHeight:1.7, color:"var(--text)" }}>{getComposedPrompt()}</p>
+          <div className="mon-section" style={{ background: "rgba(74,144,226,0.05)", borderColor: "rgba(74,144,226,0.15)" }}>
+            <div className="mon-section__title" style={{ color: "#4a90e2" }}>Preview Composed Prompt:</div>
+            <p style={{ margin: 0, fontSize: 13, lineHeight: 1.7 }}>{getComposedPrompt()}</p>
           </div>
-          <div style={{ display:"flex", gap:10 }}>
-            <button type="button" onClick={handleSurpriseMe} style={{ flex:1, padding:"12px", background:"rgba(255,255,255,0.04)", border:"1px solid var(--border)", borderRadius:9, cursor:"pointer", fontWeight:700, fontSize:13 }}>🎲 Acak Semua</button>
-            <button type="button" onClick={() => copyToClipboard(getComposedPrompt(), "composed")} style={{ flex:1, padding:"12px", background:"rgba(255,255,255,0.04)", border:"1px solid var(--border)", borderRadius:9, cursor:"pointer", fontWeight:700, fontSize:13 }}>
+          <div className="vc-grid-3" style={{ gap: 12 }}>
+            <button type="button" onClick={handleSurpriseMe} className="btn btn--secondary">🎲 Acak Semua</button>
+            <button type="button" onClick={() => copyToClipboard(getComposedPrompt(), "composed")} className="btn btn--secondary">
               {copiedId === "composed" ? "✓ Tersalin" : "📋 Copy Prompt"}
             </button>
-            <button type="button" onClick={() => { setUserPrompt(getComposedPrompt()); setMode("prompt"); setPanelTab("generate"); }} style={{ flex:2, padding:"12px", background:"linear-gradient(135deg,#4a90e2,#7b5ae0)", border:"none", borderRadius:9, cursor:"pointer", color:"white", fontWeight:800, fontSize:13 }}>
+            <button type="button" onClick={() => { setUserPrompt(getComposedPrompt()); setMode("prompt"); setPanelTab("generate"); }} className="btn btn--primary">
               Gunakan di Studio →
             </button>
           </div>
@@ -642,42 +632,39 @@ export default function VectorCreator() {
 
       {/* ── MAGIC IDEAS TAB ────────────────────────────────────────────────── */}
       {panelTab === "magic" && (
-        <div style={{ ...S.panel }}>
-          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", flexWrap:"wrap", gap:12 }}>
+        <div className="vc-panel">
+          <div className="vc-header">
             <div>
-              <h3 style={{ margin:"0 0 4px", fontSize:18, fontWeight:900 }}>✨ High-Demand Vector Ideas</h3>
-              <p style={{ fontSize:13, color:"var(--text-muted)", margin:0 }}>Ide vector komersial dengan estimasi penjualan tertinggi di Adobe Stock. Klik ide untuk langsung gunakan sebagai prompt.</p>
+              <h3 className="mon-section__title" style={{ fontSize: 18 }}>✨ High-Demand Vector Ideas</h3>
+              <p className="vc-header__subtitle">Ide vector komersial dengan estimasi penjualan tertinggi di Adobe Stock. Klik ide untuk langsung gunakan sebagai prompt.</p>
             </div>
-            <button type="button" onClick={handleMagic} disabled={isMagicking} style={{ padding:"10px 20px", background:"linear-gradient(135deg,#7b5ae0,#4a90e2)", border:"none", borderRadius:10, cursor:"pointer", color:"white", fontWeight:800, fontSize:13, whiteSpace:"nowrap" as const }}>
+            <button type="button" onClick={handleMagic} disabled={isMagicking} className="btn btn--primary" style={{ background: "linear-gradient(135deg,#7b5ae0,#4a90e2)" }}>
               {isMagicking ? "⏳ Generating..." : "🔄 Regenerate Ideas"}
             </button>
           </div>
           <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(320px,1fr))", gap:14 }}>
             {magicIdeas.map(idea => (
-              <div key={idea.id} onClick={() => { setUserPrompt(idea.prompt); setMode("prompt"); setPanelTab("generate"); }}
-                style={{ background:"var(--surface)", border:"1px solid var(--border)", borderRadius:14, padding:18, cursor:"pointer", transition:"all 0.18s" }}
-                onMouseEnter={e => (e.currentTarget.style.borderColor = "#4a90e2")}
-                onMouseLeave={e => (e.currentTarget.style.borderColor = "var(--border)")}>
+              <div key={idea.id} onClick={() => { setUserPrompt(idea.prompt); setMode("prompt"); setPanelTab("generate"); }} className="vc-idea-card">
                 {/* Market stats */}
-                <div style={{ display:"flex", gap:6, marginBottom:12 }}>
-                  <div style={{ background:"rgba(76,175,80,0.1)", border:"1px solid rgba(76,175,80,0.2)", padding:"5px 10px", borderRadius:8, flex:1, textAlign:"center" as const }}>
-                    <div style={{ fontSize:9, color:"var(--text-muted)", fontWeight:700, textTransform:"uppercase" as const }}>Est. Sales</div>
-                    <div style={{ fontSize:12, fontWeight:900, color:"#4caf50", marginTop:1 }}>{idea.estimatedSales}</div>
+                <div className="vc-idea-card__stats">
+                  <div className="vc-idea-card__stat" style={{ background:"rgba(76,175,80,0.1)", border:"1px solid rgba(76,175,80,0.2)" }}>
+                    <div className="vc-idea-card__stat-label">Est. Sales</div>
+                    <div className="vc-idea-card__stat-value" style={{ color:"#4caf50" }}>{idea.estimatedSales}</div>
                   </div>
-                  <div style={{ background: idea.difficulty==="Easy"?"rgba(76,175,80,0.1)":idea.difficulty==="Medium"?"rgba(255,152,0,0.1)":"rgba(239,68,68,0.1)", border:"1px solid var(--border)", padding:"5px 10px", borderRadius:8, flex:1, textAlign:"center" as const }}>
-                    <div style={{ fontSize:9, color:"var(--text-muted)", fontWeight:700, textTransform:"uppercase" as const }}>Difficulty</div>
-                    <div style={{ fontSize:12, fontWeight:900, color: idea.difficulty==="Easy"?"#4caf50":idea.difficulty==="Medium"?"#ff9800":"#ef4444", marginTop:1 }}>{idea.difficulty}</div>
+                  <div className="vc-idea-card__stat" style={{ background: idea.difficulty==="Easy"?"rgba(76,175,80,0.1)":idea.difficulty==="Medium"?"rgba(255,152,0,0.1)":"rgba(239,68,68,0.1)", border:"1px solid var(--border)" }}>
+                    <div className="vc-idea-card__stat-label">Difficulty</div>
+                    <div className="vc-idea-card__stat-value" style={{ color: idea.difficulty==="Easy"?"#4caf50":idea.difficulty==="Medium"?"#ff9800":"#ef4444" }}>{idea.difficulty}</div>
                   </div>
                 </div>
-                <h4 style={{ margin:"0 0 6px", fontSize:15, fontWeight:800 }}>{idea.title}</h4>
-                <p style={{ fontSize:12, color:"var(--text-muted)", margin:"0 0 12px", lineHeight:1.5 }}>{idea.description}</p>
-                <div style={{ background:"rgba(74,144,226,0.04)", border:"1px solid rgba(74,144,226,0.1)", padding:10, borderRadius:8, fontSize:11, lineHeight:1.5, color:"var(--text-secondary)", fontStyle:"italic" }}>
+                <h4 className="vc-idea-card__title">{idea.title}</h4>
+                <p className="vc-idea-card__desc">{idea.description}</p>
+                <div className="vc-idea-card__prompt">
                   "{idea.prompt.slice(0, 120)}..."
                 </div>
-                <div style={{ display:"flex", flexWrap:"wrap", gap:4, marginTop:10 }}>
-                  {idea.tags.map(tag => <span key={tag} style={{ background:"var(--surface-2)", border:"1px solid var(--border)", padding:"2px 8px", borderRadius:999, fontSize:10 }}>{tag}</span>)}
+                <div className="vc-idea-card__tags">
+                  {idea.tags.map(tag => <span key={tag} className="keyword-tag">{tag}</span>)}
                 </div>
-                <div style={{ marginTop:12, fontSize:12, color:"#4a90e2", fontWeight:700, textAlign:"right" as const }}>Klik untuk pakai prompt ini →</div>
+                <div className="vc-idea-card__cta">Klik untuk pakai prompt ini →</div>
               </div>
             ))}
           </div>
@@ -686,28 +673,28 @@ export default function VectorCreator() {
 
       {/* ── ANALYTICS TAB ──────────────────────────────────────────────────── */}
       {panelTab === "analytics" && (
-        <div style={{ ...S.panel, alignItems:"center", justifyContent:"center", minHeight:320, textAlign:"center" as const }}>
+        <div className="vc-panel" style={{ alignItems:"center", justifyContent:"center", minHeight:320, textAlign:"center" }}>
           <div style={{ fontSize:48, opacity:0.3 }}>📈</div>
-          <h3 style={{ margin:"12px 0 6px", fontSize:18, fontWeight:900 }}>Market Analytics</h3>
-          <p style={{ fontSize:13, color:"var(--text-muted)", maxWidth:400 }}>Fitur analisis tren pasar Adobe Stock sedang dalam pengembangan. Akan menampilkan kategori terlaris, harga lisensi rata-rata, dan prediksi tren.</p>
+          <h3 className="mon-section__title" style={{ fontSize: 18, marginTop: 12 }}>Market Analytics</h3>
+          <p className="vc-header__subtitle" style={{ maxWidth: 400 }}>Fitur analisis tren pasar Adobe Stock sedang dalam pengembangan. Akan menampilkan kategori terlaris, harga lisensi rata-rata, dan prediksi tren.</p>
         </div>
       )}
 
       {/* ── HISTORY TAB ────────────────────────────────────────────────────── */}
       {panelTab === "history" && (
-        <div style={{ ...S.panel }}>
-          <h3 style={{ margin:"0 0 4px", fontSize:18, fontWeight:900 }}>📋 Generation History</h3>
+        <div className="vc-panel">
+          <h3 className="mon-section__title" style={{ fontSize: 18 }}>📋 Generation History</h3>
           {history.length === 0 ? (
-            <p style={{ fontSize:13, color:"var(--text-muted)" }}>Belum ada history. Hasil generate akan muncul di sini.</p>
+            <p className="vc-header__subtitle">Belum ada history. Hasil generate akan muncul di sini.</p>
           ) : (
-            <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
+            <div className="mon-section" style={{ padding: 0, background: 'transparent' }}>
               {history.map(item => (
-                <div key={item.id} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", background:"rgba(255,255,255,0.02)", padding:"11px 16px", borderRadius:10, border:"1px solid var(--border)" }}>
+                <div key={item.id} className="mon-info-row" style={{ background: "rgba(255,255,255,0.02)", padding: "11px 16px", borderRadius: 10 }}>
                   <div>
                     <strong style={{ fontSize:13 }}>{item.conceptTitle}</strong>
                     <div style={{ fontSize:11, color:"var(--text-muted)", marginTop:2 }}>{item.promptCount} prompts · {item.style} · {item.ratio} · {item.mode}</div>
                   </div>
-                  <span style={{ fontSize:11, color:"var(--text-muted)", fontFamily:"monospace" }}>{item.timestamp}</span>
+                  <span style={{ fontSize:11, color:"var(--text-muted)", fontFamily:"monospace", flexShrink: 0 }}>{item.timestamp}</span>
                 </div>
               ))}
             </div>
@@ -717,22 +704,22 @@ export default function VectorCreator() {
 
       {/* ── SVG DISPLAY + BEFORE/AFTER SLIDER ──────────────────────────────── */}
       {(isGeneratingSvg || beforeSvg || afterSvg) && (
-        <div style={{ ...S.panel, gap:16 }}>
-          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", flexWrap:"wrap", gap:12 }}>
+        <div className="vc-panel">
+          <div className="vc-header">
             <div>
-              <div style={{ fontSize:11, fontWeight:900, color:"#4a90e2", textTransform:"uppercase" as const, letterSpacing:"0.06em" }}>🖼️ Before vs After — HD Vector Result</div>
-              <h3 style={{ margin:"4px 0 0", fontSize:17, fontWeight:900 }}>{svgTitle || "Vector Commercial Asset"}</h3>
+              <div className="vc-field-label" style={{ color: "#4a90e2", marginBottom: 4 }}>🖼️ Before vs After — HD Vector Result</div>
+              <h3 className="mon-section__title" style={{ fontSize: 17 }}>{svgTitle || "Vector Commercial Asset"}</h3>
             </div>
             {afterSvg && (
-              <div style={{ display:"flex", alignItems:"center", gap:10, flexWrap:"wrap" as const }}>
-                <select value={downloadRes} onChange={e => setDownloadRes(e.target.value as ResolutionOpt)} style={{ padding:"7px 12px", borderRadius:8, border:"1px solid var(--border)", background:"var(--surface)", fontSize:12, color:"var(--text)", fontWeight:700 }}>
+              <div className="vc-chip-group">
+                <select value={downloadRes} onChange={e => setDownloadRes(e.target.value as ResolutionOpt)} className="vc-select" style={{ width: 'auto' }}>
                   <option value="1k">1K PNG (1024px)</option>
                   <option value="2k">2K PNG (2048px) – HD</option>
                   <option value="3k">3K PNG (3072px) – Super HD</option>
                   <option value="4k">4K PNG (4096px) – Ultra HD</option>
                   <option value="svg">SVG Original (lossless vector)</option>
                 </select>
-                <button onClick={() => handleDownloadImage(afterSvg, "after")} style={{ padding:"8px 18px", background:"linear-gradient(135deg,#4a90e2,#7b5ae0)", border:"none", borderRadius:8, cursor:"pointer", fontSize:12, fontWeight:800, color:"white" }}>
+                <button onClick={() => handleDownloadImage(afterSvg, "after")} className="btn btn--primary">
                   ⬇ Download {downloadRes.toUpperCase()}
                 </button>
               </div>
@@ -740,7 +727,7 @@ export default function VectorCreator() {
           </div>
 
           {isGeneratingSvg ? (
-            <div style={{ height:400, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", background:"rgba(0,0,0,0.15)", borderRadius:14, gap:14 }}>
+            <div className="aichat__welcome" style={{ height: 400, background: "rgba(0,0,0,0.15)", borderRadius: 14 }}>
               <div style={{ fontSize:36, animation:"spin 1.2s linear infinite" }}>⚙️</div>
               <div style={{ fontSize:13, color:"var(--text-muted)", fontWeight:600 }}>AI sedang menggambar vector Before & After...</div>
             </div>
@@ -760,19 +747,19 @@ export default function VectorCreator() {
               </div>
 
               {/* Color sandbox */}
-              <div style={{ background:"rgba(255,255,255,0.02)", border:"1px solid var(--border)", borderRadius:12, padding:16 }}>
-                <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:12, flexWrap:"wrap" as const, gap:8 }}>
-                  <span style={S.label}>🎨 Color Sandbox & Filters</span>
-                  <div style={{ display:"flex", gap:6 }}>
+              <div className="mon-section" style={{ background:"rgba(255,255,255,0.02)", padding: 16 }}>
+                <div className="vc-header" style={{ marginBottom: 4 }}>
+                  <span className="vc-field-label" style={{ marginBottom: 0 }}>🎨 Color Sandbox & Filters</span>
+                  <div className="vc-chip-group">
                     {(["grayscale","cyberpunk","sunset","forest"] as const).map(f => (
-                      <button key={f} type="button" onClick={() => applyPaletteFilter(f)} style={{ padding:"5px 10px", fontSize:11, background:"rgba(255,255,255,0.04)", border:"1px solid var(--border)", borderRadius:6, cursor:"pointer", fontWeight:700, textTransform:"capitalize" as const }}>{f}</button>
+                      <button key={f} type="button" onClick={() => applyPaletteFilter(f)} className="btn btn--small btn--ghost" style={{ textTransform: "capitalize" }}>{f}</button>
                     ))}
                   </div>
                 </div>
                 {detectedColors.length > 0 && (
-                  <div style={{ display:"flex", flexWrap:"wrap" as const, gap:8 }}>
+                  <div className="vc-chip-group">
                     {detectedColors.map(color => (
-                      <div key={color} style={{ display:"flex", alignItems:"center", gap:6, background:"rgba(255,255,255,0.03)", padding:"4px 10px", borderRadius:8, border:"1px solid var(--border)" }}>
+                      <div key={color} className="vc-chip-group" style={{ background:"rgba(255,255,255,0.03)", padding:"4px 10px", borderRadius:8, border:"1px solid var(--border)" }}>
                         <div style={{ width:16, height:16, borderRadius:4, background:color, border:"1px solid rgba(255,255,255,0.2)" }} />
                         <span style={{ fontSize:10, fontFamily:"monospace" }}>{color}</span>
                         <input type="color" value={color} onChange={e => handleColorReplace(color, e.target.value)} style={{ width:20, height:18, border:"none", background:"none", cursor:"pointer", padding:0 }} />
@@ -788,49 +775,49 @@ export default function VectorCreator() {
 
       {/* ── Generated Prompts Output ────────────────────────────────────────── */}
       {generatedPlan && (
-        <div style={{ display:"flex", flexDirection:"column", gap:16 }}>
+        <div className="vc-container" style={{ gap: 16 }}>
           {generatedPlan.plan && (
-            <div style={{ ...S.panel, padding:"18px 22px" }}>
-              <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr 1fr", gap:12 }}>
+            <div className="vc-panel" style={{ padding:"18px 22px" }}>
+              <div className="vc-grid-4" style={{ gap: 20 }}>
                 <div>
-                  <div style={{ fontSize:10, fontWeight:800, color:"#4a90e2", textTransform:"uppercase" as const }}>Concept</div>
-                  <div style={{ fontSize:14, fontWeight:900, marginTop:4 }}>{generatedPlan.plan.conceptTitle}</div>
+                  <div className="vc-field-label" style={{ color: "#4a90e2" }}>Concept</div>
+                  <div style={{ fontSize:14, fontWeight:900 }}>{generatedPlan.plan.conceptTitle}</div>
                 </div>
                 <div>
-                  <div style={{ fontSize:10, fontWeight:800, color:"var(--text-muted)", textTransform:"uppercase" as const }}>Palette</div>
-                  <div style={{ fontSize:13, marginTop:4 }}>{generatedPlan.plan.styleGuide?.palette}</div>
+                  <div className="vc-field-label">Palette</div>
+                  <div style={{ fontSize:13 }}>{generatedPlan.plan.styleGuide?.palette}</div>
                 </div>
                 <div>
-                  <div style={{ fontSize:10, fontWeight:800, color:"var(--text-muted)", textTransform:"uppercase" as const }}>Composition</div>
-                  <div style={{ fontSize:13, marginTop:4 }}>{generatedPlan.plan.styleGuide?.composition}</div>
+                  <div className="vc-field-label">Composition</div>
+                  <div style={{ fontSize:13 }}>{generatedPlan.plan.styleGuide?.composition}</div>
                 </div>
                 <div>
-                  <div style={{ fontSize:10, fontWeight:800, color:"var(--text-muted)", textTransform:"uppercase" as const }}>Commercial Hook</div>
-                  <div style={{ fontSize:12, marginTop:4, color:"var(--text-secondary)" }}>{generatedPlan.plan.commercialHook}</div>
+                  <div className="vc-field-label">Commercial Hook</div>
+                  <div style={{ fontSize:12, color:"var(--text-secondary)" }}>{generatedPlan.plan.commercialHook}</div>
                 </div>
               </div>
             </div>
           )}
-          <h3 style={{ margin:"0", fontSize:16, fontWeight:900 }}>📝 Prompts & Adobe Stock Metadata ({generatedPlan.prompts?.length ?? 0})</h3>
+          <h3 className="mon-section__title" style={{ fontSize: 16 }}>📝 Prompts & Adobe Stock Metadata ({generatedPlan.prompts?.length ?? 0})</h3>
           <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(420px,1fr))", gap:14 }}>
             {(generatedPlan.prompts || []).map((p, idx) => (
-              <div key={p.id || idx} style={{ background:"var(--surface)", border:"1px solid var(--border)", borderRadius:14, padding:18, display:"flex", flexDirection:"column", gap:12 }}>
-                <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", gap:8 }}>
-                  <span style={{ fontSize:13, fontWeight:800 }}>#{idx+1} {p.label}</span>
-                  <div style={{ display:"flex", gap:6 }}>
-                    <button type="button" onClick={() => copyToClipboard(p.prompt, p.id)} style={{ padding:"4px 10px", background:"rgba(255,255,255,0.04)", border:"1px solid var(--border)", borderRadius:6, cursor:"pointer", fontSize:11, fontWeight:700 }}>{copiedId===p.id?"✓ Disalin":"📋 Copy"}</button>
-                    <button type="button" onClick={() => handleRenderSvg(p.prompt, p.label)} disabled={isGeneratingSvg} style={{ padding:"4px 10px", background:"rgba(74,144,226,0.1)", border:"1px solid #4a90e2", borderRadius:6, cursor:"pointer", fontSize:11, fontWeight:700, color:"#4a90e2" }}>🖼️ Render</button>
+              <div key={p.id || idx} className="vc-prompt-card">
+                <div className="vc-prompt-card__header">
+                  <span className="vc-prompt-card__title">#{idx+1} {p.label}</span>
+                  <div className="vc-prompt-card__actions">
+                    <button type="button" onClick={() => copyToClipboard(p.prompt, p.id)} className="btn btn--small btn--ghost">{copiedId===p.id?"✓ Disalin":"📋 Copy"}</button>
+                    <button type="button" onClick={() => handleRenderSvg(p.prompt, p.label)} disabled={isGeneratingSvg} className="btn btn--small btn--ghost" style={{ color: "#4a90e2", borderColor: "#4a90e2" }}>🖼️ Render</button>
                   </div>
                 </div>
-                <div style={{ background:"rgba(74,144,226,0.04)", padding:12, borderRadius:9, fontSize:12, lineHeight:1.6, border:"1px solid rgba(74,144,226,0.08)" }}>{p.prompt}</div>
-                {p.negativePrompt && <div style={{ background:"rgba(239,68,68,0.04)", padding:"8px 12px", borderRadius:9, fontSize:11, lineHeight:1.5, border:"1px solid rgba(239,68,68,0.08)", color:"var(--text-muted)" }}><strong style={{ color:"#ef4444" }}>Negative:</strong> {p.negativePrompt}</div>}
+                <div className="vc-prompt-card__prompt-text">{p.prompt}</div>
+                {p.negativePrompt && <div className="vc-prompt-card__negative-text"><strong>Negative:</strong> {p.negativePrompt}</div>}
                 <div>
-                  <div style={{ fontSize:10, fontWeight:800, color:"var(--text-muted)", textTransform:"uppercase" as const, marginBottom:4 }}>Adobe Stock Title</div>
-                  <div style={{ fontSize:13, fontWeight:700 }}>{p.metadata?.title}</div>
+                  <div className="vc-field-label" style={{ marginBottom: 4 }}>Adobe Stock Title</div>
+                  <div className="vc-prompt-card__meta-title">{p.metadata?.title}</div>
                 </div>
-                <div style={{ display:"flex", flexWrap:"wrap" as const, gap:4 }}>
+                <div className="vc-prompt-card__keywords">
                   {(p.metadata?.keywords || []).slice(0,12).map((k: string) => (
-                    <span key={k} style={{ background:"var(--surface-2)", border:"1px solid var(--border)", padding:"2px 8px", borderRadius:999, fontSize:10 }}>{k}</span>
+                    <span key={k} className="keyword-tag">{k}</span>
                   ))}
                 </div>
               </div>

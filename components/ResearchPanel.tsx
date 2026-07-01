@@ -354,10 +354,10 @@ export default function ResearchPanel() {
   const displayEvents = customEvents.length > 0 ? customEvents : fallbackEvents;
 
   return (
-    <div className="uploader research-panel" style={{ paddingTop: 22 }}>
+    <div className="uploader research-panel rp-container">
 
 
-      <div className="uploader__hero" style={{ marginBottom: 18 }}>
+      <div className="uploader__hero rp-hero">
         <h2>Riset Pasar Adobe Stock (AI Autopilot 100%)</h2>
         <p>
           Temukan ide, produk, konsep terlaris, dan template set foto dengan **volume penjualan ribuan unduhan**. 
@@ -366,7 +366,7 @@ export default function ResearchPanel() {
       </div>
 
       {/* Tabs */}
-      <div className="mon-tabs research-panel__tabs" style={{ paddingLeft: 0, paddingRight: 0 }}>
+      <div className="mon-tabs research-panel__tabs">
 
         <button className={`mon-tab ${tab === "concepts" ? "mon-tab--active" : ""}`} onClick={() => setTab("concepts")}>
           🔥 Konsep Terlaris (Ribuan Unduhan)
@@ -383,12 +383,12 @@ export default function ResearchPanel() {
       </div>
 
       {searchError && (
-        <div style={{ color: "#ff4d4f", background: "rgba(255,77,79,0.1)", padding: 12, borderRadius: 8, marginTop: 12, fontSize: 13, border: "1px solid rgba(255,77,79,0.2)" }}>
+        <div className="rp-error">
           ⚠️ {searchError}
         </div>
       )}
 
-      <div className="mon-body research-panel__body" style={{ paddingTop: 14 }}>
+      <div className="mon-body research-panel__body rp-body">
 
         
         {/* ─────────────────────────────────────────────────────────────────────
@@ -396,58 +396,51 @@ export default function ResearchPanel() {
             ───────────────────────────────────────────────────────────────────── */}
         {tab === "concepts" && (
           <>
-            <div className="mon-section" style={{ background: "rgba(255,255,255,0.01)", border: "1px solid var(--border)", borderRadius: 12, padding: 16 }}>
+            <div className="rp-form-panel">
               <div className="mon-section__title">Kriteria Pencarian Konsep Volume Tinggi</div>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-                <label className="field" style={{ marginBottom: 0 }}>
+              <div className="rp-grid-2">
+                <label className="field">
                   <div className="field__header"><label>Domain Kategori</label></div>
                   <input
                     value={domainCategory}
                     onChange={(e) => setDomainCategory(e.target.value)}
-                    className="auth-field"
-                    style={{ width: "100%", padding: 11, borderRadius: 8, border: "1px solid var(--border)", background: "var(--surface)" }}
+                    className="rp-input"
                   />
                 </label>
-                <label className="field" style={{ marginBottom: 0 }}>
+                <label className="field">
                   <div className="field__header"><label>Target Audience</label></div>
                   <input
                     value={targetAudience}
                     onChange={(e) => setTargetAudience(e.target.value)}
-                    className="auth-field"
-                    style={{ width: "100%", padding: 11, borderRadius: 8, border: "1px solid var(--border)", background: "var(--surface)" }}
+                    className="rp-input"
                   />
                 </label>
               </div>
 
-              <div style={{ marginTop: 10 }}>
-                <label className="field" style={{ marginBottom: 0 }}>
-                  <div className="field__header"><label>Style Visual</label></div>
-                  <input
-                    value={adjectiveStyle}
-                    onChange={(e) => setAdjectiveStyle(e.target.value)}
-                    style={{ width: "100%", padding: 11, borderRadius: 8, border: "1px solid var(--border)", background: "var(--surface)" }}
-                  />
-                </label>
-              </div>
+              <label className="field">
+                <div className="field__header"><label>Style Visual</label></div>
+                <input
+                  value={adjectiveStyle}
+                  onChange={(e) => setAdjectiveStyle(e.target.value)}
+                  className="rp-input"
+                />
+              </label>
 
-              <div style={{ marginTop: 10 }}>
-                <label className="field" style={{ marginBottom: 0 }}>
-                  <div className="field__header"><label>Kata Kunci Tambahan</label></div>
-                  <textarea
-                    value={customKeywordsInput}
-                    onChange={(e) => setCustomKeywordsInput(e.target.value)}
-                    placeholder="pisahkan dengan koma (contoh: smart home, esg, eco friendly)"
-                    style={{ width: "100%", padding: 11, borderRadius: 8, border: "1px solid var(--border)", minHeight: 60, background: "var(--surface)" }}
-                  />
-                </label>
-              </div>
+              <label className="field">
+                <div className="field__header"><label>Kata Kunci Tambahan</label></div>
+                <textarea
+                  value={customKeywordsInput}
+                  onChange={(e) => setCustomKeywordsInput(e.target.value)}
+                  placeholder="pisahkan dengan koma (contoh: smart home, esg, eco friendly)"
+                  className="rp-textarea"
+                />
+              </label>
 
               <button
                 type="button"
                 className="btn btn--primary"
                 disabled={isConceptsLoading}
                 onClick={runStartSearchConcepts}
-                style={{ marginTop: 14, width: "100%" }}
               >
                 {isConceptsLoading ? "⏳ AI sedang meriset pasar penjualan ribuan unduhan..." : "🚀 Cari Konsep Volume Ribuan Unduhan"}
               </button>
@@ -455,48 +448,48 @@ export default function ResearchPanel() {
 
             <div className="mon-section">
               <div className="mon-section__title">Rekomendasi Konsep Terlaris (Penjualan Ribuan)</div>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(320px,1fr))", gap: 12 }}>
+              <div className="rp-card-grid">
                 {displayConcepts.map((c) => (
-                  <div key={c.id} className="result-card" style={{ flexDirection: "column", padding: 18, background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 14 }}>
+                  <div key={c.id} className="rp-concept-card">
                     
                     {/* Market Volume Indicators Dashboard */}
-                    <div style={{ display: "flex", justifyContent: "space-between", gap: 6, marginBottom: 12 }}>
-                      <div style={{ background: "rgba(76,175,80,0.1)", border: "1px solid rgba(76,175,80,0.2)", padding: "6px 10px", borderRadius: 8, flex: 1, textAlign: "center" }}>
-                        <div style={{ fontSize: 9, color: "var(--text-muted)", textTransform: "uppercase", fontWeight: 700 }}>Estimasi Penjualan</div>
-                        <div style={{ fontSize: 13, fontWeight: 900, color: "#4caf50", marginTop: 2 }}>{c.estimatedSales || "3,000+ sales"}</div>
+                    <div className="rp-stats-bar">
+                      <div className="rp-stat-item" style={{ background: "rgba(76,175,80,0.1)", border: "1px solid rgba(76,175,80,0.2)" }}>
+                        <span className="rp-stat-item__label">Estimasi Penjualan</span>
+                        <strong className="rp-stat-item__value" style={{ color: "#4caf50" }}>{c.estimatedSales || "3,000+ sales"}</strong>
                       </div>
-                      <div style={{ background: "rgba(74,144,226,0.1)", border: "1px solid rgba(74,144,226,0.2)", padding: "6px 10px", borderRadius: 8, flex: 1, textAlign: "center" }}>
-                        <div style={{ fontSize: 9, color: "var(--text-muted)", textTransform: "uppercase", fontWeight: 700 }}>Peluang Pasar</div>
-                        <div style={{ fontSize: 13, fontWeight: 900, color: "#4a90e2", marginTop: 2 }}>{c.opportunityScore || "94%"}</div>
+                      <div className="rp-stat-item" style={{ background: "rgba(74,144,226,0.1)", border: "1px solid rgba(74,144,226,0.2)" }}>
+                        <span className="rp-stat-item__label">Peluang Pasar</span>
+                        <strong className="rp-stat-item__value" style={{ color: "#4a90e2" }}>{c.opportunityScore || "94%"}</strong>
                       </div>
-                      <div style={{ background: "rgba(255,255,255,0.03)", border: "1px solid var(--border)", padding: "6px 10px", borderRadius: 8, flex: 1, textAlign: "center" }}>
-                        <div style={{ fontSize: 9, color: "var(--text-muted)", textTransform: "uppercase", fontWeight: 700 }}>Kompetisi</div>
-                        <div style={{ fontSize: 13, fontWeight: 900, color: "var(--text)", marginTop: 2 }}>{c.competition || "Low"}</div>
+                      <div className="rp-stat-item" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid var(--border)" }}>
+                        <span className="rp-stat-item__label">Kompetisi</span>
+                        <strong className="rp-stat-item__value" style={{ color: "var(--text)" }}>{c.competition || "Low"}</strong>
                       </div>
                     </div>
 
-                    <h3 style={{ fontSize: 16, fontWeight: 800, margin: "4px 0 6px 0", color: "var(--text)" }}>{c.title}</h3>
-                    <p style={{ color: "var(--text-muted)", fontSize: 13, margin: "0 0 12px 0", lineHeight: "1.5" }}>{c.hook}</p>
+                    <h3 className="rp-concept-card__title">{c.title}</h3>
+                    <p className="rp-concept-card__hook">{c.hook}</p>
 
-                    <div style={{ borderTop: "1px solid var(--border)", paddingTop: 10 }}>
-                      <span style={{ fontSize: 10, color: "var(--text-muted)", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em" }}>Artistic Angle Brief</span>
-                      <p style={{ fontSize: 13, margin: "4px 0 0 0", color: "var(--text)", lineHeight: "1.4" }}>{c.angle}</p>
+                    <div className="rp-concept-card__section">
+                      <span className="rp-concept-card__section-title">Artistic Angle Brief</span>
+                      <p>{c.angle}</p>
                     </div>
 
-                    <div style={{ marginTop: 10 }}>
-                      <span style={{ fontSize: 10, color: "var(--text-muted)", fontWeight: 700, textTransform: "uppercase" }}>Fokus Objek & Properti</span>
-                      <div style={{ display: "flex", flexWrap: "wrap", gap: 5, marginTop: 5 }}>
+                    <div className="rp-concept-card__section">
+                      <span className="rp-concept-card__section-title">Fokus Objek & Properti</span>
+                      <div className="rp-concept-card__tags">
                         {c.subjects.map((s) => (
-                          <span key={s} style={{ background: "rgba(255,255,255,0.04)", border: "1px solid var(--border)", padding: "3px 8px", borderRadius: 6, fontSize: 11 }}>{s}</span>
+                          <span key={s} className="rp-tag">{s}</span>
                         ))}
                       </div>
                     </div>
 
-                    <div style={{ marginTop: 12 }}>
-                      <span style={{ fontSize: 10, color: "var(--text-muted)", fontWeight: 700, textTransform: "uppercase" }}>Tag Meta Teroptimasi (Eng)</span>
-                      <div style={{ display: "flex", flexWrap: "wrap", gap: 4, marginTop: 6 }}>
+                    <div className="rp-concept-card__section">
+                      <span className="rp-concept-card__section-title">Tag Meta Teroptimasi (Eng)</span>
+                      <div className="rp-concept-card__tags">
                         {c.keywords.slice(0, 8).map((k) => (
-                          <span key={k} className="keyword-tag" style={{ fontSize: 10 }}>{k}</span>
+                          <span key={k} className="keyword-tag">{k}</span>
                         ))}
                       </div>
                     </div>
@@ -512,42 +505,41 @@ export default function ResearchPanel() {
             ───────────────────────────────────────────────────────────────────── */}
         {tab === "product" && (
           <>
-            <div className="mon-section" style={{ background: "rgba(255,255,255,0.01)", border: "1px solid var(--border)", borderRadius: 12, padding: 16 }}>
+            <div className="rp-form-panel">
               <div className="mon-section__title">Metode Riset Produk</div>
-              <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                <label className="field" style={{ marginBottom: 0 }}>
-                  <div className="field__header">
-                    <label>Referensi URL Foto (Opsional)</label>
-                  </div>
-                  <input
-                    value={adobePhotoUrl}
-                    onChange={(e) => setAdobePhotoUrl(e.target.value)}
-                    placeholder="Kosongkan untuk mengaktifkan Autopilot Trend Discovery..."
-                    style={{ width: "100%", padding: 11, borderRadius: 8, border: "1px solid var(--border)", background: "var(--surface)" }}
-                    disabled={isSearching}
-                  />
-                  <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 5 }}>
-                    💡 Jika URL kosong, AI akan bekerja 100% otomatis menscan tren produk terlaris di pasar Adobe Stock.
-                  </div>
-                </label>
-
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-                  <label className="field" style={{ marginBottom: 0 }}>
-                    <div className="field__header"><label>Jumlah Query Hasil</label></div>
-                    <select value={resultCount} onChange={(e) => setResultCount(Number(e.target.value) as any)} style={{ width: "100%", padding: 11, borderRadius: 8, border: "1px solid var(--border)", background: "var(--surface)" }}>
-                      <option value={5}>5 Query</option>
-                      <option value={8}>8 Query</option>
-                      <option value={12}>12 Query</option>
-                    </select>
-                  </label>
-                  <label className="field" style={{ marginBottom: 0 }}>
-                    <div className="field__header"><label>Tingkat Keketatan Detail</label></div>
-                    <select value={moreSpecific ? "yes" : "no"} onChange={(e) => setMoreSpecific(e.target.value === "yes")} style={{ width: "100%", padding: 11, borderRadius: 8, border: "1px solid var(--border)", background: "var(--surface)" }}>
-                      <option value="yes">Hyper-Specific (Commercial)</option>
-                      <option value="no">General (Broad)</option>
-                    </select>
-                  </label>
+              <label className="field">
+                <div className="field__header">
+                  <label>Referensi URL Foto (Opsional)</label>
                 </div>
+                <input
+                  value={adobePhotoUrl}
+                  onChange={(e) => setAdobePhotoUrl(e.target.value)}
+                  placeholder="Kosongkan untuk mengaktifkan Autopilot Trend Discovery..."
+                  className="rp-input"
+                  disabled={isSearching}
+                />
+                <div className="rp-input-hint">
+                  💡 Jika URL kosong, AI akan bekerja 100% otomatis menscan tren produk terlaris di pasar Adobe Stock.
+                </div>
+              </label>
+
+              <div className="rp-grid-2">
+                <label className="field">
+                  <div className="field__header"><label>Jumlah Query Hasil</label></div>
+                  <select value={resultCount} onChange={(e) => setResultCount(Number(e.target.value) as any)} className="rp-select">
+                    <option value={5}>5 Query</option>
+                    <option value={8}>8 Query</option>
+                    <option value={12}>12 Query</option>
+                  </select>
+                </label>
+                <label className="field">
+                  <div className="field__header"><label>Tingkat Keketatan Detail</label></div>
+                  <select value={moreSpecific ? "yes" : "no"} onChange={(e) => setMoreSpecific(e.target.value === "yes")} className="rp-select">
+                    <option value="yes">Hyper-Specific (Commercial)</option>
+                    <option value="no">General (Broad)</option>
+                  </select>
+                </label>
+              </div>
 
                 <button
                   type="button"
@@ -557,34 +549,33 @@ export default function ResearchPanel() {
                 >
                   {isSearching ? "⏳ AI sedang menganalisis & menyusun metadata..." : !adobePhotoUrl ? "✨ Jalankan Riset Autopilot" : "🔍 Riset Berdasarkan Gambar"}
                 </button>
-              </div>
             </div>
 
             {/* Narrative Analyst Dashboard (Autopilot/Discovery Output) */}
             {autopilotResult && (
               <>
-                <div className="research-panel__grid-3" style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr", gap: 12, marginBottom: 14 }}>
+                <div className="rp-dashboard-grid">
 
                   {autopilotResult.trendDiscovered && (
 
-                    <div style={{ background: "linear-gradient(135deg, rgba(74,144,226,0.15) 0%, rgba(80,227,194,0.05) 100%)", border: "1px solid rgba(74,144,226,0.3)", borderRadius: 12, padding: 16 }}>
-                      <span style={{ fontSize: 9, fontWeight: 800, color: "#4a90e2", textTransform: "uppercase", letterSpacing: "0.08em" }}>🎯 Tren Terlaris Ditemukan</span>
-                      <h3 style={{ margin: "5px 0 0 0", fontSize: 16, fontWeight: 900 }}>{autopilotResult.trendDiscovered}</h3>
+                    <div className="rp-highlight-card">
+                      <span className="rp-highlight-card__label">🎯 Tren Terlaris Ditemukan</span>
+                      <h3 className="rp-highlight-card__title">{autopilotResult.trendDiscovered}</h3>
                     </div>
                   )}
-                  <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 12, padding: 16, display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center" }}>
-                    <span style={{ fontSize: 9, color: "var(--text-muted)", textTransform: "uppercase", fontWeight: 700 }}>Est. Volume Penjualan</span>
-                    <h3 style={{ margin: "4px 0 0 0", color: "#4caf50", fontSize: 18, fontWeight: 900 }}>{autopilotResult.estimatedSales || "3,200+ sales"}</h3>
+                  <div className="rp-metric-card">
+                    <span className="rp-metric-card__label">Est. Volume Penjualan</span>
+                    <h3 className="rp-metric-card__value" style={{ color: "#4caf50" }}>{autopilotResult.estimatedSales || "3,200+ sales"}</h3>
                   </div>
-                  <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 12, padding: 16, display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center" }}>
-                    <span style={{ fontSize: 9, color: "var(--text-muted)", textTransform: "uppercase", fontWeight: 700 }}>Skor Peluang Pasar</span>
-                    <h3 style={{ margin: "4px 0 0 0", color: "#4a90e2", fontSize: 18, fontWeight: 900 }}>{autopilotResult.opportunityScore || "94%"}</h3>
+                  <div className="rp-metric-card">
+                    <span className="rp-metric-card__label">Skor Peluang Pasar</span>
+                    <h3 className="rp-metric-card__value" style={{ color: "#4a90e2" }}>{autopilotResult.opportunityScore || "94%"}</h3>
                   </div>
                 </div>
 
-                <div className="mon-section" style={{ background: "rgba(255,255,255,0.02)", border: "1px solid var(--border)", borderRadius: 12, padding: 16 }}>
-                  <div className="mon-section__title" style={{ fontSize: 12, textTransform: "uppercase", letterSpacing: "0.06em", color: "#4a90e2" }}>📋 Analisis Pasar AI (Bahasa Indonesia)</div>
-                  <p style={{ fontSize: 14, lineHeight: "1.6", color: "var(--text)", margin: 0, whiteSpace: "pre-wrap" }}>
+                <div className="rp-narrative-section">
+                  <div className="mon-section__title">📋 Analisis Pasar AI (Bahasa Indonesia)</div>
+                  <p>
                     {autopilotResult.narrative}
                   </p>
                 </div>
@@ -592,38 +583,24 @@ export default function ResearchPanel() {
                 {adobeStockLinks.length > 0 && (
                   <div className="mon-section">
                     <div className="mon-section__title">Hasil Pencarian Terlaris (Open Search)</div>
-                    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: 10 }}>
+                    <div className="rp-search-link-grid">
                       {adobeStockLinks.map((u, i) => (
                         <a
                           key={u}
                           href={u}
                           target="_blank"
                           rel="noreferrer"
-                          style={{
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "space-between",
-                            padding: 12,
-                            background: "var(--surface)",
-                            border: "1px solid var(--border)",
-                            borderRadius: 10,
-                            color: "var(--text)",
-                            textDecoration: "none",
-                            fontWeight: 700,
-                            fontSize: 13,
-                            transition: "all 0.2s"
-                          }}
-                          className="search-link-card"
+                          className="rp-search-link"
                         >
                           <span>🔍 Link #{i + 1}</span>
-                          <span style={{ color: "#4a90e2" }}>Buka →</span>
+                          <span className="rp-search-link__arrow">Buka →</span>
                         </a>
                       ))}
                     </div>
                   </div>
                 )}
 
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                <div className="rp-grid-2">
                   <div className="mon-section" style={{ marginBottom: 0 }}>
                     <div className="mon-section__title">Angle Visual yang Laku</div>
                     <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
@@ -638,9 +615,9 @@ export default function ResearchPanel() {
 
                   <div className="mon-section" style={{ marginBottom: 0 }}>
                     <div className="mon-section__title">Compliance & Standar Kualitas</div>
-                    <ul style={{ paddingLeft: 16, color: "var(--text-muted)", fontSize: 13, margin: 0 }}>
+                    <ul className="rp-list">
                       {autopilotResult.complianceNotes.map((n, i) => (
-                        <li key={i} style={{ marginTop: 6 }}>{n}</li>
+                        <li key={i}>{n}</li>
                       ))}
                     </ul>
                   </div>
@@ -648,10 +625,10 @@ export default function ResearchPanel() {
 
                 <div className="mon-section">
                   <div className="mon-section__title">Enriched Keyword Clusters</div>
-                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px,1fr))", gap: 10 }}>
+                  <div className="rp-cluster-card-grid">
                     {autopilotResult.keywordClusters.map((c) => (
-                      <div key={c.label} className="mon-section" style={{ padding: 12, background: "var(--surface)" }}>
-                        <div style={{ fontSize: 12, fontWeight: 800, color: "#4a90e2" }}>{c.label}</div>
+                      <div key={c.label} className="mon-section rp-cluster-card">
+                        <div className="rp-cluster-card__label">{c.label}</div>
                         <div className="keywords" style={{ marginTop: 8 }}>
                           {c.keywords.map((k) => (
                             <span key={k} className="keyword-tag">{k}</span>
@@ -664,11 +641,11 @@ export default function ResearchPanel() {
 
                 <div className="mon-section">
                   <div className="mon-section__title">Rencana Pembuatan Set Foto (Derivasi Konsep)</div>
-                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(250px,1fr))", gap: 10 }}>
+                  <div className="rp-idea-card-grid">
                     {autopilotResult.suggestedConcepts.map((c, i) => (
-                      <div key={i} className="mon-section" style={{ padding: 12, background: "var(--surface)" }}>
-                        <div style={{ fontSize: 11, color: "var(--text-muted)", fontWeight: 700 }}>IDE SHOT #{i + 1}</div>
-                        <div style={{ marginTop: 6, fontSize: 13 }}>{c}</div>
+                      <div key={i} className="mon-section rp-idea-card">
+                        <div className="rp-idea-card__label">IDE SHOT #{i + 1}</div>
+                        <div className="rp-idea-card__text">{c}</div>
                       </div>
                     ))}
                   </div>
@@ -683,12 +660,12 @@ export default function ResearchPanel() {
             ───────────────────────────────────────────────────────────────────── */}
         {tab === "events" && (
           <>
-            <div className="mon-section" style={{ background: "rgba(255,255,255,0.01)", border: "1px solid var(--border)", borderRadius: 12, padding: 16 }}>
+            <div className="rp-form-panel">
               <div className="mon-section__title">Parameter Riset Event (AI 100% Otomatis)</div>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-                <label className="field" style={{ marginBottom: 0 }}>
+              <div className="rp-grid-2">
+                <label className="field">
                   <div className="field__header"><label>Region Kancah</label></div>
-                  <select value={eventRegion} onChange={(e) => setEventRegion(e.target.value)} style={{ width: "100%", padding: 11, borderRadius: 8, border: "1px solid var(--border)", background: "var(--surface)" }}>
+                  <select value={eventRegion} onChange={(e) => setEventRegion(e.target.value)} className="rp-select">
                     <option>Global</option>
                     <option>Indonesia</option>
                     <option>North America</option>
@@ -697,9 +674,9 @@ export default function ResearchPanel() {
                   </select>
                 </label>
 
-                <label className="field" style={{ marginBottom: 0 }}>
+                <label className="field">
                   <div className="field__header"><label>Timeline Kampanye</label></div>
-                  <select value={eventSeason} onChange={(e) => setEventSeason(e.target.value)} style={{ width: "100%", padding: 11, borderRadius: 8, border: "1px solid var(--border)", background: "var(--surface)" }}>
+                  <select value={eventSeason} onChange={(e) => setEventSeason(e.target.value)} className="rp-select">
                     <option>Upcoming 3 months</option>
                     <option>Next 6 months</option>
                     <option>Next 12 months</option>
@@ -732,38 +709,38 @@ export default function ResearchPanel() {
               </div>
             )}
 
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))", gap: 12 }}>
+            <div className="rp-card-grid">
               {displayEvents.map((ep) => (
-                <div key={ep.id} className="mon-section" style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 12, padding: 16, marginBottom: 0 }}>
+                <div key={ep.id} className="rp-event-card">
                   
                   {/* Event metrics card */}
-                  <div style={{ display: "flex", justifyContent: "space-between", gap: 4, marginBottom: 12 }}>
-                    <div style={{ background: "rgba(76,175,80,0.1)", padding: "4px 8px", borderRadius: 6, flex: 1, textAlign: "center" }}>
-                      <span style={{ fontSize: 9, color: "var(--text-muted)", display: "block" }}>Downloads</span>
-                      <strong style={{ fontSize: 12, color: "#4caf50" }}>{ep.estimatedSales || "2,000+"}</strong>
+                  <div className="rp-event-card__metrics">
+                    <div className="rp-event-card__metric rp-event-card__metric--sales">
+                      <span className="rp-event-card__metric-label">Downloads</span>
+                      <strong className="rp-event-card__metric-value">{ep.estimatedSales || "2,000+"}</strong>
                     </div>
-                    <div style={{ background: "rgba(74,144,226,0.1)", padding: "4px 8px", borderRadius: 6, flex: 1, textAlign: "center" }}>
-                      <span style={{ fontSize: 9, color: "var(--text-muted)", display: "block" }}>Peluang</span>
-                      <strong style={{ fontSize: 12, color: "#4a90e2" }}>{ep.opportunityScore || "89%"}</strong>
+                    <div className="rp-event-card__metric rp-event-card__metric--opportunity">
+                      <span className="rp-event-card__metric-label">Peluang</span>
+                      <strong className="rp-event-card__metric-value">{ep.opportunityScore || "89%"}</strong>
                     </div>
                   </div>
 
-                  <div className="mon-section__title" style={{ color: "#4a90e2", fontSize: 15, margin: "0 0 10px 0" }}>{ep.name}</div>
-                  <div style={{ fontSize: 13, marginBottom: 10 }}>📅 Timeline: <strong>{ep.window}</strong></div>
+                  <div className="mon-section__title rp-event-card__title">{ep.name}</div>
+                  <div className="rp-event-card__timeline">📅 Timeline: <strong>{ep.window}</strong></div>
 
-                  <div style={{ marginTop: 10 }}>
-                    <span style={{ fontSize: 10, color: "var(--text-muted)", fontWeight: 700, textTransform: "uppercase" }}>Photo Brief Ideas (AI Generated)</span>
-                    <div style={{ marginTop: 6, display: "flex", flexDirection: "column", gap: 6 }}>
+                  <div className="rp-concept-card__section">
+                    <span className="rp-concept-card__section-title">Photo Brief Ideas (AI Generated)</span>
+                    <div className="rp-event-card__ideas">
                       {ep.photoIdeas.map((p, i) => (
-                        <div key={i} style={{ padding: 8, background: "rgba(255,255,255,0.02)", border: "1px solid var(--border)", borderRadius: 8, fontSize: 13 }}>
+                        <div key={i} className="rp-event-card__idea-item">
                           • {p}
                         </div>
                       ))}
                     </div>
                   </div>
 
-                  <div style={{ marginTop: 12 }}>
-                    <span style={{ fontSize: 10, color: "var(--text-muted)", fontWeight: 700, textTransform: "uppercase" }}>Content Types</span>
+                  <div className="rp-concept-card__section">
+                    <span className="rp-concept-card__section-title">Content Types</span>
                     <div className="keywords" style={{ marginTop: 6 }}>
                       {ep.contentTypes.map((k) => (
                         <span key={k} className="keyword-tag" style={{ fontSize: 10 }}>{k}</span>
@@ -781,21 +758,21 @@ export default function ResearchPanel() {
             ───────────────────────────────────────────────────────────────────── */}
         {tab === "templates" && (
           <>
-            <div className="mon-section" style={{ background: "rgba(255,255,255,0.01)", border: "1px solid var(--border)", borderRadius: 12, padding: 16 }}>
+            <div className="rp-form-panel">
               <div className="mon-section__title">Kriteria Perancangan Set Template</div>
-              <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: 10 }}>
-                <label className="field" style={{ marginBottom: 0 }}>
+              <div className="rp-grid-2" style={{ gridTemplateColumns: "2fr 1fr" }}>
+                <label className="field">
                   <div className="field__header"><label>Tema / Topik Set Foto</label></div>
                   <input
                     value={templateTheme}
                     onChange={(e) => setTemplateTheme(e.target.value)}
                     placeholder="Contoh: Sustainable Eco Office, AI Designer..."
-                    style={{ width: "100%", padding: 11, borderRadius: 8, border: "1px solid var(--border)", background: "var(--surface)" }}
+                    className="rp-input"
                   />
                 </label>
-                <label className="field" style={{ marginBottom: 0 }}>
+                <label className="field">
                   <div className="field__header"><label>Ukuran Set (Shots)</label></div>
-                  <select value={templateSetSize} onChange={(e) => setTemplateSetSize(Number(e.target.value))} style={{ width: "100%", padding: 11, borderRadius: 8, border: "1px solid var(--border)", background: "var(--surface)" }}>
+                  <select value={templateSetSize} onChange={(e) => setTemplateSetSize(Number(e.target.value))} className="rp-select">
                     <option value={6}>6 Shots</option>
                     <option value={8}>8 Shots (Standar)</option>
                     <option value={10}>10 Shots</option>
@@ -809,7 +786,6 @@ export default function ResearchPanel() {
                 className="btn btn--primary"
                 disabled={isTemplatesLoading}
                 onClick={runStartSearchTemplates}
-                style={{ marginTop: 12, width: "100%" }}
               >
                 {isTemplatesLoading ? "⏳ AI sedang merancang shot plan set..." : "📐 Rancang Template Set Foto"}
               </button>
@@ -818,50 +794,50 @@ export default function ResearchPanel() {
             {/* Custom AI Template Set Output */}
             {customTemplateSet && (
               <>
-                <div className="research-panel__grid-3" style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr", gap: 12, marginBottom: 14 }}>
+                <div className="rp-dashboard-grid">
 
-                  <div style={{ background: "rgba(74,144,226,0.05)", border: "1px solid rgba(74,144,226,0.2)", borderRadius: 12, padding: 16 }}>
-                    <span style={{ fontSize: 9, fontWeight: 800, color: "#4a90e2", textTransform: "uppercase" }}>📐 Tema Set</span>
-                    <h3 style={{ margin: "5px 0 0 0", fontSize: 16, fontWeight: 900 }}>{customTemplateSet.theme}</h3>
+                  <div className="rp-highlight-card">
+                    <span className="rp-highlight-card__label">📐 Tema Set</span>
+                    <h3 className="rp-highlight-card__title">{customTemplateSet.theme}</h3>
                   </div>
-                  <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 12, padding: 16, display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center" }}>
-                    <span style={{ fontSize: 9, color: "var(--text-muted)", textTransform: "uppercase", fontWeight: 700 }}>Est. Download Set</span>
-                    <h3 style={{ margin: "4px 0 0 0", color: "#4caf50", fontSize: 18, fontWeight: 900 }}>{customTemplateSet.estimatedSales || "2,400+ downloads"}</h3>
+                  <div className="rp-metric-card">
+                    <span className="rp-metric-card__label">Est. Download Set</span>
+                    <h3 className="rp-metric-card__value" style={{ color: "#4caf50" }}>{customTemplateSet.estimatedSales || "2,400+ downloads"}</h3>
                   </div>
-                  <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 12, padding: 16, display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center" }}>
-                    <span style={{ fontSize: 9, color: "var(--text-muted)", textTransform: "uppercase", fontWeight: 700 }}>Skor Peluang</span>
-                    <h3 style={{ margin: "4px 0 0 0", color: "#4a90e2", fontSize: 18, fontWeight: 900 }}>{customTemplateSet.opportunityScore || "91%"}</h3>
+                  <div className="rp-metric-card">
+                    <span className="rp-metric-card__label">Skor Peluang</span>
+                    <h3 className="rp-metric-card__value" style={{ color: "#4a90e2" }}>{customTemplateSet.opportunityScore || "91%"}</h3>
                   </div>
                 </div>
 
-                <div className="mon-section" style={{ background: "rgba(74,144,226,0.03)", border: "1px solid var(--border)", borderRadius: 12, padding: 16 }}>
+                <div className="rp-narrative-section" style={{ background: "rgba(74,144,226,0.03)" }}>
                   <div className="mon-section__title" style={{ color: "#4a90e2" }}>📋 Narasi Desain Kreatif</div>
-                  <p style={{ fontSize: 13, lineHeight: "1.6", color: "var(--text-muted)", margin: 0, whiteSpace: "pre-wrap" }}>
+                  <p style={{ color: "var(--text-muted)" }}>
                     {customTemplateSet.narrative}
                   </p>
                 </div>
 
                 <div className="mon-section">
                   <div className="mon-section__title">Shot Plan List ({customTemplateSet.shotPlan.length} Shots)</div>
-                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 12 }}>
+                  <div className="rp-shot-card-grid">
                     {customTemplateSet.shotPlan.map((s, idx) => (
-                      <div key={s.id} style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 12, padding: 14 }}>
-                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                          <span style={{ fontSize: 12, fontWeight: 900, color: "#4a90e2" }}>SHOT #{idx + 1}</span>
-                          <span style={{ fontSize: 11, textTransform: "uppercase", background: "rgba(255,255,255,0.05)", padding: "2px 6px", borderRadius: 4 }}>{s.intent}</span>
+                      <div key={s.id} className="rp-shot-card">
+                        <div className="rp-shot-card__header">
+                          <span className="rp-shot-card__id">SHOT #{idx + 1}</span>
+                          <span className="rp-shot-card__intent">{s.intent}</span>
                         </div>
 
-                        <h4 style={{ margin: "10px 0 6px 0", fontSize: 14, fontWeight: 800 }}>{s.description}</h4>
+                        <h4 className="rp-shot-card__title">{s.description}</h4>
 
-                        <div style={{ fontSize: 12, marginTop: 8 }}>
+                        <div className="rp-shot-card__details">
                           <div>🎨 <strong>Komposisi:</strong> {s.composition}</div>
                           <div>💡 <strong>Pencahayaan:</strong> {s.lighting}</div>
                           {s.props.length > 0 && (
-                            <div style={{ marginTop: 4 }}>📦 <strong>Props:</strong> {s.props.join(", ")}</div>
+                            <div>📦 <strong>Props:</strong> {s.props.join(", ")}</div>
                           )}
                         </div>
 
-                        <a href={s.url} target="_blank" rel="noreferrer" style={{ display: "block", marginTop: 12, fontSize: 12, color: "#4a90e2", textDecoration: "none", fontWeight: 700 }}>
+                        <a href={s.url} target="_blank" rel="noreferrer" className="rp-shot-card__link">
                           Buka Link Pencarian →
                         </a>
                       </div>
@@ -869,21 +845,21 @@ export default function ResearchPanel() {
                   </div>
                 </div>
 
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                <div className="rp-grid-2">
                   <div className="mon-section">
                     <div className="mon-section__title">Rekomendasi Set & Variasi</div>
-                    <ul style={{ paddingLeft: 16, fontSize: 13, color: "var(--text-muted)", margin: 0 }}>
+                    <ul className="rp-list">
                       {customTemplateSet.templateSuggestions.map((s, i) => (
-                        <li key={i} style={{ marginTop: 6 }}>{s}</li>
+                        <li key={i}>{s}</li>
                       ))}
                     </ul>
                   </div>
 
                   <div className="mon-section">
                     <div className="mon-section__title">Tips Kepatuhan Legal & Brand</div>
-                    <ul style={{ paddingLeft: 16, fontSize: 13, color: "var(--text-muted)", margin: 0 }}>
+                    <ul className="rp-list">
                       {customTemplateSet.complianceTips.map((t, i) => (
-                        <li key={i} style={{ marginTop: 6 }}>{t}</li>
+                        <li key={i}>{t}</li>
                       ))}
                     </ul>
                   </div>
@@ -896,7 +872,7 @@ export default function ResearchPanel() {
               <>
                 <div className="mon-section">
                   <div className="mon-section__title">Set 1: Decision + Action (8 shots)</div>
-                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(240px,1fr))", gap: 10 }}>
+                  <div className="rp-fallback-card-grid">
                     {[
                       "Close detail: hands + device",
                       "Medium: workspace anchor",
@@ -907,9 +883,9 @@ export default function ResearchPanel() {
                       "Angle: diagonal composition",
                       "Texture: cable / paper / keyboard",
                     ].map((s, i) => (
-                      <div key={i} className="mon-section" style={{ padding: 12, background: "var(--surface)" }}>
-                        <div style={{ fontWeight: 800, fontSize: 12 }}>Shot #{i + 1}</div>
-                        <div style={{ marginTop: 6, fontSize: 13, color: "var(--text)" }}>{s}</div>
+                      <div key={i} className="mon-section rp-fallback-card">
+                        <div className="rp-fallback-card__title">Shot #{i + 1}</div>
+                        <div className="rp-fallback-card__text">{s}</div>
                       </div>
                     ))}
                   </div>
@@ -917,7 +893,7 @@ export default function ResearchPanel() {
 
                 <div className="mon-section">
                   <div className="mon-section__title">Set 2: Background variations (6 shots)</div>
-                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(240px,1fr))", gap: 10 }}>
+                  <div className="rp-fallback-card-grid">
                     {[
                       "Same subject, cooler background",
                       "Same subject, warmer background",
@@ -926,9 +902,9 @@ export default function ResearchPanel() {
                       "More negative space",
                       "Add prop texture detail",
                     ].map((s, i) => (
-                      <div key={i} className="mon-section" style={{ padding: 12, background: "var(--surface)" }}>
-                        <div style={{ fontWeight: 800, fontSize: 12 }}>Variant #{i + 1}</div>
-                        <div style={{ marginTop: 6, fontSize: 13 }}>{s}</div>
+                      <div key={i} className="mon-section rp-fallback-card">
+                        <div className="rp-fallback-card__title">Variant #{i + 1}</div>
+                        <div className="rp-fallback-card__text">{s}</div>
                       </div>
                     ))}
                   </div>

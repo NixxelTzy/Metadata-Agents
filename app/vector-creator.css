@@ -1,8 +1,19 @@
 /* VectorCreator — styling utilities for responsive layout */
 
+/* Let the Vector tab use the same outer width & scroll rules as other panels */
 .vector-creator {
   width: 100%;
+  max-width: 1400px;
+  margin: 0 auto;
+  box-sizing: border-box;
 }
+
+/* Ensure the layout doesn't clip the bottom controls */
+.vector-creator__container,
+.vector-creator {
+  min-height: 0;
+}
+
 
 .vector-creator__tabs {
   display: flex;
