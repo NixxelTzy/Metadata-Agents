@@ -129,7 +129,7 @@ export default function ImageUploader({ onTokensUpdated }: Props = {}) {
             const data = await response.json();
 
             if (data.totalUsage) {
-              addUsage(data.totalUsage.promptTokens, data.totalUsage.completionTokens);
+              addUsage(data.totalUsage.promptTokens, data.totalUsage.completionTokens, "metadata");
               onTokensUpdated?.();
             }
 
@@ -179,7 +179,7 @@ export default function ImageUploader({ onTokensUpdated }: Props = {}) {
         const data = await response.json();
 
         if (data.totalUsage) {
-          addUsage(data.totalUsage.promptTokens, data.totalUsage.completionTokens);
+          addUsage(data.totalUsage.promptTokens, data.totalUsage.completionTokens, "metadata");
           onTokensUpdated?.();
         }
 

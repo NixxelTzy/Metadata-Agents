@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback, useRef, useEffect } from "react";
+import { addUsage, formatTokens, estimateCost, getPlatformLabel, getUsage, type Platform } from "@/lib/tokenStore";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 type VectorStyle   = "flat" | "outline" | "both";
@@ -210,7 +211,11 @@ function Toggle({ value, onChange, label, desc }: { value: boolean; onChange: (v
 }
 
 // ── Main Component ────────────────────────────────────────────────────────────
-export default function VectorCreator() {
+interface VectorCreatorProps {
+  onTokensUpdated?: () => void;
+}
+
+export default function VectorCreator({ onTokensUpdated }: VectorCreatorProps = {}) {
   const [panelTab, setPanelTab]   = useState<PanelTab>("generate");
   const [faceless, setFaceless]   = useState(false);
   const [consistency, setConsistency] = useState(true);
@@ -252,7 +257,22 @@ export default function VectorCreator() {
   const [error, setError]               = useState("");
   const [copiedId, setCopiedId]         = useState("");
 
+  // ── Token tracking for vector platform ─────────────────────────────────────
+  const [sessionTokens, setSessionTokens] = useState({ prompt: 0, completion: 0, total: 0, requests: 0 });
+
   const containerRef = useRef<HTMLDivElement>(null);
+
+  const trackVectorTokens = useCallback((usage: { promptTokens: number; completionTokens: number; totalTokens: number } | undefined) => {
+    if (!usage) return;
+    addUsage(usage.promptTokens, usage.completionTokens, "vector");
+    setSessionTokens(prev => ({
+      prompt: prev.prompt + usage.promptTokens,
+      completion: prev.completion + usage.completionTokens,
+      total: prev.total + usage.totalTokens,
+      requests: prev.requests + 1,
+    }));
+    onTokensUpdated?.();
+  }, [onTokensUpdated]);
 
   // ── Pointer drag for slider ─────────────────────────────────────────────────
   const handlePointerDown = () => setIsDraggingSlider(true);
@@ -344,11 +364,12 @@ export default function VectorCreator() {
         setEditableSvgCode(data.result.afterSvg);
         setSvgTitle(data.result.title || label);
         setSliderPosition(50);
+        trackVectorTokens(data.usage);
       } else throw new Error(data.error || "Hasil render tidak valid");
     } catch (e) {
       setError(e instanceof Error ? e.message : "Gagal generate visual vector");
     } finally { setIsGeneratingSvg(false); }
-  }, [style, ratio, faceless, colorPalette]);
+  }, [style, ratio, faceless, colorPalette, trackVectorTokens]);
 
   // ── handleGenerate (after handleRenderSvg) ──────────────────────────────────
   const handleGenerate = useCallback(async () => {
@@ -369,6 +390,7 @@ export default function VectorCreator() {
       const data = await res.json();
       if (data.success && data.result) {
         setGeneratedPlan(data.result);
+        trackVectorTokens(data.usage);
         if (data.result.plan?.conceptTitle) {
           setHistory(prev => [{
             id: `h-${Date.now()}`, timestamp: new Date().toLocaleTimeString("id-ID"),
@@ -397,6 +419,7 @@ export default function VectorCreator() {
       if (!res.ok) throw new Error(await res.text() || "Gagal menghasilkan ide");
       const data = await res.json();
       if (data.success && Array.isArray(data.ideas) && data.ideas.length > 0) setMagicIdeas(data.ideas);
+      trackVectorTokens(data.usage);
     } catch (e) { setError(e instanceof Error ? e.message : "Terjadi kesalahan"); }
     finally { setIsMagicking(false); }
   }, [selectedTheme, customTheme, style, faceless]);
@@ -413,6 +436,7 @@ export default function VectorCreator() {
       if (!res.ok) throw new Error(await res.text() || "Gagal enhance prompt");
       const data = await res.json();
       if (data.success && data.enhanced) setEnhancedPrompt(data.enhanced);
+      trackVectorTokens(data.usage);
     } catch (e) { setError(e instanceof Error ? e.message : "Terjadi kesalahan"); }
     finally { setIsEnhancing(false); }
   }, [userPrompt, style, ratio, faceless, colorPalette, targetUse]);
@@ -450,18 +474,30 @@ export default function VectorCreator() {
             Platform pembuatan vector komersial HD 1K–4K berbasis AI · Adobe Stock-ready metadata otomatis
           </p>
         </div>
-        <div className="mon-tabs">
-          {([
-            { id:"generate" as PanelTab,  label:"⚡ Studio"   },
-            { id:"composer" as PanelTab,  label:"⚙️ Composer" },
-            { id:"magic"    as PanelTab,  label:"✨ Ideas"    },
-            { id:"analytics"as PanelTab,  label:"📈 Analytics"},
-            { id:"history"  as PanelTab,  label:`📋 History (${history.length})` },
-          ]).map(t => (
-            <button key={t.id} type="button" onClick={() => setPanelTab(t.id)} className={`mon-tab ${panelTab === t.id ? "mon-tab--active" : ""}`}>
-              {t.label}
-            </button>
-          ))}
+        <div className="vc-header__right">
+          <div className="mon-tabs">
+            {([
+              { id:"generate" as PanelTab,  label:"⚡ Studio"   },
+              { id:"composer" as PanelTab,  label:"⚙️ Composer" },
+              { id:"magic"    as PanelTab,  label:"✨ Ideas"    },
+              { id:"analytics"as PanelTab,  label:"📈 Analytics"},
+              { id:"history"  as PanelTab,  label:`📋 History (${history.length})` },
+            ]).map(t => (
+              <button key={t.id} type="button" onClick={() => setPanelTab(t.id)} className={`mon-tab ${panelTab === t.id ? "mon-tab--active" : ""}`}>
+                {t.label}
+              </button>
+            ))}
+          </div>
+          {/* Session token badge */}
+          {sessionTokens.total > 0 && (
+            <div className="vc-token-badge">
+              <span className="vc-token-badge__icon">⚡</span>
+              <span className="vc-token-badge__label">Sesi ini:</span>
+              <span className="vc-token-badge__value">{formatTokens(sessionTokens.total)}</span>
+              <span className="vc-token-badge__reqs">· {sessionTokens.requests} req</span>
+              <span className="vc-token-badge__cost">{estimateCost(sessionTokens.prompt, sessionTokens.completion)}</span>
+            </div>
+          )}
         </div>
       </div>
 
@@ -587,7 +623,7 @@ export default function VectorCreator() {
 
           {/* Generate CTA */}
           <button type="button" onClick={handleGenerate} disabled={isGenerating} className="vc-generate-btn">
-            {isGenerating ? "⏳ AI sedang merancang konsep & metadata..." : "📝 Generate Rencana + Metadata Adobe Stock"}
+            {isGenerating ? "⏳ AI sedang membuat vector..." : "🎨 Create Vector"}
           </button>
         </div>
       )}
@@ -673,10 +709,127 @@ export default function VectorCreator() {
 
       {/* ── ANALYTICS TAB ──────────────────────────────────────────────────── */}
       {panelTab === "analytics" && (
-        <div className="vc-panel" style={{ alignItems:"center", justifyContent:"center", minHeight:320, textAlign:"center" }}>
-          <div style={{ fontSize:48, opacity:0.3 }}>📈</div>
-          <h3 className="mon-section__title" style={{ fontSize: 18, marginTop: 12 }}>Market Analytics</h3>
-          <p className="vc-header__subtitle" style={{ maxWidth: 400 }}>Fitur analisis tren pasar Adobe Stock sedang dalam pengembangan. Akan menampilkan kategori terlaris, harga lisensi rata-rata, dan prediksi tren.</p>
+        <div className="vc-panel">
+          <div className="vc-header" style={{ marginBottom: 8 }}>
+            <div>
+              <h3 className="mon-section__title" style={{ fontSize: 18 }}>📈 Token Usage Analytics</h3>
+              <p className="vc-header__subtitle">Penghitungan token akurat per platform — reset otomatis setiap hari.</p>
+            </div>
+            <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+              <span style={{ fontSize: 11, color: "var(--text-muted)" }}>
+                {new Date().toLocaleDateString("id-ID", { weekday: "long", day: "numeric", month: "long" })}
+              </span>
+            </div>
+          </div>
+
+          {/* Daily total bar */}
+          {(() => {
+            const usage = getUsage();
+            const pct = Math.min(Math.round((usage.totalTokens / 100_000) * 100), 100);
+            const pctColor = pct >= 85 ? "#dc2626" : pct >= 60 ? "#d97706" : "#16a34a";
+            const platforms: Platform[] = ["metadata", "chat", "vector"];
+            return (
+              <>
+                {/* Overview card */}
+                <div className="mon-section" style={{ background: "rgba(74,144,226,0.05)", borderColor: "rgba(74,144,226,0.2)", padding: 20 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+                    <span style={{ fontSize: 13, fontWeight: 700 }}>Total Penggunaan Hari Ini</span>
+                    <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
+                      <span style={{ fontSize: 20, fontWeight: 900, color: pctColor }}>{pct}%</span>
+                      <span style={{ fontSize: 12, color: "var(--text-muted)" }}>dari 100k limit</span>
+                    </div>
+                  </div>
+                  {/* Main bar */}
+                  <div style={{ background: "var(--border)", borderRadius: 8, height: 10, overflow: "hidden", marginBottom: 8 }}>
+                    <div style={{ height: "100%", width: `${pct}%`, background: pctColor, borderRadius: 8, transition: "width 0.5s ease" }} />
+                  </div>
+                  {/* Stacked bar breakdown */}
+                  <div style={{ display: "flex", height: 6, borderRadius: 4, overflow: "hidden", gap: 1, marginBottom: 12 }}>
+                    {platforms.map(p => {
+                      const w = usage.totalTokens > 0 ? (usage.byPlatform[p].totalTokens / usage.totalTokens) * 100 : 0;
+                      const colors: Record<Platform, string> = { metadata: "#4a90e2", chat: "#7b5ae0", vector: "#16a34a" };
+                      return <div key={p} style={{ width: `${w}%`, background: colors[p], transition: "width 0.5s" }} />;
+                    })}
+                  </div>
+                  {/* Numbers row */}
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12 }}>
+                    {[
+                      { label: "Total Token", value: formatTokens(usage.totalTokens), sub: "hari ini" },
+                      { label: "Input", value: formatTokens(usage.promptTokens), sub: "prompt" },
+                      { label: "Output", value: formatTokens(usage.completionTokens), sub: "completion" },
+                      { label: "Est. Cost", value: estimateCost(usage.promptTokens, usage.completionTokens), sub: "perkiraan" },
+                    ].map(item => (
+                      <div key={item.label} style={{ textAlign: "center", background: "var(--surface)", padding: "10px 8px", borderRadius: 8, border: "1px solid var(--border)" }}>
+                        <div style={{ fontSize: 11, color: "var(--text-muted)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em" }}>{item.label}</div>
+                        <div style={{ fontSize: 18, fontWeight: 900, marginTop: 4 }}>{item.value}</div>
+                        <div style={{ fontSize: 10, color: "var(--text-muted)", marginTop: 2 }}>{item.sub}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Per-platform breakdown */}
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))", gap: 12 }}>
+                  {platforms.map(p => {
+                    const pu = usage.byPlatform[p];
+                    const colors: Record<Platform, string> = { metadata: "#4a90e2", chat: "#7b5ae0", vector: "#16a34a" };
+                    const pPct = usage.totalTokens > 0 ? Math.round((pu.totalTokens / usage.totalTokens) * 100) : 0;
+                    return (
+                      <div key={p} style={{ background: "var(--surface)", border: `1px solid ${colors[p]}33`, borderRadius: 12, padding: 16 }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+                          <span style={{ fontSize: 14, fontWeight: 700 }}>{getPlatformLabel(p)}</span>
+                          <span style={{ fontSize: 11, color: colors[p], fontWeight: 700, background: `${colors[p]}18`, padding: "2px 8px", borderRadius: 999 }}>{pPct}% share</span>
+                        </div>
+                        <div style={{ background: "var(--border)", borderRadius: 4, height: 4, marginBottom: 12, overflow: "hidden" }}>
+                          <div style={{ width: `${pPct}%`, height: "100%", background: colors[p], borderRadius: 4, transition: "width 0.5s" }} />
+                        </div>
+                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                          {[
+                            { label: "Total", val: formatTokens(pu.totalTokens) },
+                            { label: "Requests", val: pu.requestCount.toString() },
+                            { label: "Input", val: formatTokens(pu.promptTokens) },
+                            { label: "Output", val: formatTokens(pu.completionTokens) },
+                          ].map(item => (
+                            <div key={item.label} style={{ background: "var(--bg-secondary)", padding: "6px 8px", borderRadius: 6, border: "1px solid var(--border)" }}>
+                              <div style={{ fontSize: 9, color: "var(--text-muted)", fontWeight: 600, textTransform: "uppercase" }}>{item.label}</div>
+                              <div style={{ fontSize: 14, fontWeight: 700, marginTop: 2 }}>{item.val}</div>
+                            </div>
+                          ))}
+                        </div>
+                        <div style={{ marginTop: 10, fontSize: 11, color: "var(--text-muted)", textAlign: "right" }}>
+                          Est. {estimateCost(pu.promptTokens, pu.completionTokens)}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Session stats */}
+                {sessionTokens.total > 0 && (
+                  <div style={{ background: "rgba(22,163,74,0.06)", border: "1px solid rgba(22,163,74,0.2)", borderRadius: 10, padding: 16 }}>
+                    <div style={{ fontSize: 12, fontWeight: 700, color: "#16a34a", marginBottom: 10 }}>⚡ Sesi Vector Saat Ini</div>
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 10 }}>
+                      {[
+                        { label: "Total Token", val: formatTokens(sessionTokens.total) },
+                        { label: "Input", val: formatTokens(sessionTokens.prompt) },
+                        { label: "Output", val: formatTokens(sessionTokens.completion) },
+                        { label: "Requests", val: sessionTokens.requests.toString() },
+                      ].map(item => (
+                        <div key={item.label} style={{ textAlign: "center" }}>
+                          <div style={{ fontSize: 9, color: "var(--text-muted)", fontWeight: 600, textTransform: "uppercase" }}>{item.label}</div>
+                          <div style={{ fontSize: 16, fontWeight: 900, color: "#16a34a", marginTop: 2 }}>{item.val}</div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                <p style={{ fontSize: 11, color: "var(--text-muted)", textAlign: "center" }}>
+                  Token reset otomatis setiap hari · Semua platform menggunakan API key Groq yang sama
+                </p>
+              </>
+            );
+          })()}
         </div>
       )}
 

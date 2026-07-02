@@ -36,22 +36,23 @@ Your task: Analyze the provided stock photo with extreme precision and generate 
 - Must be unique and instantly describe this specific image
 
 ═══ KEYWORDS RULES ═══
-- Provide EXACTLY 30–35 keywords in English
+- Provide EXACTLY 49 keywords in English — no more, no less. This is a hard requirement.
 - RELEVANCE IS MANDATORY: every keyword must directly relate to actual visual content
 - NO hallucinated content: only describe what is genuinely visible in the image
-- Structure your keywords in this priority order:
-  1. PRIMARY (8–10): exact subjects, objects, people visible
-  2. DESCRIPTIVE (6–8): colors, textures, materials, lighting
-  3. CONTEXTUAL (5–7): location, setting, environment
-  4. CONCEPTUAL (5–7): emotions, concepts, themes
-  5. COMMERCIAL (4–5): use-cases, audience
-  6. TECHNICAL (2–3): photo style
-- Use SINGULAR form for nouns unless plural is more searchable
+- Structure your 49 keywords in this exact distribution:
+  1. PRIMARY (12–14): exact subjects, main objects, people, animals, or items clearly visible
+  2. DESCRIPTIVE (10–12): colors, textures, materials, patterns, lighting quality, shadows
+  3. CONTEXTUAL (8–10): location type, setting, environment, time of day, season
+  4. CONCEPTUAL (7–9): emotions, moods, concepts, themes, symbolism
+  5. COMMERCIAL (5–6): use-cases, target audience, business applications
+  6. TECHNICAL (3–4): photo style, composition technique, camera angle, image type
+- Count carefully before responding — you MUST have exactly 49 items in the keywords array
+- Use SINGULAR form for nouns unless plural is more commercially searchable
 - Each keyword = 1–3 words maximum
-- No duplicates, no brand names
+- No duplicates, no brand names, no generic filler words
 
 Respond ONLY with valid JSON — no explanation, no markdown:
-{"title": "Exact descriptive title here", "keywords": ["keyword1", "keyword2", ...]}`;
+{"title": "Exact descriptive title here", "keywords": ["keyword1", "keyword2", ...49 total...]}`;
 
 function extractJsonFromText(text: string): string {
   const trimmed = text.trim();
@@ -106,10 +107,45 @@ async function generateMetadata(
     .filter(Boolean)
     .filter((k, i, arr) => arr.indexOf(k) === i);
 
+  const TARGET_KEYWORDS = 49;
+
+  // Hard-enforce exactly 49 keywords.
+  // If AI returned fewer, pad with derived variations from existing keywords.
+  // If AI returned more, trim to 49 (keeps highest-priority ones at front).
+  let finalKeywords = keywords.slice(0, TARGET_KEYWORDS);
+
+  if (finalKeywords.length < TARGET_KEYWORDS) {
+    // Derive additional keywords by combining/splitting existing ones until we hit 49
+    const extras: string[] = [];
+    for (const kw of keywords) {
+      const parts = kw.split(" ");
+      if (parts.length > 1) {
+        for (const part of parts) {
+          if (
+            part.length > 2 &&
+            !finalKeywords.includes(part) &&
+            !extras.includes(part)
+          ) {
+            extras.push(part);
+          }
+        }
+      }
+      if (finalKeywords.length + extras.length >= TARGET_KEYWORDS) break;
+    }
+    finalKeywords = [...finalKeywords, ...extras].slice(0, TARGET_KEYWORDS);
+  }
+
+  // Final safety: if still short (edge case), throw so retry logic kicks in
+  if (finalKeywords.length !== TARGET_KEYWORDS) {
+    throw new Error(
+      `AI returned ${finalKeywords.length} keywords after normalization — expected exactly ${TARGET_KEYWORDS}. Retrying.`
+    );
+  }
+
   return {
     filename,
     title: parsed.title.trim(),
-    keywords,
+    keywords: finalKeywords,
     modelUsed: result.modelUsed,
     stabilized: true,
     attempts: attempt,

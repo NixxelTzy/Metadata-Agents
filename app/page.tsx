@@ -8,7 +8,7 @@ import ResearchPanel from "@/components/ResearchPanel";
 import VectorCreator from "@/components/VectorCreator";
 import { useDevice } from "@/lib/useDevice";
 import { useRouter } from "next/navigation";
-import { getUsage, getUsagePercent, getDailyLimit, formatTokens, resetUsage } from "@/lib/tokenStore";
+import { getUsage, getUsagePercent, getDailyLimit, formatTokens, resetUsage, getPlatformLabel, estimateCost, type Platform } from "@/lib/tokenStore";
 
 type Tab = "metadata" | "chat" | "research" | "vector";
 const ADMIN_EMAIL = "nixxeltzy@gmail.com";
@@ -193,10 +193,16 @@ export default function Home() {
                   <span className="sidebar__token-pct" style={{ color: pctColor }}>{tokenPct}%</span>
                 </div>
 
-                {/* Progress bar */}
-                <div className="sidebar__token-bar">
-                  <div className="sidebar__token-bar-fill"
-                    style={{ width: `${tokenPct}%`, background: pctColor }} />
+                {/* Progress bar — stacked by platform */}
+                <div className="sidebar__token-bar" style={{ display: "flex", gap: 1, overflow: "hidden" }}>
+                  {(["metadata", "chat", "vector"] as Platform[]).map(p => {
+                    const pu = tokenUsage.byPlatform?.[p];
+                    const w = tokenUsage.totalTokens > 0 && pu ? (pu.totalTokens / tokenUsage.totalTokens) * tokenPct : 0;
+                    const colors: Record<Platform, string> = { metadata: "#4a90e2", chat: "#7b5ae0", vector: "#16a34a" };
+                    return <div key={p} style={{ width: `${w}%`, height: "100%", background: colors[p], transition: "width 0.4s" }} />;
+                  })}
+                  {/* remainder fill */}
+                  <div style={{ flex: 1, background: "var(--border)" }} />
                 </div>
 
                 {/* Stats */}
@@ -218,6 +224,27 @@ export default function Home() {
                     <span className="sidebar__token-stat-val">{formatTokens(getDailyLimit())}</span>
                   </div>
                 </div>
+
+                {/* Per-platform breakdown */}
+                {tokenUsage.byPlatform && tokenUsage.totalTokens > 0 && (
+                  <div style={{ marginTop: 8, display: "flex", flexDirection: "column", gap: 4 }}>
+                    {(["metadata", "chat", "vector"] as Platform[]).map(p => {
+                      const pu = tokenUsage.byPlatform![p];
+                      if (!pu || pu.totalTokens === 0) return null;
+                      const colors: Record<Platform, string> = { metadata: "#4a90e2", chat: "#7b5ae0", vector: "#16a34a" };
+                      return (
+                        <div key={p} className="sidebar__token-platform">
+                          <span className="sidebar__token-platform-label" style={{ color: colors[p] }}>{getPlatformLabel(p)}</span>
+                          <span className="sidebar__token-platform-val">{formatTokens(pu.totalTokens)}</span>
+                        </div>
+                      );
+                    })}
+                    <div className="sidebar__token-platform" style={{ borderTop: "1px solid var(--border)", paddingTop: 4, marginTop: 2 }}>
+                      <span className="sidebar__token-platform-label">Est. Cost</span>
+                      <span className="sidebar__token-platform-val" style={{ color: "#16a34a" }}>{estimateCost(tokenUsage.promptTokens, tokenUsage.completionTokens)}</span>
+                    </div>
+                  </div>
+                )}
 
                 <div className="sidebar__token-footer">
                   <span className="sidebar__token-note">Reset otomatis tiap hari</span>
@@ -260,8 +287,8 @@ export default function Home() {
           ) : activeTab === "research" ? (
             <ResearchPanel />
           ) : activeTab === "vector" ? (
-            <div style={{ padding: "24px 32px", maxWidth: 1400, margin: "0 auto", width: "100%", boxSizing: "border-box" }}>
-              <VectorCreator />
+            <div style={{ padding: "24px 32px", maxWidth: 1400, margin: "0 auto", width: "100%", boxSizing: "border-box", overflowY: "auto", minHeight: 0, flex: 1 }}>
+              <VectorCreator onTokensUpdated={refreshTokens} />
             </div>
           ) : (
             <AIChat onTokensUpdated={refreshTokens} />
