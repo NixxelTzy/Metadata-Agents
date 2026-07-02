@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { runSecurityChecks, getClientIp, SecurityContext } from "@/lib/security";
+import { inspect, getClientIp } from "@/lib/security/core";
 
 const PUBLIC_PATHS = [
   "/login",
@@ -12,7 +12,7 @@ const PUBLIC_PATHS = [
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // 1. Allow Next.js internals and static files early
+  // Allow Next.js internals and static files
   if (
     pathname.startsWith("/_next") ||
     pathname.startsWith("/favicon") ||
@@ -21,45 +21,48 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  const token = request.cookies.get("auth_token")?.value;
-
-  // 2. Prepare Security Context
   const headersObj: Record<string, string> = {};
   request.headers.forEach((v, k) => { headersObj[k] = v; });
 
-  const ctx: SecurityContext = {
-    ip: getClientIp(headersObj) || "127.0.0.1",
-    // Gunakan sebagian token sebagai userId sbg identifikasi sesi karena middleware Edge tidak bisa verify jsonwebtoken
-    userId: token ? `token_${token.substring(0, 16)}` : undefined,
-    endpoint: pathname,
-    method: request.method,
-    userAgent: headersObj["user-agent"] || "unknown",
-    contentType: headersObj["content-type"],
-  };
+  const ip = getClientIp(headersObj) || "127.0.0.1";
+  const token = request.cookies.get("auth_token")?.value;
+  const userAgent = headersObj["user-agent"] || "";
 
-  // 3. Eksekusi Security Checks
+  // Run security inspection on every request
   try {
-    const secResult = await runSecurityChecks(ctx);
+    const result = await inspect({
+      ip,
+      userId: token ? `tok_${token.slice(0, 16)}` : undefined,
+      endpoint: pathname,
+      method: request.method,
+      userAgent,
+      headers: headersObj,
+      // Body is not available in middleware Edge runtime — payload detection runs in API routes
+    });
 
-    if (!secResult.passed) {
-      const status = secResult.reason?.includes("Rate limit") ? 429 : 403;
+    if (result.blocked) {
+      const status = result.signals.some(s => s.type === "rate_limit") ? 429 : 403;
       return new NextResponse(
         JSON.stringify({
-          error: "Akses Ditolak oleh Sistem Keamanan Agresif",
-          reason: secResult.reason,
-          threatScore: secResult.threatScore,
-          actions: secResult.actions
+          error: "Akses ditolak oleh sistem keamanan",
+          reason: result.reason,
+          threatScore: result.threatScore,
+          severity: result.severity,
         }),
-        { status, headers: { "content-type": "application/json" } }
+        { status, headers: { "Content-Type": "application/json" } }
       );
     }
+
+    // Tarpit: delay response without blocking
+    if (result.action === "tarpit" && result.tarpitMs) {
+      await new Promise(r => setTimeout(r, Math.min(result.tarpitMs!, 5000)));
+    }
   } catch (e) {
-    // Fallback jika pengecekan gagal karena Redis error, dll
-    console.error("Security Check Error:", e);
+    console.error("[Middleware] Security check error:", e);
   }
 
-  // 4. Verifikasi Publik & Autentikasi
-  if (PUBLIC_PATHS.some((p) => pathname.startsWith(p))) {
+  // Auth check
+  if (PUBLIC_PATHS.some(p => pathname.startsWith(p))) {
     return NextResponse.next();
   }
 
