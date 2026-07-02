@@ -1,12 +1,11 @@
 /**
- * lib/security/index.ts — re-exports dari unified security core
+ * lib/security/index.ts — re-exports dari unified security core (Redis-backed)
  */
 export {
   inspect,
   getClientIp,
   recordIpError,
   manualBlockIp,
-  getIpInfo,
   sanitizeString,
   sanitizeEmail,
   validatePassword,

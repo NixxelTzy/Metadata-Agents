@@ -15,3 +15,4 @@ export async function GET() {
     uptime: process.uptime(),
   }, { status: hasKey ? 200 : 503 });
 }
+

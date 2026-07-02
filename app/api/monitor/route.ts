@@ -63,20 +63,25 @@ function estimateCpuTemp(): number {
   return Math.round(35 + normalizedLoad * 45 + (Math.random() * 4 - 2));
 }
 
-function buildSnapshot() {
-  const secStats = getSecurityStats();
-  const recentAttacks = getSecurityEvents(30).map((e) => ({
-    type: e.signals[0]?.type ?? "unknown",
-    severity: e.signals[0]?.severity ?? "low",
+async function buildSnapshot() {
+  const [secStats, recentAttacksRaw] = await Promise.all([
+    getSecurityStats(),
+    getSecurityEvents(50),
+  ]);
+
+  const recentAttacks = recentAttacksRaw.map((e) => ({
+    type: e.signals[0]?.type ?? "normal_request",
+    severity: e.signals[0]?.severity ?? "info",
     ip: e.ip,
     endpoint: e.endpoint,
     method: e.method,
     threatScore: e.threatScore,
+    normalityScore: e.normalityScore,
     action: e.action,
     blocked: e.blocked,
     timestamp: e.timestamp,
     requestId: e.id,
-    signals: e.signals.map(s => ({ type: s.type, severity: s.severity, detail: s.detail })),
+    signals: e.signals.map(s => ({ type: s.type, severity: s.severity, confidence: s.confidence, detail: s.detail })),
   }));
 
   const procMem = getProcessMemory();
@@ -124,6 +129,9 @@ function buildSnapshot() {
         ipTracker: "active",
         payloadScanner: "active",
         uaAnalyzer: "active",
+        storageProtection: "active",
+        gracefulDisconnect: "active",
+        persistentLog: "redis",
       },
     },
   };
@@ -143,10 +151,10 @@ export async function GET(request: NextRequest) {
 
   const stream = new ReadableStream({
     start(controller) {
-      const send = () => {
+      const send = async () => {
         if (closed) return;
         try {
-          const data = JSON.stringify(buildSnapshot());
+          const data = JSON.stringify(await buildSnapshot());
           controller.enqueue(encoder.encode(`data: ${data}\n\n`));
         } catch {
           closed = true;
@@ -172,3 +180,4 @@ export async function GET(request: NextRequest) {
     },
   });
 }
+

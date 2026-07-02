@@ -24,7 +24,7 @@ export async function POST(request: NextRequest) {
       body: { email, username }, // don't pass password
     });
     if (sec.blocked) {
-      recordIpError(ip);
+      void recordIpError(ip);
       return NextResponse.json({ error: "Terlalu banyak percobaan pendaftaran. Coba lagi nanti.", reason: sec.reason }, { status: sec.signals.some(s => s.type === "rate_limit") ? 429 : 403 });
     }
 

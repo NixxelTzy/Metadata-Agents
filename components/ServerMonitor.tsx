@@ -16,8 +16,8 @@ interface MonitorData {
   uptime: { uptime: number; formatted: string };
   network: { name: string; address: string; family: string }[];
   security: {
-    stats: { total: number; bySeverity: Record<string, number>; byType: Record<string, number>; last24h: number; lastHour: number; blocked: number; topIps: { ip: string; count: number }[] };
-    recentAttacks: { type: string; severity: string; ip: string; endpoint: string; method: string; threatScore: number; action: string; blocked: boolean; timestamp: number; requestId: string; signals: { type: string; severity: string; confidence: number; detail: string }[] }[];
+    stats: { total: number; bySeverity: Record<string, number>; byType: Record<string, number>; last24h: number; lastHour: number; last10min: number; blocked: number; normalRequests: number; abnormalRequests: number; avgNormality: number; topIps: { ip: string; count: number }[]; storageUsed: number; storageMax: number; storagePercent: number };
+    recentAttacks: { type: string; severity: string; ip: string; endpoint: string; method: string; threatScore: number; normalityScore: number; action: string; blocked: boolean; timestamp: number; requestId: string; signals: { type: string; severity: string; confidence: number; detail: string }[] }[];
     defenceStatus: Record<string, string>;
   };
 }
@@ -398,40 +398,87 @@ export default function ServerMonitor() {
         {/* ── SECURITY ── */}
         {tab === "security" && (
           <>
+            {/* Request Traffic Overview */}
             <div className="mon-section">
-              <div className="mon-section__title">Defence Systems</div>
-              {Object.entries(data.security.defenceStatus).map(([k, v]) => (
-                <div key={k} className="mon-info-row">
-                  <span>{k}</span>
-                  <span className="mon-defence-badge"><StatusDot status={v} />{v}</span>
+              <div className="mon-section__title">🔍 Request Traffic — Normal vs Abnormal</div>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 8, marginBottom: 12 }}>
+                {[
+                  { label: "Total", val: data.security.stats.total, color: "var(--text)" },
+                  { label: "Last 10m", val: data.security.stats.last10min, color: "#4a90e2" },
+                  { label: "Normal", val: data.security.stats.normalRequests, color: "#16a34a" },
+                  { label: "Abnormal", val: data.security.stats.abnormalRequests, color: "#dc2626" },
+                ].map(item => (
+                  <div key={item.label} style={{ background: "var(--bg-secondary)", border: "1px solid var(--border)", borderRadius: 8, padding: "8px 10px", textAlign: "center" }}>
+                    <div style={{ fontSize: 9, fontWeight: 700, textTransform: "uppercase", color: "var(--text-muted)", letterSpacing: "0.06em" }}>{item.label}</div>
+                    <div style={{ fontSize: 18, fontWeight: 900, color: item.color, marginTop: 3, fontFamily: "monospace" }}>{item.val}</div>
+                  </div>
+                ))}
+              </div>
+              {/* Normality bar */}
+              <div style={{ marginBottom: 6 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, marginBottom: 4 }}>
+                  <span style={{ color: "var(--text-muted)", fontWeight: 600 }}>Avg Normality Score</span>
+                  <span style={{ fontWeight: 700, color: (data.security.stats.avgNormality ?? 100) >= 80 ? "#16a34a" : (data.security.stats.avgNormality ?? 100) >= 50 ? "#d97706" : "#dc2626", fontFamily: "monospace" }}>
+                    {data.security.stats.avgNormality ?? 100}%
+                  </span>
                 </div>
-              ))}
-            </div>
-            <div className="mon-section">
-              <div className="mon-section__title">Security Events — Live Counter</div>
-              <div className="mon-info-row"><span>Total Logged</span><span style={{ fontFamily: "monospace", fontWeight: 700 }}>{data.security.stats.total}</span></div>
+                <div style={{ background: "var(--border)", borderRadius: 4, height: 6, overflow: "hidden" }}>
+                  <div style={{ width: `${data.security.stats.avgNormality ?? 100}%`, height: "100%", background: (data.security.stats.avgNormality ?? 100) >= 80 ? "#16a34a" : (data.security.stats.avgNormality ?? 100) >= 50 ? "#d97706" : "#dc2626", transition: "width 0.4s" }} />
+                </div>
+              </div>
               <div className="mon-info-row"><span>Last 24h</span><span>{data.security.stats.last24h}</span></div>
               <div className="mon-info-row"><span>Last Hour</span><span>{data.security.stats.lastHour}</span></div>
               <div className="mon-info-row"><span style={{ color: "#dc2626" }}>🚫 Blocked</span><span style={{ color: "#dc2626", fontWeight: 700 }}>{data.security.stats.blocked}</span></div>
+            </div>
+
+            {/* Storage Protection */}
+            <div className="mon-section">
+              <div className="mon-section__title">🗄️ Storage Protection</div>
+              <div style={{ marginBottom: 8 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, marginBottom: 4 }}>
+                  <span style={{ color: "var(--text-muted)", fontWeight: 600 }}>Event Log Usage</span>
+                  <span style={{ fontFamily: "monospace", fontWeight: 700 }}>{data.security.stats.storageUsed ?? 0}/{data.security.stats.storageMax ?? 500}</span>
+                </div>
+                <div style={{ background: "var(--border)", borderRadius: 4, height: 6, overflow: "hidden" }}>
+                  <div style={{
+                    width: `${data.security.stats.storagePercent ?? 0}%`, height: "100%",
+                    background: (data.security.stats.storagePercent ?? 0) >= 85 ? "#dc2626" : (data.security.stats.storagePercent ?? 0) >= 60 ? "#d97706" : "#16a34a",
+                    transition: "width 0.4s"
+                  }} />
+                </div>
+              </div>
+              <div className="mon-info-row"><span>Auto-evict</span><span style={{ color: "#16a34a" }}>✓ Active (LIFO)</span></div>
+              <div className="mon-info-row"><span>Event TTL</span><span>24 hours</span></div>
+              <div className="mon-info-row"><span>Persistent Store</span><span style={{ color: "#4a90e2" }}>Upstash Redis</span></div>
+              <div className="mon-info-row"><span>Cross-instance</span><span style={{ color: "#16a34a" }}>✓ Shared</span></div>
+            </div>
+
+            {/* Defence Systems */}
+            <div className="mon-section">
+              <div className="mon-section__title">🛡️ Defence Systems</div>
+              {Object.entries(data.security.defenceStatus).map(([k, v]) => (
+                <div key={k} className="mon-info-row">
+                  <span>{k}</span>
+                  <span className="mon-defence-badge">
+                    <StatusDot status={v === "active" || v === "redis" ? "active" : "inactive"} />
+                    {v}
+                  </span>
+                </div>
+              ))}
+            </div>
+
+            {/* Severity breakdown */}
+            <div className="mon-section">
+              <div className="mon-section__title">By Severity</div>
               {Object.entries(data.security.stats.bySeverity).map(([k, v]) => (
                 <div key={k} className="mon-info-row">
-                  <span style={{ color: severityColor(k === "error" ? "error" : k) }}>● {k}</span>
+                  <span style={{ color: severityColor(k) }}>● {k}</span>
                   <span>{v}</span>
                 </div>
               ))}
             </div>
-            <div className="mon-section">
-              <div className="mon-section__title">Attack Types</div>
-              {Object.entries(data.security.stats.byType).length === 0
-                ? <div className="mon-empty">Tidak ada event tercatat</div>
-                : Object.entries(data.security.stats.byType)
-                    .sort((a, b) => b[1] - a[1])
-                    .map(([k, v]) => (
-                    <div key={k} className="mon-info-row">
-                      <span>{k.replace(/_/g, " ")}</span><span style={{ fontWeight: 600 }}>{v}×</span>
-                    </div>
-                  ))}
-            </div>
+
+            {/* Top offending IPs */}
             {(data.security.stats.topIps?.length ?? 0) > 0 && (
               <div className="mon-section">
                 <div className="mon-section__title">Top Offending IPs</div>
@@ -443,6 +490,21 @@ export default function ServerMonitor() {
                 ))}
               </div>
             )}
+
+            {/* Attack types */}
+            <div className="mon-section">
+              <div className="mon-section__title">Attack Types Detected</div>
+              {Object.keys(data.security.stats.byType).length === 0
+                ? <div className="mon-empty">✓ Tidak ada serangan terdeteksi</div>
+                : Object.entries(data.security.stats.byType)
+                    .sort((a, b) => b[1] - a[1])
+                    .map(([k, v]) => (
+                    <div key={k} className="mon-info-row">
+                      <span>{k.replace(/_/g, " ")}</span>
+                      <span style={{ fontWeight: 600 }}>{v}×</span>
+                    </div>
+                  ))}
+            </div>
           </>
         )}
 
@@ -450,41 +512,54 @@ export default function ServerMonitor() {
         {tab === "attacks" && (
           <div className="mon-section">
             <div className="mon-section__title">
-              Recent Attacks (Real-time)
+              All Requests — Real-time (Normal + Threats)
               <span className="mon-badge">{data.security.recentAttacks.length}</span>
             </div>
             {data.security.recentAttacks.length === 0
-              ? <div className="mon-empty">✓ Tidak ada serangan terdeteksi</div>
+              ? <div className="mon-empty">Belum ada request masuk tercatat. Coba akses salah satu endpoint.</div>
               : (
                 <div className="mon-attack-list">
-                  {data.security.recentAttacks.map((a) => (
-                    <div key={a.requestId} className="mon-attack-item" style={{ borderLeft: `3px solid ${severityColor(a.severity)}` }}>
-                      <div className="mon-attack-item__header">
-                        <span className="mon-attack-item__type" style={{ color: severityColor(a.severity) }}>
-                          ● {a.type.replace(/_/g, " ")}
-                          {a.blocked && <span style={{ marginLeft: 6, fontSize: 10, background: "#fef2f2", color: "#dc2626", padding: "1px 6px", borderRadius: 4, border: "1px solid #fecaca" }}>BLOCKED</span>}
-                        </span>
-                        <span className="mon-attack-item__time">{new Date(a.timestamp).toLocaleTimeString("id-ID")}</span>
-                      </div>
-                      <div className="mon-attack-item__detail">
-                        <span>{a.method}</span>
-                        <span style={{ fontFamily: "monospace" }}>{a.ip}</span>
-                        <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 160 }}>{a.endpoint}</span>
-                        <span style={{ color: a.threatScore >= 70 ? "#dc2626" : a.threatScore >= 40 ? "#d97706" : "#6b7280", fontWeight: 600 }}>
-                          score: {a.threatScore}
-                        </span>
-                      </div>
-                      {a.signals?.length > 0 && (
-                        <div style={{ fontSize: 10, color: "var(--text-muted)", marginTop: 4, paddingTop: 4, borderTop: "1px solid var(--border)" }}>
-                          {a.signals.slice(0, 3).map((s, i) => (
-                            <span key={i} style={{ display: "inline-block", marginRight: 6, background: "var(--bg-secondary)", padding: "1px 5px", borderRadius: 3, border: "1px solid var(--border)" }}>
-                              {s.type.replace(/_/g, " ")} ({Math.round(s.confidence * 100)}%)
-                            </span>
-                          ))}
+                  {data.security.recentAttacks.map((a) => {
+                    const normColor = (a.normalityScore ?? 100) >= 80 ? "#16a34a" : (a.normalityScore ?? 100) >= 50 ? "#d97706" : "#dc2626";
+                    const normLabel = (a.normalityScore ?? 100) >= 80 ? "Normal" : (a.normalityScore ?? 100) >= 50 ? "Suspicious" : "Attack";
+                    return (
+                      <div key={a.requestId} className="mon-attack-item" style={{ borderLeft: `3px solid ${severityColor(a.severity)}` }}>
+                        <div className="mon-attack-item__header">
+                          <span className="mon-attack-item__type" style={{ color: severityColor(a.severity) }}>
+                            ● {a.type.replace(/_/g, " ")}
+                            {a.blocked && <span style={{ marginLeft: 6, fontSize: 10, background: "#fef2f2", color: "#dc2626", padding: "1px 5px", borderRadius: 3, border: "1px solid #fecaca" }}>BLOCKED</span>}
+                          </span>
+                          <span className="mon-attack-item__time">{new Date(a.timestamp).toLocaleTimeString("id-ID")}</span>
                         </div>
-                      )}
-                    </div>
-                  ))}
+                        <div className="mon-attack-item__detail">
+                          <span style={{ fontWeight: 600 }}>{a.method}</span>
+                          <span style={{ fontFamily: "monospace", fontSize: 10 }}>{a.ip}</span>
+                          <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 140 }}>{a.endpoint}</span>
+                        </div>
+                        <div style={{ display: "flex", gap: 8, marginTop: 5, alignItems: "center" }}>
+                          {/* Threat score */}
+                          <div style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 10, background: "var(--bg-secondary)", padding: "2px 7px", borderRadius: 4, border: "1px solid var(--border)" }}>
+                            <span style={{ color: "var(--text-muted)" }}>threat</span>
+                            <span style={{ fontWeight: 700, color: a.threatScore >= 70 ? "#dc2626" : a.threatScore >= 40 ? "#d97706" : "#6b7280", fontFamily: "monospace" }}>{a.threatScore}</span>
+                          </div>
+                          {/* Normality score */}
+                          <div style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 10, background: `${normColor}12`, padding: "2px 7px", borderRadius: 4, border: `1px solid ${normColor}40` }}>
+                            <span style={{ color: normColor, fontWeight: 700 }}>{normLabel}</span>
+                            <span style={{ color: normColor, fontFamily: "monospace", fontWeight: 700 }}>{a.normalityScore ?? 100}%</span>
+                          </div>
+                        </div>
+                        {a.signals?.length > 0 && (
+                          <div style={{ fontSize: 10, color: "var(--text-muted)", marginTop: 5, display: "flex", flexWrap: "wrap", gap: 4 }}>
+                            {a.signals.slice(0, 4).map((s, i) => (
+                              <span key={i} style={{ background: "var(--bg-secondary)", padding: "1px 6px", borderRadius: 3, border: "1px solid var(--border)", whiteSpace: "nowrap" }}>
+                                {s.type.replace(/_/g, " ")} <span style={{ opacity: 0.7 }}>({Math.round(s.confidence * 100)}%)</span>
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
               )}
           </div>

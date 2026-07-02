@@ -45,7 +45,7 @@ export async function POST(request: NextRequest) {
       body,
     });
     if (sec.blocked) {
-      recordIpError(ip);
+      void recordIpError(ip);
       return NextResponse.json({ error: "Akses ditolak", reason: sec.reason, threatScore: sec.threatScore }, { status: sec.signals.some(s => s.type === "rate_limit") ? 429 : 403 });
     }
 
@@ -72,8 +72,9 @@ export async function POST(request: NextRequest) {
       usage: result.usage,
     });
   } catch (err) {
-    recordIpError(ip);
+    void recordIpError(ip);
     const msg = err instanceof Error ? err.message : "Server error";
     return NextResponse.json({ error: msg }, { status: 500 });
   }
 }
+

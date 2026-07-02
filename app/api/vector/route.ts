@@ -59,7 +59,7 @@ export async function POST(request: NextRequest) {
       body: { action, prompt: payload?.prompt, theme: payload?.theme },
     });
     if (sec.blocked) {
-      recordIpError(ip);
+      void recordIpError(ip);
       return NextResponse.json({ error: "Akses ditolak", reason: sec.reason, threatScore: sec.threatScore }, { status: sec.signals.some(s => s.type === "rate_limit") ? 429 : 403 });
     }
 
@@ -339,8 +339,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Action tidak dikenali" }, { status: 400 });
 
   } catch (error) {
-    recordIpError(ip);
+    void recordIpError(ip);
     const msg = error instanceof Error ? error.message : "Terjadi kesalahan internal";
     return NextResponse.json({ error: msg }, { status: 500 });
   }
 }
+

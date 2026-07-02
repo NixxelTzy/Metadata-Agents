@@ -177,7 +177,7 @@ export async function POST(request: NextRequest) {
       body: { stabilized, imageCount: Array.isArray(images) ? images.length : 0 }, // don't scan base64 images
     });
     if (sec.blocked) {
-      recordIpError(ip);
+      void recordIpError(ip);
       return NextResponse.json({ error: "Akses ditolak", reason: sec.reason, threatScore: sec.threatScore }, { status: sec.signals.some(s => s.type === "rate_limit") ? 429 : 403 });
     }
 
@@ -233,10 +233,11 @@ export async function POST(request: NextRequest) {
       totalTokens: results.reduce((s, r) => s + (r.usage?.totalTokens || 0), 0),
     }});
   } catch (error) {
-    recordIpError(ip);
+    void recordIpError(ip);
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Terjadi kesalahan server" },
       { status: 500 }
     );
   }
 }
+

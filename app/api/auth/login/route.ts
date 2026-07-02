@@ -23,7 +23,7 @@ export async function POST(request: NextRequest) {
       body: { email }, // don't pass password into scanner
     });
     if (sec.blocked) {
-      recordIpError(ip);
+      void recordIpError(ip);
       return NextResponse.json({ error: "Terlalu banyak percobaan login. Coba lagi nanti.", reason: sec.reason }, { status: sec.signals.some(s => s.type === "rate_limit") ? 429 : 403 });
     }
 
@@ -33,13 +33,13 @@ export async function POST(request: NextRequest) {
 
     const user = await getUserByEmail(email.toLowerCase());
     if (!user) {
-      recordIpError(ip); // failed login = error signal for credential stuffing detection
+      void recordIpError(ip); // failed login = error signal for credential stuffing detection
       return NextResponse.json({ error: "Email atau password salah" }, { status: 401 });
     }
 
     const valid = await bcrypt.compare(password, user.passwordHash);
     if (!valid) {
-      recordIpError(ip);
+      void recordIpError(ip);
       return NextResponse.json({ error: "Email atau password salah" }, { status: 401 });
     }
 
@@ -65,8 +65,9 @@ export async function POST(request: NextRequest) {
 
     return response;
   } catch (error) {
-    recordIpError(ip);
+    void recordIpError(ip);
     console.error("Login error:", error);
     return NextResponse.json({ error: "Terjadi kesalahan server" }, { status: 500 });
   }
 }
+
