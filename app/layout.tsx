@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
+import FirewallProvider from "@/components/FirewallProvider";
 import "./globals.css";
 import "./research-panel.css";
 import "./vector-creator.css";
@@ -94,10 +95,12 @@ export default function RootLayout({
   return (
     <html lang="id" className={inter.variable}>
       <body>
-        <div className="app">
-          {children}
-          <Analytics />
-        </div>
+        <FirewallProvider>
+          <div className="app">
+            {children}
+            <Analytics />
+          </div>
+        </FirewallProvider>
       </body>
     </html>
   );

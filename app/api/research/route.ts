@@ -3,6 +3,7 @@ import { ResearchEngine } from "@/lib/research/RESEARCH_ENGINE";
 import { ResearchEngineDeep } from "@/lib/research/RESEARCH_ENGINE_DEEP";
 import { inspect, getClientIp, recordIpError } from "@/lib/security/core";
 
+export const runtime = "nodejs"; // Required for Redis (security core)
 export const maxDuration = 300;
 
 export async function POST(request: NextRequest) {

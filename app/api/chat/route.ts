@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { callGroq, type GroqMessage } from "@/lib/groq";
 import { inspect, getClientIp, recordIpError } from "@/lib/security/core";
 
+export const runtime = "nodejs"; // Required for Redis (security core)
+
 const SYSTEM_PROMPT = `You are an elite AI assistant with deep expertise in:
 - Software development (all programming languages, frameworks, architectures)
 - Code generation (write complete, production-ready, well-commented code)

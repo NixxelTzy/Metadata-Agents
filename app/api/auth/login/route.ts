@@ -4,6 +4,8 @@ import { getUserByEmail } from "@/lib/db";
 import { signToken } from "@/lib/auth";
 import { inspect, getClientIp, recordIpError } from "@/lib/security/core";
 
+export const runtime = "nodejs"; // Required for Redis (security core)
+
 export async function POST(request: NextRequest) {
   const headersObj: Record<string, string> = {};
   request.headers.forEach((v, k) => { headersObj[k] = v; });

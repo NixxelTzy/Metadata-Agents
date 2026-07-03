@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { callGroq } from "@/lib/groq";
 import { inspect, getClientIp, recordIpError } from "@/lib/security/core";
 
+export const runtime = "nodejs"; // Required for Redis (security core)
 export const maxDuration = 300;
 
 // ─────────────────────────────────────────────────────────────────────────────

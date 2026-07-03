@@ -3,6 +3,7 @@ import { MAX_IMAGES } from "@/lib/utils";
 import { callGroq, type GroqMessage } from "@/lib/groq";
 import { inspect, getClientIp, recordIpError } from "@/lib/security/core";
 
+export const runtime = "nodejs"; // Required for Redis (security core)
 export const maxDuration = 300;
 
 export interface MetadataResult {

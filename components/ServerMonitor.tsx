@@ -16,8 +16,8 @@ interface MonitorData {
   uptime: { uptime: number; formatted: string };
   network: { name: string; address: string; family: string }[];
   security: {
-    stats: { total: number; bySeverity: Record<string, number>; byType: Record<string, number>; last24h: number; lastHour: number; last10min: number; blocked: number; normalRequests: number; abnormalRequests: number; avgNormality: number; topIps: { ip: string; count: number }[]; storageUsed: number; storageMax: number; storagePercent: number };
-    recentAttacks: { type: string; severity: string; ip: string; endpoint: string; method: string; threatScore: number; normalityScore: number; action: string; blocked: boolean; timestamp: number; requestId: string; signals: { type: string; severity: string; confidence: number; detail: string }[] }[];
+    stats: { total: number; bySeverity: Record<string, number>; byType: Record<string, number>; last24h: number; lastHour: number; last10min: number; blocked: number; normalRequests: number; abnormalRequests: number; avgNormality: number; topIps: { ip: string; count: number }[]; storageUsed: number; storageMax: number; storagePercent: number; avgTrustScore?: number; botDetections?: number; chainAttacks?: number; promptInjections?: number; geoAnomalies?: number };
+    recentAttacks: { type: string; severity: string; ip: string; endpoint: string; method: string; threatScore: number; normalityScore: number; trustScore?: number; botScore?: number; fusedScore?: number; action: string; blocked: boolean; timestamp: number; requestId: string; signals: { type: string; severity: string; confidence: number; detail: string }[] }[];
     defenceStatus: Record<string, string>;
   };
 }
@@ -431,6 +431,31 @@ export default function ServerMonitor() {
               <div className="mon-info-row"><span style={{ color: "#dc2626" }}>🚫 Blocked</span><span style={{ color: "#dc2626", fontWeight: 700 }}>{data.security.stats.blocked}</span></div>
             </div>
 
+            {/* ASI Intelligence Metrics */}
+            {(data.security.stats.avgTrustScore !== undefined || data.security.stats.botDetections !== undefined) && (
+              <div className="mon-section">
+                <div className="mon-section__title">🧠 ASI Intelligence Metrics</div>
+                {data.security.stats.avgTrustScore !== undefined && (
+                  <div className="mon-info-row">
+                    <span>Avg Trust Score</span>
+                    <span style={{ fontWeight: 700, color: (data.security.stats.avgTrustScore ?? 50) >= 70 ? "#16a34a" : (data.security.stats.avgTrustScore ?? 50) >= 40 ? "#d97706" : "#dc2626", fontFamily: "monospace" }}>{data.security.stats.avgTrustScore}</span>
+                  </div>
+                )}
+                {data.security.stats.botDetections !== undefined && (
+                  <div className="mon-info-row"><span>🤖 Bot Detections</span><span style={{ color: (data.security.stats.botDetections ?? 0) > 0 ? "#dc2626" : "#16a34a", fontWeight: 600 }}>{data.security.stats.botDetections ?? 0}</span></div>
+                )}
+                {data.security.stats.chainAttacks !== undefined && (
+                  <div className="mon-info-row"><span>⛓️ Chain Attacks</span><span style={{ color: (data.security.stats.chainAttacks ?? 0) > 0 ? "#dc2626" : "#16a34a", fontWeight: 600 }}>{data.security.stats.chainAttacks ?? 0}</span></div>
+                )}
+                {data.security.stats.promptInjections !== undefined && (
+                  <div className="mon-info-row"><span>💉 Prompt Injections</span><span style={{ color: (data.security.stats.promptInjections ?? 0) > 0 ? "#dc2626" : "#16a34a", fontWeight: 600 }}>{data.security.stats.promptInjections ?? 0}</span></div>
+                )}
+                {data.security.stats.geoAnomalies !== undefined && (
+                  <div className="mon-info-row"><span>🌍 Geo Anomalies</span><span style={{ color: (data.security.stats.geoAnomalies ?? 0) > 0 ? "#d97706" : "#16a34a", fontWeight: 600 }}>{data.security.stats.geoAnomalies ?? 0}</span></div>
+                )}
+              </div>
+            )}
+
             {/* Storage Protection */}
             <div className="mon-section">
               <div className="mon-section__title">🗄️ Storage Protection</div>
@@ -536,12 +561,26 @@ export default function ServerMonitor() {
                           <span style={{ fontFamily: "monospace", fontSize: 10 }}>{a.ip}</span>
                           <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 140 }}>{a.endpoint}</span>
                         </div>
-                        <div style={{ display: "flex", gap: 8, marginTop: 5, alignItems: "center" }}>
+                        <div style={{ display: "flex", gap: 6, marginTop: 5, alignItems: "center", flexWrap: "wrap" }}>
                           {/* Threat score */}
                           <div style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 10, background: "var(--bg-secondary)", padding: "2px 7px", borderRadius: 4, border: "1px solid var(--border)" }}>
                             <span style={{ color: "var(--text-muted)" }}>threat</span>
                             <span style={{ fontWeight: 700, color: a.threatScore >= 70 ? "#dc2626" : a.threatScore >= 40 ? "#d97706" : "#6b7280", fontFamily: "monospace" }}>{a.threatScore}</span>
                           </div>
+                          {/* Trust score */}
+                          {a.trustScore !== undefined && (
+                            <div style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 10, background: `${a.trustScore >= 70 ? "#16a34a" : a.trustScore >= 40 ? "#d97706" : "#dc2626"}18`, padding: "2px 7px", borderRadius: 4, border: `1px solid ${a.trustScore >= 70 ? "#16a34a" : a.trustScore >= 40 ? "#d97706" : "#dc2626"}40` }}>
+                              <span style={{ color: "var(--text-muted)" }}>trust</span>
+                              <span style={{ fontWeight: 700, color: a.trustScore >= 70 ? "#16a34a" : a.trustScore >= 40 ? "#d97706" : "#dc2626", fontFamily: "monospace" }}>{a.trustScore}</span>
+                            </div>
+                          )}
+                          {/* Fused score */}
+                          {a.fusedScore !== undefined && (
+                            <div style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 10, background: "var(--bg-secondary)", padding: "2px 7px", borderRadius: 4, border: "1px solid var(--border)" }}>
+                              <span style={{ color: "var(--text-muted)" }}>fused</span>
+                              <span style={{ fontWeight: 700, color: a.fusedScore >= 60 ? "#dc2626" : a.fusedScore >= 40 ? "#d97706" : "#6b7280", fontFamily: "monospace" }}>{a.fusedScore}</span>
+                            </div>
+                          )}
                           {/* Normality score */}
                           <div style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 10, background: `${normColor}12`, padding: "2px 7px", borderRadius: 4, border: `1px solid ${normColor}40` }}>
                             <span style={{ color: normColor, fontWeight: 700 }}>{normLabel}</span>
@@ -564,7 +603,7 @@ export default function ServerMonitor() {
               )}
           </div>
         )}
-
+  
       </div>
     </div>
   );
