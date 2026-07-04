@@ -1,13 +1,10 @@
 /**
- * /api/firewall/ai-tick — AI auto-analysis scheduler
+ * /api/firewall/ai-tick — AI analysis endpoint
  *
- * Dipanggil oleh:
- * 1. Vercel Cron Job (vercel.json) setiap 5 menit
- * 2. Firewall verify endpoint setelah mendeteksi serangan besar
- * 3. Operator via POST /api/firewall/operator { action: "run-ai" }
- *
- * Menggunakan CRON_SECRET header untuk auth (diset Vercel otomatis).
- * Atau gunakan FIREWALL_OPERATOR_KEY untuk trigger manual.
+ * Trigger options (Vercel Hobby plan — no sub-daily cron):
+ * 1. Vercel Cron: once per day at 02:00 UTC (vercel.json: "0 2 * * *")
+ * 2. Lazy trigger: auto-fired by emitAlert() when attack threshold reached
+ * 3. Manual: POST /api/firewall/operator { action: "run-ai" }
  */
 
 import { NextRequest, NextResponse } from "next/server";

@@ -324,3 +324,42 @@ export async function getLastAiResult(): Promise<AiAnalysisResult | null> {
     return v ?? null;
   } catch { return null; }
 }
+
+// ─── Lazy trigger — run AI when attack threshold reached ─────────────────────
+// Replaces the 5-min cron (not supported on Vercel Hobby plan).
+// Called internally by firewall.ts after emitting critical alerts.
+
+const AI_TRIGGER_COOLDOWN_SEC = 600; // 10min minimum between runs
+const AI_TRIGGER_KEY = "fw:ai:lasttrigger";
+const AI_ATTACK_COUNTER_KEY = "fw:ai:atkcnt";
+
+/**
+ * maybeRunAiAnalysis — Triggers AI analysis if:
+ * - Last run was more than 10 minutes ago
+ * - Accumulated attack count in last 10min exceeds threshold
+ *
+ * Called fire-and-forget from emitAlert(). Never blocks the request.
+ */
+export async function maybeRunAiAnalysis(threatLevel: string): Promise<void> {
+  try {
+    // Count attacks to decide if threshold is hit
+    const atkCount = await R().incr(AI_ATTACK_COUNTER_KEY);
+    await R().expire(AI_ATTACK_COUNTER_KEY, 600); // 10min window
+
+    const threshold = threatLevel === "critical" ? 3 : threatLevel === "high" ? 8 : 20;
+    if (atkCount < threshold) return;
+
+    // Check cooldown
+    const lastRun = await R().get<number>(AI_TRIGGER_KEY);
+    const now = Date.now();
+    if (lastRun && now - lastRun < AI_TRIGGER_COOLDOWN_SEC * 1000) return;
+
+    // Mark running
+    await R().set(AI_TRIGGER_KEY, now, { ex: AI_TRIGGER_COOLDOWN_SEC });
+    await R().del(AI_ATTACK_COUNTER_KEY); // reset counter
+
+    // Run analysis in background (don't await)
+    runAiFirewallAnalysis().catch(e => console.error("[AI lazy trigger]", e));
+    console.log(`[AI-Controller] Lazy trigger fired (${atkCount} attacks, level=${threatLevel})`);
+  } catch { /* silent — never block request */ }
+}

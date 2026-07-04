@@ -1346,6 +1346,8 @@ async function emitAlert(alert: FirewallAlert): Promise<void> {
 
   if (alert.threatLevel === "high" || alert.threatLevel === "critical") {
     await recordIpError(alert.ip);
+    // Lazy-trigger AI analysis when attack threshold is reached (no cron needed)
+    void import("./ai-controller").then(m => m.maybeRunAiAnalysis(alert.threatLevel)).catch(() => {});
   }
 }
 
