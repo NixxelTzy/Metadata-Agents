@@ -113,7 +113,24 @@ export async function GET(request: NextRequest) {
   const ip = getClientIp(headersObj);
 
   const bypass = await hasValidBypass(ip);
-  return NextResponse.json({ verified: bypass });
+
+  // Also return AI-controlled state
+  let verificationMode: "strict" | "normal" | "off" = "normal";
+  let riskLevel = "none";
+  let forceReVerify = false;
+
+  try {
+    const { getVerificationMode, getLastAiResult } = await import("@/lib/security/defence/ai-controller");
+    verificationMode = await getVerificationMode();
+    const aiResult = await getLastAiResult();
+    if (aiResult) {
+      riskLevel = aiResult.riskLevel;
+      // In strict mode, non-bypassed clients must re-verify
+      forceReVerify = verificationMode === "strict" && !bypass;
+    }
+  } catch { /* silent — AI controller optional */ }
+
+  return NextResponse.json({ verified: bypass, verificationMode, riskLevel, forceReVerify });
 }
 
 // ── Browser signal analysis (anti-bot) ──────────────────────────────────────

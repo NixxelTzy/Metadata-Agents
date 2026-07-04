@@ -90,3 +90,26 @@ export function getGmailConfig(): { user: string; appPassword: string } {
     appPassword: process.env.GMAIL_APP_PASSWORD ?? "",
   };
 }
+
+/**
+ * Groq API key KHUSUS untuk AI Firewall Controller.
+ * Set GROQ_API_KEY_FIREWALL di Vercel/env untuk isolasi key dari fitur lain.
+ * Fallback ke key umum jika belum diset.
+ */
+export function getFirewallAiKey(): string {
+  const fwKey = process.env.GROQ_API_KEY_FIREWALL;
+  if (fwKey?.trim()) return fwKey.trim();
+  // Fallback ke general key
+  const generalKeys = getGroqApiKeys();
+  if (generalKeys.length > 0) return generalKeys[0]!;
+  throw new Error("Tidak ada Groq API key untuk Firewall AI. Set GROQ_API_KEY_FIREWALL.");
+}
+
+/**
+ * API key untuk operator endpoint firewall.
+ * Caller harus mengirim header: X-Firewall-Key: <nilai dari env>
+ * Set FIREWALL_OPERATOR_KEY di environment variables.
+ */
+export function getFirewallOperatorKey(): string {
+  return process.env.FIREWALL_OPERATOR_KEY ?? "";
+}
