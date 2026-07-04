@@ -1,9 +1,13 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { usePathname } from "next/navigation";
 import dynamic from "next/dynamic";
 
 const FirewallGate = dynamic(() => import("./FirewallGate"), { ssr: false });
+
+// Public paths — skip auth redirect, firewall still runs silently
+const PUBLIC_PATHS = ["/login", "/register"];
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -20,6 +24,8 @@ interface FirewallState {
 // ─── Provider ─────────────────────────────────────────────────────────────────
 
 export default function FirewallProvider({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname();
+  const isPublicPath = PUBLIC_PATHS.some(p => pathname?.startsWith(p));
   const [state, setState] = useState<FirewallState>({
     verified: false,
     verificationMode: "normal",
@@ -36,8 +42,11 @@ export default function FirewallProvider({ children }: { children: React.ReactNo
     mountedRef.current = true;
     const init = async () => {
       try {
-        const res  = await fetch("/api/firewall/verify", { method: "GET" });
-        const data = await res.json() as {
+        const [verifyRes, authRes] = await Promise.all([
+          fetch("/api/firewall/verify", { method: "GET" }),
+          fetch("/api/auth/me", { method: "GET" }),
+        ]);
+        const data = await verifyRes.json() as {
           verified?: boolean;
           verificationMode?: VerificationMode;
           riskLevel?: string;
@@ -45,13 +54,20 @@ export default function FirewallProvider({ children }: { children: React.ReactNo
 
         if (!mountedRef.current) return;
 
+        const isLoggedIn = authRes.ok;
         const mode  = data.verificationMode ?? "normal";
         const risk  = (data.riskLevel ?? "none") as FirewallState["riskLevel"];
-        const verified = !!data.verified;
+        const fwVerified = !!data.verified;
+
+        if (fwVerified && !isLoggedIn && !isPublicPath) {
+          // Firewall passed but no auth → redirect to login
+          window.location.replace("/login");
+          return;
+        }
 
         setState(s => ({
           ...s,
-          verified,
+          verified: fwVerified && isLoggedIn,
           verificationMode: mode,
           riskLevel: risk,
           showBanner: risk === "high" || risk === "critical",
@@ -116,8 +132,21 @@ export default function FirewallProvider({ children }: { children: React.ReactNo
     return () => { if (pollRef.current) clearInterval(pollRef.current); };
   }, [checked]);
 
-  const handlePassed = useCallback(() => {
-    setState(s => ({ ...s, verified: true }));
+  const handlePassed = useCallback(async () => {
+    // After verification passes, check if user is logged in
+    try {
+      const res  = await fetch("/api/auth/me", { method: "GET" });
+      if (res.ok) {
+        // Has valid session → show app normally
+        setState(s => ({ ...s, verified: true }));
+      } else {
+        // No session → redirect to login
+        window.location.replace("/login");
+      }
+    } catch {
+      // Network error → fallback: redirect to login to be safe
+      window.location.replace("/login");
+    }
   }, []);
 
   // ── Loading screen ─────────────────────────────────────────────────────────
