@@ -8,16 +8,20 @@ import ResearchPanel from "@/components/ResearchPanel";
 import VectorCreator from "@/components/VectorCreator";
 import { useDevice } from "@/lib/useDevice";
 import { useRouter } from "next/navigation";
-import { getUsage, getUsagePercent, getDailyLimit, formatTokens, resetUsage, getPlatformLabel, estimateCost, type Platform } from "@/lib/tokenStore";
+import {
+  getUsage, getUsagePercent, getDailyLimit,
+  formatTokens, resetUsage, getPlatformLabel,
+  estimateCost, type Platform,
+} from "@/lib/tokenStore";
 
 type Tab = "metadata" | "chat" | "research" | "vector";
 const ADMIN_EMAIL = "nixxeltzy@gmail.com";
 
-const TAB_CONFIG: { id: Tab; icon: string; label: string }[] = [
-  { id: "metadata", icon: "🏷️", label: "Metadata" },
-  { id: "research", icon: "🔎", label: "Riset" },
-  { id: "vector",   icon: "🎨", label: "Vector" },
-  { id: "chat",     icon: "🤖", label: "AI Chat" },
+const TAB_CONFIG: { id: Tab; icon: string; label: string; desc: string; color: string }[] = [
+  { id: "metadata", icon: "🏷️", label: "Metadata",   desc: "Adobe Stock AI",   color: "#4a90e2" },
+  { id: "research", icon: "🔎", label: "Riset",       desc: "Keyword Research", color: "#7b5ae0" },
+  { id: "vector",   icon: "✨", label: "Vector Ideas", desc: "AI Ideas Gen",    color: "#22c55e" },
+  { id: "chat",     icon: "🤖", label: "AI Chat",     desc: "Groq Assistant",   color: "#f59e0b" },
 ];
 
 interface UserInfo {
@@ -35,7 +39,6 @@ export default function Home() {
   const [monitorOpen, setMonitorOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
-  // Token usage state — di-refresh setiap kali ada chat baru atau dropdown dibuka
   const [tokenUsage, setTokenUsage] = useState(() => getUsage());
   const [tokenPct, setTokenPct] = useState(() => getUsagePercent());
   const device = useDevice();
@@ -48,7 +51,6 @@ export default function Home() {
       .catch(() => {});
   }, []);
 
-  // Refresh token saat dropdown dibuka
   useEffect(() => {
     if (profileOpen) {
       setTokenUsage(getUsage());
@@ -94,14 +96,9 @@ export default function Home() {
     }
   }, [router]);
 
-  // Progress bar color
-  const pctColor = tokenPct >= 85 ? "#dc2626" : tokenPct >= 60 ? "#d97706" : "#16a34a";
-
-  const currentTitle = monitorOpen
-    ? "📡 Server Monitoring"
-    : TAB_CONFIG.find((t) => t.id === activeTab)?.label ?? "";
-
+  const pctColor = tokenPct >= 85 ? "#f87171" : tokenPct >= 60 ? "#fbbf24" : "#4ade80";
   const userInitial = user?.username?.charAt(0)?.toUpperCase() ?? "?";
+  const currentTab = TAB_CONFIG.find((t) => t.id === activeTab);
 
   return (
     <div className="workspace">
@@ -109,10 +106,14 @@ export default function Home() {
         <div className="sidebar-overlay" onClick={() => setSidebarOpen(false)} aria-hidden="true" />
       )}
 
-      {/* ── Sidebar ── */}
+      {/* ══════════════════════════════════════════════════════
+          PREMIUM SIDEBAR
+      ══════════════════════════════════════════════════════ */}
       <aside className={["sidebar", device.isDesktop ? "sidebar--desktop" : sidebarOpen ? "sidebar--open" : ""].join(" ")}>
+
+        {/* Logo */}
         <div className="sidebar__logo">
-          <div className="sidebar__logo-icon">🎨</div>
+          <div className="sidebar__logo-icon">✨</div>
           <div>
             <div className="sidebar__logo-text">Stock AI Studio</div>
             <div className="sidebar__logo-sub">Powered by Groq AI</div>
@@ -122,18 +123,25 @@ export default function Home() {
           )}
         </div>
 
-        <div className="sidebar__section-label">Tools</div>
+        {/* Nav */}
+        <div className="sidebar__section-label">Navigation</div>
         <nav className="sidebar__nav">
           {TAB_CONFIG.map((tab) => (
             <button key={tab.id} type="button"
               className={`sidebar__item ${activeTab === tab.id && !monitorOpen ? "sidebar__item--active" : ""}`}
-              onClick={() => handleTabChange(tab.id)}>
+              onClick={() => handleTabChange(tab.id)}
+              style={{ "--tab-color": tab.color } as React.CSSProperties}
+            >
               <span className="sidebar__icon">{tab.icon}</span>
-              {tab.label}
+              <span className="sidebar__item-content">
+                <span className="sidebar__item-label">{tab.label}</span>
+                <span className="sidebar__item-desc">{tab.desc}</span>
+              </span>
             </button>
           ))}
         </nav>
 
+        {/* Admin */}
         {isAdmin && (
           <>
             <div className="sidebar__section-label">Admin</div>
@@ -142,13 +150,37 @@ export default function Home() {
                 className={`sidebar__item ${monitorOpen ? "sidebar__item--active" : ""}`}
                 onClick={() => { setMonitorOpen((v) => !v); if (!device.isDesktop) setSidebarOpen(false); }}>
                 <span className="sidebar__icon">📡</span>
-                Server Monitor
+                <span className="sidebar__item-content">
+                  <span className="sidebar__item-label">Server Monitor</span>
+                  <span className="sidebar__item-desc">System Health</span>
+                </span>
               </button>
             </nav>
           </>
         )}
 
-        {/* ── Profile section ── */}
+        {/* Token mini-bar in sidebar */}
+        <div className="sidebar__token-mini">
+          <div className="sidebar__token-mini-top">
+            <span className="sidebar__token-mini-label">⚡ Token Hari Ini</span>
+            <span className="sidebar__token-mini-pct" style={{ color: pctColor }}>{tokenPct}%</span>
+          </div>
+          <div className="sidebar__token-mini-bar">
+            {(["metadata", "chat", "vector"] as Platform[]).map(p => {
+              const pu = tokenUsage.byPlatform?.[p];
+              const w = tokenUsage.totalTokens > 0 && pu ? (pu.totalTokens / tokenUsage.totalTokens) * tokenPct : 0;
+              const colors: Record<Platform, string> = { metadata: "#4a90e2", chat: "#7b5ae0", vector: "#22c55e" };
+              return <div key={p} style={{ width: `${w}%`, height: "100%", background: colors[p], transition: "width 0.5s ease" }} />;
+            })}
+            <div style={{ flex: 1 }} />
+          </div>
+          <div className="sidebar__token-mini-nums">
+            <span>{formatTokens(tokenUsage.totalTokens)}</span>
+            <span style={{ color: "var(--text-muted)" }}>/ {formatTokens(getDailyLimit())}</span>
+          </div>
+        </div>
+
+        {/* Profile */}
         <div className="sidebar__profile-area" ref={profileRef}>
           <button type="button" className="sidebar__profile-btn"
             onClick={() => setProfileOpen((v) => !v)}
@@ -176,7 +208,7 @@ export default function Home() {
 
               <div className="sidebar__dropdown-divider" />
 
-              {/* Tipe akun */}
+              {/* Account type */}
               <div className="sidebar__dropdown-row">
                 <span className="sidebar__dropdown-label">Tipe Akun</span>
                 <span className={`sidebar__profile-badge sidebar__profile-badge--${user?.role ?? "user"}`}>
@@ -186,52 +218,42 @@ export default function Home() {
 
               <div className="sidebar__dropdown-divider" />
 
-              {/* Token Usage Section */}
+              {/* Token Usage */}
               <div className="sidebar__token-section">
                 <div className="sidebar__token-header">
                   <span className="sidebar__token-title">⚡ Token Hari Ini</span>
                   <span className="sidebar__token-pct" style={{ color: pctColor }}>{tokenPct}%</span>
                 </div>
-
-                {/* Progress bar — stacked by platform */}
                 <div className="sidebar__token-bar" style={{ display: "flex", gap: 1, overflow: "hidden" }}>
                   {(["metadata", "chat", "vector"] as Platform[]).map(p => {
                     const pu = tokenUsage.byPlatform?.[p];
                     const w = tokenUsage.totalTokens > 0 && pu ? (pu.totalTokens / tokenUsage.totalTokens) * tokenPct : 0;
-                    const colors: Record<Platform, string> = { metadata: "#4a90e2", chat: "#7b5ae0", vector: "#16a34a" };
+                    const colors: Record<Platform, string> = { metadata: "#4a90e2", chat: "#7b5ae0", vector: "#22c55e" };
                     return <div key={p} style={{ width: `${w}%`, height: "100%", background: colors[p], transition: "width 0.4s" }} />;
                   })}
-                  {/* remainder fill */}
                   <div style={{ flex: 1, background: "var(--border)" }} />
                 </div>
 
-                {/* Stats */}
                 <div className="sidebar__token-stats">
-                  <div className="sidebar__token-stat">
-                    <span className="sidebar__token-stat-label">Total</span>
-                    <span className="sidebar__token-stat-val">{formatTokens(tokenUsage.totalTokens)}</span>
-                  </div>
-                  <div className="sidebar__token-stat">
-                    <span className="sidebar__token-stat-label">Input</span>
-                    <span className="sidebar__token-stat-val">{formatTokens(tokenUsage.promptTokens)}</span>
-                  </div>
-                  <div className="sidebar__token-stat">
-                    <span className="sidebar__token-stat-label">Output</span>
-                    <span className="sidebar__token-stat-val">{formatTokens(tokenUsage.completionTokens)}</span>
-                  </div>
-                  <div className="sidebar__token-stat">
-                    <span className="sidebar__token-stat-label">Limit</span>
-                    <span className="sidebar__token-stat-val">{formatTokens(getDailyLimit())}</span>
-                  </div>
+                  {[
+                    { label: "Total",  val: formatTokens(tokenUsage.totalTokens) },
+                    { label: "Input",  val: formatTokens(tokenUsage.promptTokens) },
+                    { label: "Output", val: formatTokens(tokenUsage.completionTokens) },
+                    { label: "Limit",  val: formatTokens(getDailyLimit()) },
+                  ].map(item => (
+                    <div key={item.label} className="sidebar__token-stat">
+                      <span className="sidebar__token-stat-label">{item.label}</span>
+                      <span className="sidebar__token-stat-val">{item.val}</span>
+                    </div>
+                  ))}
                 </div>
 
-                {/* Per-platform breakdown */}
                 {tokenUsage.byPlatform && tokenUsage.totalTokens > 0 && (
                   <div style={{ marginTop: 8, display: "flex", flexDirection: "column", gap: 4 }}>
                     {(["metadata", "chat", "vector"] as Platform[]).map(p => {
                       const pu = tokenUsage.byPlatform![p];
                       if (!pu || pu.totalTokens === 0) return null;
-                      const colors: Record<Platform, string> = { metadata: "#4a90e2", chat: "#7b5ae0", vector: "#16a34a" };
+                      const colors: Record<Platform, string> = { metadata: "#4a90e2", chat: "#7b5ae0", vector: "#22c55e" };
                       return (
                         <div key={p} className="sidebar__token-platform">
                           <span className="sidebar__token-platform-label" style={{ color: colors[p] }}>{getPlatformLabel(p)}</span>
@@ -241,7 +263,7 @@ export default function Home() {
                     })}
                     <div className="sidebar__token-platform" style={{ borderTop: "1px solid var(--border)", paddingTop: 4, marginTop: 2 }}>
                       <span className="sidebar__token-platform-label">Est. Cost</span>
-                      <span className="sidebar__token-platform-val" style={{ color: "#16a34a" }}>{estimateCost(tokenUsage.promptTokens, tokenUsage.completionTokens)}</span>
+                      <span className="sidebar__token-platform-val" style={{ color: "#4ade80" }}>{estimateCost(tokenUsage.promptTokens, tokenUsage.completionTokens)}</span>
                     </div>
                   </div>
                 )}
@@ -259,19 +281,25 @@ export default function Home() {
 
               <button type="button" className="sidebar__logout-btn"
                 onClick={handleLogout} disabled={loggingOut}>
-                {loggingOut ? "⏳ Logging out..." : "→ Keluar"}
+                {loggingOut ? "⏳ Keluar..." : "→ Keluar"}
               </button>
             </div>
           )}
         </div>
       </aside>
 
-      {/* ── Main ── */}
+      {/* ══════════════════════════════════════════════════════
+          MAIN CONTENT AREA
+      ══════════════════════════════════════════════════════ */}
       <div className="workspace__main">
+
+        {/* Mobile topbar */}
         {!device.isDesktop && (
           <header className="topbar">
             <button type="button" className="topbar__menu" onClick={() => setSidebarOpen(true)} aria-label="Menu">☰</button>
-            <div className="topbar__title">{currentTitle}</div>
+            <div className="topbar__title">
+              {monitorOpen ? "📡 Server Monitor" : `${currentTab?.icon} ${currentTab?.label}`}
+            </div>
             <button type="button" className="topbar__avatar"
               onClick={() => setProfileOpen((v) => !v)} aria-label="Profile">
               {userInitial}
@@ -279,6 +307,41 @@ export default function Home() {
           </header>
         )}
 
+        {/* Desktop content header bar */}
+        {device.isDesktop && !monitorOpen && (
+          <div className="content-header">
+            <div className="content-header__left">
+              <div className="content-header__breadcrumb">
+                <span className="content-header__brand">Stock AI Studio</span>
+                <span className="content-header__sep">›</span>
+                <span className="content-header__page">{currentTab?.label}</span>
+              </div>
+              <div className="content-header__title">
+                {currentTab?.icon}&nbsp;{currentTab?.label}
+                <span className="content-header__desc">{currentTab?.desc}</span>
+              </div>
+            </div>
+            <div className="content-header__right">
+              {/* Live token mini-display */}
+              <div className="content-header__token-pill">
+                <div className="content-header__token-dot" style={{ background: pctColor }} />
+                <span className="content-header__token-text">{formatTokens(tokenUsage.totalTokens)} tokens</span>
+                <span className="content-header__token-sep">·</span>
+                <span className="content-header__token-pct" style={{ color: pctColor }}>{tokenPct}%</span>
+              </div>
+              {/* User pill */}
+              <div className="content-header__user-pill" onClick={() => setProfileOpen(v => !v)}>
+                <div className="content-header__avatar">{userInitial}</div>
+                <span className="content-header__username">{user?.username ?? "..."}</span>
+                <span className={`sidebar__profile-badge sidebar__profile-badge--${user?.role ?? "user"}`}>
+                  {user?.role === "admin" ? "👑 Admin" : user?.role === "premium" ? "✦" : "Free"}
+                </span>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Content */}
         <main className="workspace__content">
           {isAdmin && monitorOpen ? (
             <ServerMonitor />
@@ -287,7 +350,7 @@ export default function Home() {
           ) : activeTab === "research" ? (
             <ResearchPanel />
           ) : activeTab === "vector" ? (
-            <div style={{ padding: "24px 32px", maxWidth: 1400, margin: "0 auto", width: "100%", boxSizing: "border-box", overflowY: "auto", minHeight: 0, flex: 1 }}>
+            <div className="vector-content-wrap">
               <VectorCreator onTokensUpdated={refreshTokens} />
             </div>
           ) : (

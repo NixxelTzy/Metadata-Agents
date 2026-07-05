@@ -2,29 +2,44 @@ import { NextRequest, NextResponse } from "next/server";
 import { callGroq } from "@/lib/groq";
 import { inspect, getClientIp, recordIpError } from "@/lib/security/core";
 
-export const runtime = "nodejs"; // Required for Redis (security core)
-export const maxDuration = 300;
+export const runtime = "nodejs";
+export const maxDuration = 120;
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Vector Creator API — powered by Groq (same key as metadata + AI chat)
-// Actions:
-//   generate  → Full prompt generation + metadata for vector art
-//   magic     → Generate creative vector prompt ideas
-//   enhance   → Enhance / rewrite a user prompt for vector quality
+// Vector Ideas API — Magic Idea Generator
 // ─────────────────────────────────────────────────────────────────────────────
 
-const VECTOR_SYSTEM_PROMPT = `You are an elite vector art director and Adobe Stock vector specialist.
-You generate highly commercial, technically precise, and market-optimized prompts for vector illustration creation.
+// Semua angle kamera yang tersedia — setiap idea WAJIB pakai angle berbeda
+const CAMERA_ANGLES = [
+  "extreme bird-eye overhead top-down flat-lay view",
+  "dramatic low-angle worm-eye upward perspective",
+  "classic straight-on eye-level front view",
+  "dynamic 45-degree three-quarter isometric view",
+  "extreme close-up macro detail shot",
+  "wide establishing panoramic distant view",
+  "over-the-shoulder point-of-view perspective",
+  "tilted Dutch angle dynamic composition",
+  "deep forced-perspective tunnel view",
+  "split-screen dual-panel side-by-side layout",
+  "circular radiating central-focus composition",
+  "diagonal cross-section cutaway technical view",
+];
 
-Your output must consider:
-- Vector art style (flat vector, outline/line art, gradient mesh, icon-style, infographic, etc.)
-- Commercial viability on Adobe Stock marketplace
-- SEO-optimized keywords for vector discovery
-- Lighting, color palette, and composition for 2D vector aesthetics
-- Faceless/anonymous character design when requested
-- Consistency in style, stroke weight, and color palette across a series
-
-All vector prompts MUST be in English and optimized for AI image generation tools.`;
+// Prefix subjek per slot agar tidak ada duplikasi karakter/elemen
+const SUBJECT_PREFIXES = [
+  "A solitary individual",
+  "A dynamic group of people",
+  "An empty architectural space",
+  "A floating object or item",
+  "Abstract geometric shapes",
+  "A collection of icons or symbols",
+  "A landscape or environment",
+  "A machine or device",
+  "A hand holding or interacting",
+  "An overhead arrangement of objects",
+  "A cross-section cutaway diagram",
+  "A minimalist typographic layout",
+];
 
 export async function POST(request: NextRequest) {
   const headersObj: Record<string, string> = {};
@@ -34,301 +49,129 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     const { action, payload } = body as {
-      action: "generate" | "magic" | "enhance" | "generate_svg";
+      action: "magic";
       payload: {
-        prompt?: string;
-        theme?: string;
-        style?: string;
-        ratio?: string;
-        faceless?: boolean;
-        consistency?: boolean;
-        mode?: "prompt" | "noprompt";
-        colorPalette?: string;
-        complexity?: "simple" | "medium" | "complex";
-        targetUse?: string;
-        count?: number;
         artType?: string;
         concept?: string;
         customTheme?: string;
+        faceless?: boolean;
+        count?: number;
       };
     };
 
-    // ── Security inspection ──
+    // ── Security ──────────────────────────────────────────────────────────────
     const sec = await inspect({
       ip,
       endpoint: "/api/vector",
       method: "POST",
       userAgent: headersObj["user-agent"] ?? "",
       headers: headersObj,
-      body: { action, prompt: payload?.prompt, theme: payload?.theme },
+      body: { action },
     });
     if (sec.blocked) {
       void recordIpError(ip);
-      return NextResponse.json({ error: "Akses ditolak", reason: sec.reason, threatScore: sec.threatScore }, { status: sec.signals.some(s => s.type === "rate_limit") ? 429 : 403 });
+      return NextResponse.json(
+        { error: "Akses ditolak", reason: sec.reason, threatScore: sec.threatScore },
+        { status: sec.signals.some(s => s.type === "rate_limit") ? 429 : 403 }
+      );
     }
 
-    if (!action) {
+    if (!action || action !== "magic") {
       return NextResponse.json({ error: "Action tidak valid" }, { status: 400 });
     }
 
     // ─────────────────────────────────────────────────────────────────────────
-    // ACTION: MAGIC IDEAS — Generate creative vector concept ideas
+    // ACTION: MAGIC IDEAS
     // ─────────────────────────────────────────────────────────────────────────
-    if (action === "magic") {
-      const {
-        artType = "vector",
-        concept = "business",
-        customTheme = "",
-        count = 6,
-        faceless = false,
-      } = payload || {};
+    const {
+      artType   = "Vector",
+      concept   = "Business",
+      customTheme = "",
+      faceless  = false,
+      count     = 6,
+    } = payload || {};
 
-      const systemMsg = [
-        VECTOR_SYSTEM_PROMPT,
-        "Generate extremely detailed, complex, and highly marketable art concept ideas based on user filters.",
-        "Ensure each concept is a unique masterpiece suitable for digital agencies and stock portals.",
-        "IMPORTANT JSON RULES:",
-        "- Return ONLY a valid JSON object. No markdown code blocks, no backticks, no explanations outside JSON.",
-        "- All string values inside JSON must NOT contain raw newlines, tabs, or unescaped control characters.",
-        "- Keep each 'description' under 200 characters and each 'prompt' under 150 characters to avoid JSON issues.",
-        `{ "ideas": [ { "id": "string", "title": "string (max 80 chars)", "description": "string (detailed, 150-200 chars, NO newlines inside)", "prompt": "string (detailed prompt 80-120 words, single line, NO raw newlines or tabs inside)", "tags": ["string"], "estimatedSales": "string", "difficulty": "Easy" } ] }`,
-      ].join("\n");
+    const safeCount = Math.min(Math.max(Number(count) || 6, 3), 12);
 
-      const userMsg = [
-        `Art Style/Type: ${artType}`,
-        `Concept Category: ${concept}`,
-        customTheme ? `Custom Specific Theme: ${customTheme}` : "",
-        `Faceless Characters Option: ${faceless ? "YES — all characters must be faceless (back views, silhouettes, abstract)" : "NO — standard character features allowed"}`,
-        `Count: ${count} ideas`,
-        "",
-        "Generate highly unique, detailed, and complex art ideas with very long, detailed prompts and descriptions.",
-      ].filter(Boolean).join("\n");
+    // Shuffle & pick unique angles for each idea slot
+    const shuffledAngles  = [...CAMERA_ANGLES].sort(() => Math.random() - 0.5).slice(0, safeCount);
+    const shuffledSubjects = [...SUBJECT_PREFIXES].sort(() => Math.random() - 0.5).slice(0, safeCount);
 
-      const res = await callGroq([
-        { role: "system", content: systemMsg },
-        { role: "user", content: userMsg },
-      ], { temperature: 0.8, max_tokens: 4000 });
+    // Build per-idea angle & subject assignment string
+    const angleAssignments = shuffledAngles
+      .map((angle, i) => `  Idea ${i + 1}: angle="${angle}" | subject_prefix="${shuffledSubjects[i]}"`)
+      .join("\n");
 
-      let ideas: any[] = [];
-      const match = res.text.match(/\{[\s\S]*\}/);
-      if (match) {
-        const cleaned = cleanJsonForParsing(match[0]);
-        const parsed = JSON.parse(cleaned) as { ideas?: unknown[] };
-        ideas = parsed?.ideas ?? [];
-      }
+    const systemMsg = [
+      // ── Role ──
+      "You are an elite commercial art director specializing in stock content strategy, visual diversity, and AI image prompt engineering.",
+      "",
+      // ── Core mandate ──
+      "CORE MANDATE: Generate a JSON array of unique, commercially valuable art ideas for stock platforms.",
+      "Each idea MUST be 100% visually distinct — zero similarity in subject, composition, angle, color mood, or narrative.",
+      "",
+      // ── Anti-similarity rules ──
+      "=== STRICT ANTI-SIMILARITY SYSTEM ===",
+      "1. ANGLE DIVERSITY: Each idea is pre-assigned a unique camera angle listed below. You MUST use the exact assigned angle — never repeat or deviate.",
+      "2. SUBJECT DIVERSITY: Each idea is pre-assigned a subject prefix. Start the prompt with that subject type.",
+      "3. COLOR MOOD DIVERSITY: Every idea must use a completely different color temperature and palette (e.g., warm sunrise tones vs cool midnight blues vs vibrant neon vs muted earth tones vs monochrome accent — never repeat).",
+      "4. NARRATIVE DIVERSITY: The story, scene, and emotional message of each idea must be totally different from the others.",
+      "5. COMPOSITION DIVERSITY: Different layouts — some asymmetric, some grid, some radial, some diagonal — never two with the same layout.",
+      "6. ZERO CONCEPT OVERLAP: If Idea 1 is about 'working', Idea 2 CANNOT be about 'working' even in a different setting.",
+      "",
+      // ── Quality rules ──
+      "=== COMMERCIAL QUALITY REQUIREMENTS ===",
+      "- ANTI-SIMILAR CONTENT: The prompt must be so unique it cannot be mistaken for another existing stock image.",
+      "- ANTI-QUALITY ISSUES: Include explicit quality keywords (crisp vector lines, no blur, no noise, clean geometric shapes, smooth gradients).",
+      "- ANTI-INTELLECTUAL PROPERTY: Never reference brand names, logos, trademarks, celebrities, fictional characters, or copyrighted designs.",
+      "- COMMERCIAL VIABILITY: Every idea must have clear commercial use case (marketing, app UI, editorial, packaging, social media).",
+      "- STOCK COMPLIANCE: Safe for all audiences, no violence, no political content, no discriminatory imagery.",
+      "",
+      // ── Concept constraint ──
+      `=== CONCEPT CONSTRAINT ===`,
+      `All ideas must belong to the concept category: "${concept}".`,
+      `All ideas must use the art style: "${artType}".`,
+      customTheme ? `User's custom theme (incorporate into ideas): "${customTheme}".` : "",
+      faceless ? "CHARACTER RULE: All human figures MUST be completely faceless (silhouettes, back-views, abstract geometric shapes — NO visible faces)." : "",
+      "",
+      // ── Pre-assigned angles ──
+      "=== PRE-ASSIGNED ANGLES & SUBJECT PREFIXES (MANDATORY) ===",
+      angleAssignments,
+      "",
+      // ── JSON format ──
+      "=== JSON OUTPUT FORMAT (STRICT) ===",
+      "- Return ONLY a valid JSON object. No markdown, no code fences, no explanations outside the JSON.",
+      "- Every string value must be on a single line. NO raw newlines or tab characters inside any string value.",
+      "- 'prompt' must be 60-90 words, single-line, rich with visual detail, angle, lighting, color, and style keywords.",
+      "- 'description' must be 80-130 chars, single-line, describing commercial value and visual concept.",
+      `- Generate exactly ${safeCount} ideas.`,
+      `{ "ideas": [ { "id": "idea_1", "title": "string (max 75 chars)", "description": "string (80-130 chars, single line)", "prompt": "string (60-90 words, single line, includes assigned angle and subject prefix)", "tags": ["string", "string", "string", "string", "string"], "estimatedSales": "X,XXX+ downloads", "difficulty": "Easy" } ] }`,
+    ].filter(Boolean).join("\n");
 
-      return NextResponse.json({ success: true, ideas, usage: res.usage });
+    const userMsg = [
+      `Generate ${safeCount} completely unique art ideas.`,
+      `Art Style: ${artType}`,
+      `Concept Category: ${concept}`,
+      customTheme ? `Custom Theme: ${customTheme}` : "",
+      `Faceless Characters: ${faceless ? "YES — all characters must be faceless" : "NO — standard character features"}`,
+      "",
+      "CRITICAL REMINDER: Each idea must use its PRE-ASSIGNED camera angle and subject prefix. Make every idea look like it belongs to a totally different photo shoot. Maximum visual diversity. Zero similarity.",
+    ].filter(Boolean).join("\n");
+
+    const res = await callGroq([
+      { role: "system", content: systemMsg },
+      { role: "user",   content: userMsg },
+    ], { temperature: 0.85, max_tokens: 2800 });
+
+    let ideas: unknown[] = [];
+    const match = res.text.match(/\{[\s\S]*\}/);
+    if (match) {
+      const cleaned = cleanJsonForParsing(match[0]);
+      const parsed = JSON.parse(cleaned) as { ideas?: unknown[] };
+      ideas = parsed?.ideas ?? [];
     }
 
-
-    // ─────────────────────────────────────────────────────────────────────────
-    // ACTION: ENHANCE — AI rewrites / improves a user-written prompt
-    // ─────────────────────────────────────────────────────────────────────────
-    if (action === "enhance") {
-      const { prompt = "", style = "flat", faceless = false, ratio = "1:1", colorPalette = "", targetUse = "" } = payload || {};
-
-      if (!prompt.trim()) {
-        return NextResponse.json({ error: "Prompt tidak boleh kosong untuk enhance" }, { status: 400 });
-      }
-
-      const systemMsg = [
-        VECTOR_SYSTEM_PROMPT,
-        "Enhance and rewrite the user's vector art prompt to be more detailed, precise, and commercially valuable.",
-        "Return ONLY a valid JSON object:",
-        `{ "enhanced": "string (enhanced prompt, 25-50 words)", "title": "string (commercial title)", "keywords": ["string",...], "styleGuide": { "palette": "string", "strokeWeight": "string", "composition": "string" }, "tips": ["string",...] }`,
-      ].join("\n");
-
-      const styleLabel = style === "flat" ? "flat vector" : style === "outline" ? "outline line art" : "flat vector + outline hybrid";
-      const userMsg = [
-        `Original Prompt: ${prompt}`,
-        `Style: ${styleLabel}`,
-        `Aspect Ratio: ${ratio}`,
-        `Faceless: ${faceless ? "yes" : "no"}`,
-        colorPalette ? `Color Palette: ${colorPalette}` : "",
-        targetUse ? `Target Use: ${targetUse}` : "",
-        "",
-        "Enhance this prompt for maximum commercial vector art quality.",
-      ].filter(Boolean).join("\n");
-
-      const res = await callGroq([
-        { role: "system", content: systemMsg },
-        { role: "user", content: userMsg },
-      ], { temperature: 0.4, max_tokens: 2000 });
-
-      let enhanced: any = null;
-      const match = res.text.match(/\{[\s\S]*\}/);
-      if (match) {
-        enhanced = JSON.parse(cleanJsonForParsing(match[0]));
-      }
-
-      return NextResponse.json({ success: true, enhanced, usage: res.usage });
-    }
-
-    // ─────────────────────────────────────────────────────────────────────────
-    // ACTION: GENERATE — Full vector prompt generation with all parameters
-    // ─────────────────────────────────────────────────────────────────────────
-    if (action === "generate") {
-      const {
-        prompt = "",
-        theme = "business workspace",
-        style = "flat",
-        ratio = "1:1",
-        faceless = false,
-        consistency = false,
-        mode = "noprompt",
-        colorPalette = "professional blue, white, gray",
-        complexity = "medium",
-        targetUse = "commercial stock illustration",
-        count = 4,
-      } = payload || {};
-
-      const styleLabel = style === "flat" ? "flat vector illustration"
-        : style === "outline" ? "outline line art vector"
-        : "flat vector with outline hybrid illustration";
-
-      const ratioMap: Record<string, string> = {
-        "1:1": "square (1:1), 1024x1024px",
-        "16:9": "landscape (16:9), 1920x1080px",
-        "9:16": "portrait (9:16), 1080x1920px",
-        "4:3": "standard (4:3), 1600x1200px",
-        "3:4": "portrait (3:4), 1200x1600px",
-        "21:9": "ultrawide (21:9), 2560x1080px",
-      };
-      const ratioDesc = ratioMap[ratio] || ratio;
-
-      const consistencyNote = consistency
-        ? "IMPORTANT: Maintain strict visual consistency — same stroke weight, same color palette, same style across all generated prompts."
-        : "Each prompt can have variation in composition and layout while keeping the same style.";
-
-      const facelessNote = faceless
-        ? "CRITICAL: All human characters must be FACELESS — use silhouettes, back views, or abstract geometric representations. No faces visible."
-        : "Characters can have faces if included.";
-
-      const systemMsg = [
-        VECTOR_SYSTEM_PROMPT,
-        "Generate a complete vector art creation plan with optimized prompts, metadata, and technical specs.",
-        "CRITICAL PROMPT DIVERSITY RULES:",
-        "1. Every prompt in 'prompts' array MUST have 100% different visual concept, subject, and story. No two prompts can share the same scene.",
-        "2. EVERY PROMPT MUST USE A DIFFERENT CAMERA ANGLE: e.g. wide establishing shot, top-down flat lay, isometric 3D view, extreme close-up macro. No two prompts share same angle.",
-        "3. IMPORTANT JSON RULES: Return ONLY a valid JSON object. No markdown, no code blocks. All string values must be single-line with NO raw newlines or tabs inside.",
-        `{ "plan": { "conceptTitle": "string", "commercialHook": "string", "styleGuide": { "palette": "string", "strokeWeight": "string", "typography": "string", "composition": "string" } }, "prompts": [ { "id": "string", "label": "string", "prompt": "string (30-60 words, single line)", "negativePrompt": "string", "metadata": { "title": "string", "keywords": ["string"] }, "technicalSpec": { "ratio": "string", "complexity": "string", "colorCount": 0 } } ], "setTips": ["string"], "complianceNotes": ["string"] }`,
-      ].join("\n");
-
-      const userMsg = [
-        mode === "prompt"
-          ? `User Prompt: ${prompt}`
-          : `Theme (Autopilot): ${theme}`,
-        `Vector Style: ${styleLabel}`,
-        `Aspect Ratio: ${ratioDesc}`,
-        `Complexity Level: ${complexity}`,
-        `Color Palette: ${colorPalette}`,
-        `Target Use: ${targetUse}`,
-        `Number of Prompts: ${count}`,
-        "",
-        facelessNote,
-        "",
-        consistencyNote,
-        "",
-        "CRITICAL: Remember, every prompt MUST be 100% unique in concept, composition, layout, and CAMERA ANGLE. Ensure maximum diversity.",
-        "",
-        "Generate a complete, professional vector art creation plan now.",
-      ].join("\n");
-
-      const res = await callGroq([
-        { role: "system", content: systemMsg },
-        { role: "user", content: userMsg },
-      ], { temperature: 0.5, max_tokens: 4000 });
-
-
-      let result: any = null;
-      const match = res.text.match(/\{[\s\S]*\}/);
-      if (match) {
-        result = JSON.parse(cleanJsonForParsing(match[0]));
-      }
-
-      return NextResponse.json({ success: true, result, usage: res.usage });
-    }
-
-    // ─────────────────────────────────────────────────────────────────────────
-    // ACTION: GENERATE_SVG — Generate before (sketch) and after (final vector)
-    // ─────────────────────────────────────────────────────────────────────────
-    if (action === "generate_svg") {
-      const {
-        prompt = "",
-        theme = "Flat Vector + Outline",
-        style = "flat",
-        ratio = "1:1",
-        faceless = false,
-        colorPalette = "Professional Blue & White",
-      } = payload || {};
-
-      const ratioMap: Record<string, { w: number; h: number }> = {
-        "1:1": { w: 800, h: 800 },
-        "16:9": { w: 1200, h: 675 },
-        "9:16": { w: 675, h: 1200 },
-        "4:3": { w: 800, h: 600 },
-        "3:4": { w: 600, h: 800 },
-        "21:9": { w: 1400, h: 600 },
-      };
-      const dimensions = ratioMap[ratio] || { w: 800, h: 800 };
-
-      const systemMsg = [
-        "You are an elite vector graphic designer and professional SVG illustrator.",
-        "Your task is to generate two beautiful, clean, responsive, and valid SVG codes representing the 'Before' and 'After' states of a commercial vector asset.",
-        "",
-        "RULES FOR THE 'BEFORE' SVG:",
-        "- Resembles a wireframe sketch, draft blueprint, or thin line outline of the concept.",
-        "- Color palette should be monochromatic: light gray background, dark gray or black thin strokes (stroke-width: 1 or 2).",
-        "- Use NO fills, or only semi-transparent light fills to outline shapes.",
-        "- MUST contain the exact same geometric layout and subject composition as the 'After' SVG.",
-        "",
-        "RULES FOR THE 'AFTER' SVG:",
-        "- The final premium commercial masterpiece vector illustration.",
-        "- Rich flat vector shapes, gradients, shading, highlights, and crisp outlines.",
-        "- Feature beautiful modern linearGradients or radialGradients defined inside <defs>.",
-        "- Style: Match the requested style.",
-        faceless ? "- Character constraints: Any human must be completely faceless (silhouette, abstract, back view)." : "",
-        "",
-        "GENERAL TECHNICAL RULES:",
-        `- Use viewBox="0 0 ${dimensions.w} ${dimensions.h}" on both SVGs.`,
-        "- Ensure ALL tags are correctly opened and closed. Make the SVGs visually appealing, using multiple layers of objects, shadows, highlights, and custom paths.",
-        "- Do not use external CSS or fonts. All styles must be inline attributes (fill, stroke, stroke-width, filter, opacity, gradient).",
-        "",
-        "You must return ONLY a valid JSON object matching this schema. No markdown formatting outside of JSON, no explanations:",
-        `{
-          "title": "Short descriptive title of the design",
-          "beforeSvg": "<svg viewBox=\\\"0 0 ${dimensions.w} ${dimensions.h}\\\" xmlns=\\\"http://www.w3.org/2000/svg\\\">... (complete before code) ...</svg>",
-          "afterSvg": "<svg viewBox=\\\"0 0 ${dimensions.w} ${dimensions.h}\\\" xmlns=\\\"http://www.w3.org/2000/svg\\\">... (complete after code) ...</svg>"
-        }`
-      ].filter(Boolean).join("\n");
-
-      const userMsg = [
-        `Concept / Prompt: ${prompt || theme}`,
-        `Vector Style: ${style}`,
-        `Color Palette: ${colorPalette}`,
-        `Faceless Characters: ${faceless ? "Yes" : "No"}`,
-        `Dimensions: ${dimensions.w}x${dimensions.h} pixels`,
-        "",
-        "Write the complete, extremely beautiful Before and After SVG codes inside the JSON object."
-      ].join("\n");
-
-      const res = await callGroq([
-        { role: "system", content: systemMsg },
-        { role: "user", content: userMsg },
-      ], { temperature: 0.5, max_tokens: 4096 });
-
-      let result: any = null;
-      const match = res.text.match(/\{[\s\S]*\}/);
-      if (match) {
-        result = JSON.parse(cleanJsonForParsing(match[0]));
-      } else {
-        throw new Error("AI did not return a valid JSON response");
-      }
-
-      return NextResponse.json({ success: true, result, usage: res.usage });
-    }
-
-    return NextResponse.json({ error: "Action tidak dikenali" }, { status: 400 });
+    return NextResponse.json({ success: true, ideas, usage: res.usage });
 
   } catch (error) {
     void recordIpError(ip);
@@ -337,29 +180,23 @@ export async function POST(request: NextRequest) {
   }
 }
 
+// ── JSON Sanitizer ─────────────────────────────────────────────────────────
 function cleanJsonForParsing(str: string): string {
   let inString = false;
-  let result = "";
+  let result   = "";
   for (let i = 0; i < str.length; i++) {
     const char = str[i];
-    if (char === '"' && str[i - 1] !== '\\') {
+    if (char === '"' && str[i - 1] !== "\\") {
       inString = !inString;
       result += char;
     } else if (inString) {
-      if (char === '\n') {
-        result += '\\n';
-      } else if (char === '\r') {
-        // skip raw carriage returns inside strings
-      } else if (char === '\t') {
-        result += ' ';
-      } else {
-        result += char;
-      }
+      if      (char === "\n") result += "\\n";
+      else if (char === "\r") { /* skip */ }
+      else if (char === "\t") result += " ";
+      else                    result += char;
     } else {
       result += char;
     }
   }
   return result;
 }
-
-
