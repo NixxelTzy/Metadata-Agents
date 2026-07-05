@@ -87,8 +87,11 @@ export async function POST(request: NextRequest) {
         VECTOR_SYSTEM_PROMPT,
         "Generate extremely detailed, complex, and highly marketable art concept ideas based on user filters.",
         "Ensure each concept is a unique masterpiece suitable for digital agencies and stock portals.",
-        "Return ONLY a valid JSON object matching this schema. No markdown formatting outside of JSON, no explanations:",
-        `{ "ideas": [ { "id": "string", "title": "string", "description": "string (highly detailed, complex description of the scene and its commercial viability, 3-5 long sentences)", "prompt": "string (extremely detailed, complex prompt for AI generation, 75-120 words detailing subject, layout, precise colors, angle, camera shot type, lighting, and style)", "tags": ["string", ...], "estimatedSales": "string", "difficulty": "Easy" | "Medium" | "Complex" } ] }`,
+        "IMPORTANT JSON RULES:",
+        "- Return ONLY a valid JSON object. No markdown code blocks, no backticks, no explanations outside JSON.",
+        "- All string values inside JSON must NOT contain raw newlines, tabs, or unescaped control characters.",
+        "- Keep each 'description' under 200 characters and each 'prompt' under 150 characters to avoid JSON issues.",
+        `{ "ideas": [ { "id": "string", "title": "string (max 80 chars)", "description": "string (detailed, 150-200 chars, NO newlines inside)", "prompt": "string (detailed prompt 80-120 words, single line, NO raw newlines or tabs inside)", "tags": ["string"], "estimatedSales": "string", "difficulty": "Easy" } ] }`,
       ].join("\n");
 
       const userMsg = [
@@ -109,7 +112,8 @@ export async function POST(request: NextRequest) {
       let ideas: any[] = [];
       const match = res.text.match(/\{[\s\S]*\}/);
       if (match) {
-        const parsed = JSON.parse(match[0]) as { ideas?: unknown[] };
+        const cleaned = cleanJsonForParsing(match[0]);
+        const parsed = JSON.parse(cleaned) as { ideas?: unknown[] };
         ideas = parsed?.ideas ?? [];
       }
 
@@ -154,7 +158,7 @@ export async function POST(request: NextRequest) {
       let enhanced: any = null;
       const match = res.text.match(/\{[\s\S]*\}/);
       if (match) {
-        enhanced = JSON.parse(match[0]);
+        enhanced = JSON.parse(cleanJsonForParsing(match[0]));
       }
 
       return NextResponse.json({ success: true, enhanced, usage: res.usage });
@@ -204,41 +208,10 @@ export async function POST(request: NextRequest) {
         VECTOR_SYSTEM_PROMPT,
         "Generate a complete vector art creation plan with optimized prompts, metadata, and technical specs.",
         "CRITICAL PROMPT DIVERSITY RULES:",
-        "1. Every single prompt inside the 'prompts' array MUST have a completely different visual concept, subject story, and visual layout. They must be 100% different conceptually.",
-        "2. EVERY PROMPT MUST USE A COMPLETELY DIFFERENT CAMERA ANGLE AND PERSPECTIVE (e.g. Prompt #1 is a low-angle dynamic shot, Prompt #2 is a flat top-down flat lay, Prompt #3 is a 3D isometric scene, Prompt #4 is a straight-on close-up/macro detail). No two prompts should share the same angle or composition.",
-        "3. Ensure high visual contrast between all generated prompts so they represent a diverse set of creative options rather than near-duplicates.",
-        "Return ONLY a valid JSON object:",
-        `{
-          "plan": {
-            "conceptTitle": "string",
-            "commercialHook": "string (Indonesian, explains commercial value)",
-            "styleGuide": {
-              "palette": "string",
-              "strokeWeight": "string",
-              "typography": "string",
-              "composition": "string"
-            }
-          },
-          "prompts": [
-            {
-              "id": "string",
-              "label": "string (e.g. 'Hero Shot', 'Detail Close-up', etc.)",
-              "prompt": "string (full generation prompt, 30-60 words)",
-              "negativePrompt": "string (what to avoid)",
-              "metadata": {
-                "title": "string (Adobe Stock title)",
-                "keywords": ["string",...]
-              },
-              "technicalSpec": {
-                "ratio": "string",
-                "complexity": "string",
-                "colorCount": number
-              }
-            }
-          ],
-          "setTips": ["string",...],
-          "complianceNotes": ["string",...]
-        }`,
+        "1. Every prompt in 'prompts' array MUST have 100% different visual concept, subject, and story. No two prompts can share the same scene.",
+        "2. EVERY PROMPT MUST USE A DIFFERENT CAMERA ANGLE: e.g. wide establishing shot, top-down flat lay, isometric 3D view, extreme close-up macro. No two prompts share same angle.",
+        "3. IMPORTANT JSON RULES: Return ONLY a valid JSON object. No markdown, no code blocks. All string values must be single-line with NO raw newlines or tabs inside.",
+        `{ "plan": { "conceptTitle": "string", "commercialHook": "string", "styleGuide": { "palette": "string", "strokeWeight": "string", "typography": "string", "composition": "string" } }, "prompts": [ { "id": "string", "label": "string", "prompt": "string (30-60 words, single line)", "negativePrompt": "string", "metadata": { "title": "string", "keywords": ["string"] }, "technicalSpec": { "ratio": "string", "complexity": "string", "colorCount": 0 } } ], "setTips": ["string"], "complianceNotes": ["string"] }`,
       ].join("\n");
 
       const userMsg = [
@@ -270,7 +243,7 @@ export async function POST(request: NextRequest) {
       let result: any = null;
       const match = res.text.match(/\{[\s\S]*\}/);
       if (match) {
-        result = JSON.parse(match[0]);
+        result = JSON.parse(cleanJsonForParsing(match[0]));
       }
 
       return NextResponse.json({ success: true, result, usage: res.usage });
@@ -347,7 +320,7 @@ export async function POST(request: NextRequest) {
       let result: any = null;
       const match = res.text.match(/\{[\s\S]*\}/);
       if (match) {
-        result = JSON.parse(match[0]);
+        result = JSON.parse(cleanJsonForParsing(match[0]));
       } else {
         throw new Error("AI did not return a valid JSON response");
       }
@@ -363,4 +336,30 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: msg }, { status: 500 });
   }
 }
+
+function cleanJsonForParsing(str: string): string {
+  let inString = false;
+  let result = "";
+  for (let i = 0; i < str.length; i++) {
+    const char = str[i];
+    if (char === '"' && str[i - 1] !== '\\') {
+      inString = !inString;
+      result += char;
+    } else if (inString) {
+      if (char === '\n') {
+        result += '\\n';
+      } else if (char === '\r') {
+        // skip raw carriage returns inside strings
+      } else if (char === '\t') {
+        result += ' ';
+      } else {
+        result += char;
+      }
+    } else {
+      result += char;
+    }
+  }
+  return result;
+}
+
 

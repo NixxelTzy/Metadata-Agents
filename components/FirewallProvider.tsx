@@ -6,73 +6,59 @@ import dynamic from "next/dynamic";
 
 const FirewallGate = dynamic(() => import("./FirewallGate"), { ssr: false });
 
-// Public paths — langsung bypass verifikasi
-const PUBLIC_PATHS = ["/login", "/register"];
+// Auth pages — tetap tampil verifikasi, tapi TIDAK redirect ke login setelah passed
+const AUTH_PATHS = ["/login", "/register"];
 
 export default function FirewallProvider({ children }: { children: React.ReactNode }) {
-  const pathname    = usePathname();
-  const isPublic    = PUBLIC_PATHS.some(p => pathname?.startsWith(p));
-  const [verified, setVerified] = useState(false);
-  const [checked,  setChecked]  = useState(false);
+  const pathname   = usePathname();
+  const isAuthPage = AUTH_PATHS.some(p => pathname?.startsWith(p));
+
+  // "gatePassed" = FirewallGate sudah selesai animasinya
+  const [gatePassed, setGatePassed] = useState(false);
+  // "appReady"   = konten boleh ditampilkan (gate passed + auth check selesai)
+  const [appReady,   setAppReady]   = useState(false);
   const mountedRef = useRef(true);
 
-  // Cek auth session saat mount
-  useEffect(() => {
-    mountedRef.current = true;
-
-    // Public pages — langsung lolos tanpa verifikasi
-    if (isPublic) { setVerified(true); setChecked(true); return; }
-
-    const check = async () => {
-      try {
-        const res = await fetch("/api/auth/me", { method: "GET" });
-        if (!mountedRef.current) return;
-        if (res.ok) {
-          // Sudah login → tampilkan app, FirewallGate akan muncul sebentar lalu pass
-          setVerified(false); // Akan di-pass oleh FirewallGate
-        } else {
-          // Belum login → FirewallGate akan redirect ke login setelah selesai
-          setVerified(false);
-        }
-      } catch {
-        setVerified(false);
-      } finally {
-        if (mountedRef.current) setChecked(true);
-      }
-    };
-
-    check();
-    return () => { mountedRef.current = false; };
-  }, [isPublic]);
-
   const handlePassed = useCallback(async () => {
+    if (!mountedRef.current) return;
+
+    // Auth pages (/login, /register) — langsung tampilkan halaman setelah gate selesai
+    if (isAuthPage) {
+      setGatePassed(true);
+      setAppReady(true);
+      return;
+    }
+
+    // Protected pages — cek session, redirect ke login kalau belum login
     try {
       const res = await fetch("/api/auth/me", { method: "GET" });
-      if (mountedRef.current) {
-        if (res.ok) {
-          setVerified(true);
-        } else {
-          // Belum login → redirect ke login
-          window.location.replace("/login");
-        }
+      if (!mountedRef.current) return;
+      if (res.ok) {
+        setGatePassed(true);
+        setAppReady(true);
+      } else {
+        // Belum login → redirect ke login (gate tetap nutup layar saat redirect)
+        window.location.replace("/login");
       }
     } catch {
       if (mountedRef.current) window.location.replace("/login");
     }
-  }, []);
+  }, [isAuthPage]);
 
-  // Public pages — render langsung
-  if (isPublic) return <>{children}</>;
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => { mountedRef.current = false; };
+  }, []);
 
   return (
     <>
-      {/* Platform verifikasi putih — muncul saat belum verified */}
-      {checked && !verified && (
+      {/* FirewallGate — selalu muncul di semua halaman sampai passed */}
+      {!gatePassed && (
         <FirewallGate onPassed={handlePassed} mode="normal" />
       )}
 
-      {/* Konten app — tersembunyi sampai verified */}
-      <div style={{ visibility: (checked && verified) ? "visible" : "hidden", height: "100%" }}>
+      {/* Konten halaman — hanya tampil setelah gate passed & auth check selesai */}
+      <div style={{ visibility: appReady ? "visible" : "hidden", height: "100%" }}>
         {children}
       </div>
     </>

@@ -173,6 +173,12 @@ export default function VectorCreator({ onTokensUpdated }: VectorCreatorProps = 
   const [magicIdeas, setMagicIdeas]       = useState<MagicIdea[]>(STATIC_MAGIC_IDEAS);
   const [enhancedPrompt, setEnhancedPrompt] = useState<{ prompt: string; improvements: string[] } | null>(null);
 
+  // Ideas tab extra state
+  const [ideaCount, setIdeaCount]           = useState(6);
+  const [ideaSortBy, setIdeaSortBy]         = useState<"default" | "sales" | "difficulty">("default");
+  const [ideaFilterDiff, setIdeaFilterDiff] = useState<"All" | "Easy" | "Medium" | "Complex">("All");
+  const [ideaSearchQuery, setIdeaSearchQuery] = useState("");
+
   const [beforeSvg, setBeforeSvg]       = useState("");
   const [afterSvg, setAfterSvg]         = useState("");
   const [svgTitle, setSvgTitle]         = useState("");
@@ -305,12 +311,7 @@ export default function VectorCreator({ onTokensUpdated }: VectorCreatorProps = 
     } finally { setIsGeneratingSvg(false); }
   }, [style, ratio, faceless, colorPalette, trackVectorTokens]);
 
-  // ── handleGenerate ──
   const handleGenerate = useCallback(async () => {
-    if (!customTheme.trim()) {
-      setError("Masukkan tema terlebih dahulu.");
-      return;
-    }
     setError(""); setGeneratedPlan(null); setBeforeSvg(""); setAfterSvg("");
     setIsGenerating(true); setIsGeneratingSvg(true);
 
@@ -318,10 +319,17 @@ export default function VectorCreator({ onTokensUpdated }: VectorCreatorProps = 
     const conceptsText = selectedConcepts.map(c => CONCEPT_CATEGORIES.find(co => co.value === c)?.label || c).join(", ");
 
     const combinedTheme = [
-      `Theme/Subject: ${customTheme.trim()}`,
+      customTheme.trim() ? `Theme/Subject: ${customTheme.trim()}` : "",
       artThemesText ? `Art Style/Themes: ${artThemesText}` : "",
       conceptsText ? `Concept Categories: ${conceptsText}` : ""
     ].filter(Boolean).join(" | ");
+
+    if (!combinedTheme.trim()) {
+      setError("Masukkan tema atau pilih filter tema/konsep terlebih dahulu.");
+      setIsGenerating(false);
+      setIsGeneratingSvg(false);
+      return;
+    }
 
     try {
       const res = await fetch("/api/vector", {
@@ -358,31 +366,37 @@ export default function VectorCreator({ onTokensUpdated }: VectorCreatorProps = 
     } finally { setIsGenerating(false); }
   }, [customTheme, selectedArtThemes, selectedConcepts, style, ratio, faceless, consistency, colorPalette, complexity, targetUse, promptCount, handleRenderSvg, trackVectorTokens]);
 
-  // ── handleMagic ──
   const handleMagic = useCallback(async () => {
     setError(""); setIsMagicking(true);
     try {
+      const artThemesText = selectedArtThemes.map(t => ART_THEMES.find(a => a.value === t)?.label || t).join(", ");
+      const conceptsText  = selectedConcepts.map(c => CONCEPT_CATEGORIES.find(co => co.value === c)?.label || c).join(", ");
       const res = await fetch("/api/vector", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           action: "magic",
           payload: {
-            artType: selectedArtThemes[0] || "vector",
-            concept: selectedConcepts[0] || "business",
+            artType: artThemesText || selectedArtThemes[0] || "vector",
+            concept: conceptsText || selectedConcepts[0] || "business",
             customTheme: customTheme.trim(),
             faceless,
-            count: 6
+            count: ideaCount
           }
         }),
       });
       if (!res.ok) throw new Error(await res.text() || "Gagal menghasilkan ide");
       const data = await res.json();
-      if (data.success && Array.isArray(data.ideas) && data.ideas.length > 0) setMagicIdeas(data.ideas);
+      if (data.success && Array.isArray(data.ideas) && data.ideas.length > 0) {
+        setMagicIdeas(data.ideas);
+        setIdeaSearchQuery("");
+        setIdeaFilterDiff("All");
+        setIdeaSortBy("default");
+      }
       trackVectorTokens(data.usage);
     } catch (e) { setError(e instanceof Error ? e.message : "Terjadi kesalahan"); }
     finally { setIsMagicking(false); }
-  }, [selectedArtThemes, selectedConcepts, customTheme, faceless, trackVectorTokens]);
+  }, [selectedArtThemes, selectedConcepts, customTheme, faceless, ideaCount, trackVectorTokens]);
 
   // ── handleEnhance ──
   const handleEnhance = useCallback(async () => {
@@ -470,7 +484,7 @@ export default function VectorCreator({ onTokensUpdated }: VectorCreatorProps = 
           {/* Theme Input */}
           <div>
             <div className="vc-header" style={{ alignItems: "center", marginBottom: 8 }}>
-              <span className="vc-field-label" style={{ marginBottom: 0 }}>Input Tema</span>
+              <span className="vc-field-label" style={{ marginBottom: 0 }}>Input Tema (Optional)</span>
               <button type="button" onClick={handleEnhance} disabled={isEnhancing} className="btn btn--ghost" style={{ color: "#7b5ae0" }}>
                 {isEnhancing ? "✨ Enhancing..." : "✨ AI Enhance Theme →"}
               </button>
@@ -629,26 +643,32 @@ export default function VectorCreator({ onTokensUpdated }: VectorCreatorProps = 
       {/* ── MAGIC IDEAS TAB ────────────────────────────────────────────────── */}
       {panelTab === "magic" && (
         <div className="vc-panel">
-          <div className="vc-header" style={{ marginBottom: "10px" }}>
-            <div>
-              <h3 className="mon-section__title" style={{ fontSize: 18 }}>✨ High-Demand Creative Ideas Generator</h3>
-              <p className="vc-header__subtitle">Ide komersial kompleks yang dioptimalkan untuk Adobe Stock. Pilih filter, ketik tema opsional, lalu generate ide baru.</p>
+
+          {/* Header */}
+          <div style={{ marginBottom: 16 }}>
+            <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+              <div>
+                <h3 className="mon-section__title" style={{ fontSize: 18, margin: 0 }}>✨ AI Ideas Generator</h3>
+                <p className="vc-header__subtitle" style={{ margin: "4px 0 0" }}>Ide komersial kompleks untuk Adobe Stock · Pilih filter, atur jumlah, lalu generate.</p>
+              </div>
+              <button
+                type="button"
+                onClick={handleMagic}
+                disabled={isMagicking}
+                className="btn btn--primary"
+                style={{ background: "linear-gradient(135deg,#7b5ae0,#4a90e2)", minWidth: 180, height: 44 }}
+              >
+                {isMagicking ? "⏳ Generating AI Ideas..." : "🔄 Generate Ideas"}
+              </button>
             </div>
-            <button
-              type="button"
-              onClick={handleMagic}
-              disabled={isMagicking}
-              className="btn btn--primary"
-              style={{ background: "linear-gradient(135deg,#7b5ae0,#4a90e2)" }}
-            >
-              {isMagicking ? "⏳ Generating..." : "🔄 Generate AI Ideas"}
-            </button>
           </div>
 
-          {/* Ideas Filters */}
-          <div className="vc-panel" style={{ padding: "16px", background: "var(--bg-secondary)", gap: "14px" }}>
+          {/* Filters Panel */}
+          <div className="vc-panel" style={{ padding: "18px", background: "var(--bg-secondary)", gap: "16px", marginBottom: 0 }}>
+
+            {/* Row 1: Custom Theme */}
             <div>
-              <span className="vc-field-label">Tema Custom Khusus (Opsional)</span>
+              <span className="vc-field-label">Tema Custom Khusus <span style={{ fontWeight: 400, color: "var(--text-muted)" }}>(Opsional)</span></span>
               <input
                 type="text"
                 value={customTheme}
@@ -658,15 +678,17 @@ export default function VectorCreator({ onTokensUpdated }: VectorCreatorProps = 
                 style={{ width: "100%" }}
               />
             </div>
-            <div className="vc-grid-2">
+
+            {/* Row 2: Art Style & Concept — ALL options, multi-select */}
+            <div className="vc-grid-2" style={{ gap: 16 }}>
               <div>
-                <span className="vc-field-label">Tema Utama</span>
+                <span className="vc-field-label">🎨 Tema / Art Style <span style={{ fontSize: 10, color: "var(--text-muted)", fontWeight: 400 }}>Multi-pilih</span></span>
                 <div className="vc-chip-group">
-                  {ART_THEMES.slice(0, 5).map(theme => (
+                  {ART_THEMES.map(theme => (
                     <button
                       key={theme.value}
                       type="button"
-                      onClick={() => setSelectedArtThemes([theme.value])}
+                      onClick={() => toggleArtTheme(theme.value)}
                       className={`vc-theme-chip ${selectedArtThemes.includes(theme.value) ? "vc-theme-chip--active" : ""}`}
                     >
                       {theme.label}
@@ -675,13 +697,13 @@ export default function VectorCreator({ onTokensUpdated }: VectorCreatorProps = 
                 </div>
               </div>
               <div>
-                <span className="vc-field-label">Konsep Utama</span>
+                <span className="vc-field-label">🗂️ Kategori Konsep <span style={{ fontSize: 10, color: "var(--text-muted)", fontWeight: 400 }}>Multi-pilih</span></span>
                 <div className="vc-chip-group">
-                  {CONCEPT_CATEGORIES.slice(0, 5).map(concept => (
+                  {CONCEPT_CATEGORIES.map(concept => (
                     <button
                       key={concept.value}
                       type="button"
-                      onClick={() => setSelectedConcepts([concept.value])}
+                      onClick={() => toggleConcept(concept.value)}
                       className={`vc-concept-chip ${selectedConcepts.includes(concept.value) ? "vc-concept-chip--active" : ""}`}
                     >
                       {concept.label}
@@ -690,11 +712,28 @@ export default function VectorCreator({ onTokensUpdated }: VectorCreatorProps = 
                 </div>
               </div>
             </div>
-            <div>
+
+            {/* Row 3: Count slider + Faceless toggle */}
+            <div style={{ display: "flex", alignItems: "center", gap: 24, flexWrap: "wrap" }}>
+              <div style={{ flex: 1, minWidth: 220 }}>
+                <span className="vc-field-label">Jumlah Ide yang Digenerate: <strong style={{ color: "#7b5ae0" }}>{ideaCount}</strong></span>
+                <input
+                  type="range"
+                  min={3}
+                  max={12}
+                  step={1}
+                  value={ideaCount}
+                  onChange={e => setIdeaCount(Number(e.target.value))}
+                  style={{ width: "100%", accentColor: "#7b5ae0", marginTop: 6 }}
+                />
+                <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, color: "var(--text-muted)", marginTop: 2 }}>
+                  <span>3</span><span>6</span><span>9</span><span>12</span>
+                </div>
+              </div>
               <div
                 className={`vc-checkbox-container ${faceless ? "vc-checkbox-container--active" : ""}`}
                 onClick={() => setFaceless(!faceless)}
-                style={{ width: "fit-content" }}
+                style={{ width: "fit-content", flexShrink: 0 }}
               >
                 <div className="vc-checkbox">
                   <span className="vc-checkbox-checkmark">✓</span>
@@ -704,83 +743,230 @@ export default function VectorCreator({ onTokensUpdated }: VectorCreatorProps = 
             </div>
           </div>
 
-          {/* Ideas Grid */}
-          <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(320px,1fr))", gap:16, marginTop: "10px" }}>
-            {magicIdeas.map(idea => {
-              const isExpanded = expandedIdeaId === idea.id;
-              return (
-                <div key={idea.id} className="vc-idea-card" style={{ display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
-                  <div>
-                    {/* Market stats */}
-                    <div className="vc-idea-card__stats" style={{ marginBottom: "12px" }}>
-                      <div className="vc-idea-card__stat" style={{ background:"rgba(76,175,80,0.06)", border:"1px solid rgba(76,175,80,0.15)" }}>
-                        <div className="vc-idea-card__stat-label">Est. Sales</div>
-                        <div className="vc-idea-card__stat-value" style={{ color:"#4caf50" }}>{idea.estimatedSales}</div>
-                      </div>
-                      <div className="vc-idea-card__stat" style={{ background: idea.difficulty==="Easy"?"rgba(76,175,80,0.06)":idea.difficulty==="Medium"?"rgba(255,152,0,0.06)":"rgba(239,68,68,0.06)", border:"1px solid var(--border)" }}>
-                        <div className="vc-idea-card__stat-label">Difficulty</div>
-                        <div className="vc-idea-card__stat-value" style={{ color: idea.difficulty==="Easy"?"#4caf50":idea.difficulty==="Medium"?"#ff9800":"#ef4444" }}>{idea.difficulty}</div>
-                      </div>
-                    </div>
-
-                    <h4 className="vc-idea-card__title" style={{ fontSize: "15px", fontWeight: 700, margin: "0 0 8px 0" }}>{idea.title}</h4>
-                    <p className="vc-idea-card__desc" style={{ fontSize: "12px", color: "var(--text-secondary)", lineHeight: "1.6", margin: "0 0 12px 0" }}>{idea.description}</p>
-
-                    {/* Collapsible Prompt Display */}
-                    <div className="vc-idea-prompt-box">
-                      <div
-                        className="vc-idea-prompt-header"
-                        onClick={() => setExpandedIdeaId(isExpanded ? null : idea.id)}
-                      >
-                        <span>📋 Prompt AI Generator</span>
-                        <span>{isExpanded ? "Tutup ▲" : "Tampilkan ▼"}</span>
-                      </div>
-                      {isExpanded && (
-                        <>
-                          <p className="vc-idea-prompt-text">{idea.prompt}</p>
-                          <div style={{ display: "flex", gap: "8px", marginTop: "10px" }}>
-                            <button
-                              type="button"
-                              onClick={() => copyToClipboard(idea.prompt, idea.id)}
-                              className="btn btn--small btn--ghost text-xs"
-                            >
-                              {copiedId === idea.id ? "✓ Disalin" : "📋 Copy Prompt"}
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => handleRenderSvg(idea.prompt, idea.title)}
-                              className="btn btn--small btn--ghost text-xs"
-                              style={{ color: "#4a90e2", borderColor: "#4a90e2" }}
-                            >
-                              🖼️ Render Langsung
-                            </button>
-                          </div>
-                        </>
-                      )}
-                    </div>
-
-                    {/* Tags */}
-                    <div className="vc-idea-card__tags" style={{ display: "flex", flexWrap: "wrap", gap: "4px", marginTop: "12px" }}>
-                      {idea.tags.map(tag => <span key={tag} className="keyword-tag">{tag}</span>)}
-                    </div>
-                  </div>
-
+          {/* Results Toolbar */}
+          {magicIdeas.length > 0 && (
+            <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", padding: "12px 0", borderBottom: "1px solid var(--border)" }}>
+              {/* Search */}
+              <input
+                type="text"
+                value={ideaSearchQuery}
+                onChange={e => setIdeaSearchQuery(e.target.value)}
+                placeholder="🔍 Cari judul atau tag ide..."
+                className="vc-input"
+                style={{ flex: 1, minWidth: 160, height: 34, fontSize: 12 }}
+              />
+              {/* Sort */}
+              <select
+                value={ideaSortBy}
+                onChange={e => setIdeaSortBy(e.target.value as typeof ideaSortBy)}
+                className="vc-input"
+                style={{ width: "auto", height: 34, fontSize: 12, paddingLeft: 8 }}
+              >
+                <option value="default">Urutan: Default</option>
+                <option value="sales">Urutan: Est. Sales ↓</option>
+                <option value="difficulty">Urutan: Difficulty ↑</option>
+              </select>
+              {/* Filter Difficulty */}
+              <div style={{ display: "flex", gap: 4 }}>
+                {(["All", "Easy", "Medium", "Complex"] as const).map(d => (
                   <button
+                    key={d}
                     type="button"
-                    onClick={() => {
-                      setCustomTheme(idea.prompt);
-                      setPanelTab("generate");
-                      window.scrollTo({ top: 0, behavior: "smooth" });
+                    onClick={() => setIdeaFilterDiff(d)}
+                    style={{
+                      fontSize: 11, fontWeight: 600, padding: "4px 10px", borderRadius: 20,
+                      border: `1px solid ${ideaFilterDiff === d ? "#7b5ae0" : "var(--border)"}`,
+                      background: ideaFilterDiff === d ? "#7b5ae0" : "transparent",
+                      color: ideaFilterDiff === d ? "#fff" : "var(--text-secondary)",
+                      cursor: "pointer"
                     }}
-                    className="btn btn--primary w-full text-center"
-                    style={{ marginTop: "16px", background: "linear-gradient(135deg, #7b5ae0, #6366f1)" }}
                   >
-                    Gunakan di Studio →
+                    {d}
                   </button>
+                ))}
+              </div>
+              {/* Copy All */}
+              <button
+                type="button"
+                onClick={() => copyToClipboard(
+                  magicIdeas.map((idea, i) =>
+                    `--- Idea ${i+1}: ${idea.title} ---\nDescription: ${idea.description}\nPrompt: ${idea.prompt}\nTags: ${idea.tags.join(", ")}\nEst. Sales: ${idea.estimatedSales}`
+                  ).join("\n\n"),
+                  "all-ideas"
+                )}
+                className="btn btn--ghost"
+                style={{ fontSize: 11, height: 34, paddingInline: 12, flexShrink: 0 }}
+              >
+                {copiedId === "all-ideas" ? "✓ Semua Disalin!" : "📋 Salin Semua"}
+              </button>
+              <span style={{ fontSize: 11, color: "var(--text-muted)", flexShrink: 0 }}>
+                {(() => {
+                  const q = ideaSearchQuery.toLowerCase();
+                  return magicIdeas.filter(i =>
+                    (ideaFilterDiff === "All" || i.difficulty === ideaFilterDiff) &&
+                    (!q || i.title.toLowerCase().includes(q) || i.tags.some(t => t.toLowerCase().includes(q)))
+                  ).length;
+                })()} hasil
+              </span>
+            </div>
+          )}
+
+          {/* Ideas Grid */}
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(310px,1fr))", gap: 16, marginTop: 14 }}>
+            {(() => {
+              let filtered = [...magicIdeas];
+              // Filter by difficulty
+              if (ideaFilterDiff !== "All") filtered = filtered.filter(i => i.difficulty === ideaFilterDiff);
+              // Search by title or tag
+              const q = ideaSearchQuery.toLowerCase();
+              if (q) filtered = filtered.filter(i =>
+                i.title.toLowerCase().includes(q) || i.tags.some(t => t.toLowerCase().includes(q)) || i.description.toLowerCase().includes(q)
+              );
+              // Sort
+              if (ideaSortBy === "sales") {
+                filtered.sort((a, b) => {
+                  const na = parseInt(a.estimatedSales.replace(/[^0-9]/g, "")) || 0;
+                  const nb = parseInt(b.estimatedSales.replace(/[^0-9]/g, "")) || 0;
+                  return nb - na;
+                });
+              } else if (ideaSortBy === "difficulty") {
+                const ord: Record<string, number> = { Easy: 0, Medium: 1, Complex: 2 };
+                filtered.sort((a, b) => (ord[a.difficulty] || 0) - (ord[b.difficulty] || 0));
+              }
+
+              if (filtered.length === 0) return (
+                <div style={{ gridColumn: "1/-1", textAlign: "center", padding: "48px 20px", color: "var(--text-muted)", fontSize: 14 }}>
+                  😔 Tidak ada ide yang cocok dengan filter yang dipilih.
                 </div>
               );
-            })}
+
+              return filtered.map((idea, idx) => {
+                const isExpanded = expandedIdeaId === idea.id;
+                const diffColor = idea.difficulty === "Easy" ? "#22c55e" : idea.difficulty === "Medium" ? "#f59e0b" : "#ef4444";
+                const diffBg = idea.difficulty === "Easy" ? "rgba(34,197,94,0.08)" : idea.difficulty === "Medium" ? "rgba(245,158,11,0.08)" : "rgba(239,68,68,0.08)";
+                // Popularity score from sales number
+                const salesNum = parseInt(idea.estimatedSales.replace(/[^0-9]/g, "")) || 0;
+                const maxSales = 20000;
+                const popPct = Math.min(Math.round((salesNum / maxSales) * 100), 100);
+                const popColor = popPct >= 70 ? "#22c55e" : popPct >= 40 ? "#f59e0b" : "#60a5fa";
+
+                return (
+                  <div key={idea.id} className="vc-idea-card" style={{ display: "flex", flexDirection: "column", position: "relative", overflow: "hidden" }}>
+
+                    {/* Rank badge */}
+                    <div style={{
+                      position: "absolute", top: 12, right: 12,
+                      background: "rgba(123,90,224,0.12)", border: "1px solid rgba(123,90,224,0.25)",
+                      borderRadius: 20, padding: "2px 8px", fontSize: 10, fontWeight: 700, color: "#7b5ae0"
+                    }}>
+                      #{idx + 1}
+                    </div>
+
+                    <div style={{ flex: 1 }}>
+                      {/* Difficulty + Sales row */}
+                      <div style={{ display: "flex", gap: 8, marginBottom: 10, flexWrap: "wrap" }}>
+                        <span style={{
+                          fontSize: 10, fontWeight: 700, padding: "3px 10px", borderRadius: 20,
+                          background: diffBg, color: diffColor, border: `1px solid ${diffColor}33`
+                        }}>
+                          {idea.difficulty === "Easy" ? "⚡ Easy" : idea.difficulty === "Medium" ? "🔥 Medium" : "💎 Complex"}
+                        </span>
+                        <span style={{
+                          fontSize: 10, fontWeight: 700, padding: "3px 10px", borderRadius: 20,
+                          background: "rgba(34,197,94,0.07)", color: "#22c55e", border: "1px solid rgba(34,197,94,0.2)"
+                        }}>
+                          📦 {idea.estimatedSales}
+                        </span>
+                      </div>
+
+                      {/* Title */}
+                      <h4 style={{ fontSize: 14, fontWeight: 700, margin: "0 0 6px 0", lineHeight: 1.4, paddingRight: 32 }}>
+                        {idea.title}
+                      </h4>
+
+                      {/* Description */}
+                      <p style={{ fontSize: 12, color: "var(--text-secondary)", lineHeight: 1.65, margin: "0 0 12px 0" }}>
+                        {idea.description}
+                      </p>
+
+                      {/* Popularity bar */}
+                      <div style={{ marginBottom: 12 }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
+                          <span style={{ fontSize: 10, fontWeight: 600, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.04em" }}>Popularitas Komersial</span>
+                          <span style={{ fontSize: 10, fontWeight: 700, color: popColor }}>{popPct}%</span>
+                        </div>
+                        <div style={{ background: "var(--border)", borderRadius: 4, height: 5, overflow: "hidden" }}>
+                          <div style={{ height: "100%", width: `${popPct}%`, background: `linear-gradient(90deg, ${popColor}, ${popColor}bb)`, borderRadius: 4, transition: "width 0.6s ease" }} />
+                        </div>
+                      </div>
+
+                      {/* Tags */}
+                      <div style={{ display: "flex", flexWrap: "wrap", gap: 4, marginBottom: 12 }}>
+                        {idea.tags.map(tag => <span key={tag} className="keyword-tag">{tag}</span>)}
+                      </div>
+
+                      {/* Prompt Collapsible */}
+                      <div className="vc-idea-prompt-box">
+                        <div
+                          className="vc-idea-prompt-header"
+                          onClick={() => setExpandedIdeaId(isExpanded ? null : idea.id)}
+                        >
+                          <span>📋 Prompt AI Generator</span>
+                          <span>{isExpanded ? "Tutup ▲" : "Lihat Prompt ▼"}</span>
+                        </div>
+                        {isExpanded && (
+                          <div style={{ padding: "10px 0 0" }}>
+                            <p className="vc-idea-prompt-text" style={{ marginBottom: 10 }}>{idea.prompt}</p>
+                            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                              <button
+                                type="button"
+                                onClick={() => copyToClipboard(idea.prompt, idea.id)}
+                                className="btn btn--small btn--ghost"
+                                style={{ fontSize: 11 }}
+                              >
+                                {copiedId === idea.id ? "✓ Disalin!" : "📋 Copy Prompt"}
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => copyToClipboard(`${idea.title}\n\n${idea.description}\n\nPrompt: ${idea.prompt}\n\nTags: ${idea.tags.join(", ")}`, `full-${idea.id}`)}
+                                className="btn btn--small btn--ghost"
+                                style={{ fontSize: 11 }}
+                              >
+                                {copiedId === `full-${idea.id}` ? "✓ Disalin!" : "📄 Copy Lengkap"}
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleRenderSvg(idea.prompt, idea.title)}
+                                className="btn btn--small btn--ghost"
+                                style={{ fontSize: 11, color: "#4a90e2", borderColor: "#4a90e2" }}
+                              >
+                                🖼️ Render SVG
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Use in Studio CTA */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setCustomTheme(idea.prompt);
+                        setPanelTab("generate");
+                        window.scrollTo({ top: 0, behavior: "smooth" });
+                      }}
+                      className="btn btn--primary w-full text-center"
+                      style={{ marginTop: 14, background: "linear-gradient(135deg, #7b5ae0, #6366f1)" }}
+                    >
+                      Gunakan di Studio →
+                    </button>
+                  </div>
+                );
+              });
+            })()}
           </div>
+
         </div>
       )}
 
