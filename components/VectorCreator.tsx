@@ -7,34 +7,37 @@ import { addUsage, formatTokens, estimateCost, getPlatformLabel, getUsage, type 
 type VectorStyle   = "flat" | "outline" | "both";
 type AspectRatio   = "1:1" | "16:9" | "9:16" | "4:3" | "3:4" | "21:9";
 type Complexity    = "simple" | "medium" | "complex";
-type VectorMode    = "prompt" | "noprompt" | "composer";
-type PanelTab      = "generate" | "composer" | "magic" | "analytics" | "history";
+type PanelTab      = "generate" | "magic" | "analytics";
 type ResolutionOpt = "1k" | "2k" | "3k" | "4k" | "svg";
 
 interface MagicIdea {
-  id: string; title: string; description: string; prompt: string;
-  tags: string[]; estimatedSales: string; difficulty: "Easy" | "Medium" | "Complex";
+  id: string;
+  title: string;
+  description: string;
+  prompt: string;
+  tags: string[];
+  estimatedSales: string;
+  difficulty: "Easy" | "Medium" | "Complex";
 }
 
 interface GeneratedPrompt {
-  id: string; label: string; prompt: string; negativePrompt: string;
+  id: string;
+  label: string;
+  prompt: string;
+  negativePrompt: string;
   metadata: { title: string; keywords: string[] };
   technicalSpec: { ratio: string; complexity: string; colorCount: number };
 }
 
 interface GeneratedPlan {
   plan: {
-    conceptTitle: string; commercialHook: string;
+    conceptTitle: string;
+    commercialHook: string;
     styleGuide: { palette: string; strokeWeight: string; typography: string; composition: string; };
   };
   prompts: GeneratedPrompt[];
   setTips: string[];
   complianceNotes: string[];
-}
-
-interface HistoryItem {
-  id: string; timestamp: string; mode: VectorMode; style: VectorStyle;
-  ratio: AspectRatio; conceptTitle: string; promptCount: number;
 }
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -68,19 +71,6 @@ const PALETTE_PRESETS = [
   "Retro 70s (Burnt Orange & Avocado)",
 ];
 
-const THEME_PRESETS = [
-  "Flat Vector Modern Tech Workspace & Developer Lifestyle",
-  "Retro 80s Synthwave Aesthetic with Neon Grid Lines",
-  "Kawaii Chibi Character Mascot for Brand Identity",
-  "Modern Isometric 3D Smart City & Urban Life",
-  "Futuristic AI & Machine Learning Data Visualization",
-  "Eco-Friendly Sustainability & Green Energy Concepts",
-  "E-Commerce Shopping & Digital Payment Illustrations",
-  "Healthcare & Medical Technology Flat Icons Set",
-  "Food & Beverage Artisan Brand Illustration Pack",
-  "Travel & Adventure Flat Landscape Destination Set",
-];
-
 const TARGET_USE_OPTIONS = [
   "Adobe Stock commercial illustration (max revenue)",
   "Website hero & landing page illustration",
@@ -94,121 +84,70 @@ const TARGET_USE_OPTIONS = [
   "Educational e-book & course material",
 ];
 
-// ── Enriched Composer Bank ────────────────────────────────────────────────────
-const COMPOSER_BANK = {
-  subjects: [
-    "A senior software engineer pair-programming on dual ultra-wide monitors with neon IDE theme",
-    "A diverse creative team brainstorming on glass whiteboard with colorful sticky notes",
-    "A cute astronaut floating in zero gravity, holding a cup of instant ramen and chopsticks",
-    "A solo female entrepreneur at minimal standing desk, surrounded by plants and warm lamp glow",
-    "A sleek electric sports car charging at a futuristic cyber-punk street station at night",
-    "A young data scientist analyzing complex holographic charts floating mid-air",
-    "A chef plating artisanal ramen in a modern Japanese minimalist kitchen",
-    "A delivery drone fleet flying over a smart city skyline at golden hour",
-    "A meditating panda in a bamboo forest surrounded by floating glowing orbs",
-    "A cybersecurity analyst in a dark room surrounded by multiple screens showing network maps",
-  ],
-  aesthetics: [
-    "ultra-clean flat design vector illustration with precise geometric shapes",
-    "modern isometric 3D vector with subtle shadow and depth layers",
-    "detailed linework illustration with hatching and pastel color fills",
-    "bold geometric abstract shapes with high color contrast and sharp edges",
-    "soft kawaii chibi character style with rounded forms and big eyes",
-    "retro 80s pixel-art inspired with limited color palette and grid texture",
-    "neo-brutalist thick black strokes with saturated flat color blocks",
-  ],
-  backgrounds: [
-    "solid deep navy blue background with minimal grid dot pattern",
-    "soft lavender-to-mint gradient with abstract floating circle elements",
-    "fully transparent background optimized for commercial asset isolation",
-    "warm cream background with subtle paper texture grain and soft shadow",
-    "dark matte charcoal background with neon accent glow reflections",
-    "isometric floor grid with long drop shadow for 3D depth effect",
-    "abstract geometric sunburst pattern in retro warm color palette",
-  ],
-  lightings: [
-    "flat ambient isometric lighting with no harsh shadows, consistent tone",
-    "dramatic sunset rim light casting long cool blue shadows",
-    "futuristic neon underglow accent from below, blue-magenta split tones",
-    "soft studio diffuse box lighting with subtle gradient shadow edges",
-    "high-key bright flat lighting, minimal shadow, optimized for icons",
-    "moody dark-to-light gradient spotlight from top-right corner",
-    "cinematic volumetric golden hour side fill with warm shadows",
-  ],
-};
+const ART_THEMES = [
+  { value: "vector", label: "Vector" },
+  { value: "illustrator", label: "Illustrator" },
+  { value: "photography", label: "Photography" },
+  { value: "watercolor", label: "Watercolor" },
+  { value: "3d_render", label: "3D Render" },
+  { value: "pixel_art", label: "Pixel Art" },
+  { value: "sketch", label: "Sketch" },
+  { value: "anime", label: "Anime / Manga" },
+  { value: "infographic", label: "Infographic" },
+  { value: "icon_set", label: "Icon Set" },
+];
 
-// ── Magic Ideas Bank (extended) ───────────────────────────────────────────────
+const CONCEPT_CATEGORIES = [
+  { value: "graphic", label: "Grafik & Abstrak" },
+  { value: "business", label: "Bisnis & Keuangan" },
+  { value: "scenery", label: "Pemandangan & Alam" },
+  { value: "technology", label: "Teknologi & AI" },
+  { value: "healthcare", label: "Kesehatan & Medis" },
+  { value: "food", label: "Makanan & Kuliner" },
+  { value: "travel", label: "Perjalanan & Wisata" },
+  { value: "education", label: "Pendidikan" },
+  { value: "sports", label: "Olahraga & Fitness" },
+];
+
+// ── Long and Highly Complex Static Ideas ──────────────────────────────────────
 const STATIC_MAGIC_IDEAS: MagicIdea[] = [
   {
     id: "mi1",
-    title: "AI-Powered Smart Home Control System",
-    description: "Futuristic flat vector illustration of a person controlling smart appliances via holographic interface — massive demand in tech editorial market.",
-    prompt: "Flat vector illustration of a smart home control system, person standing in center living room interacting with floating holographic UI panels showing temperature, security, lighting controls, modern minimal interior, cool blue and white palette, isometric perspective, clean geometric shapes, professional stock illustration style",
-    tags: ["smart home", "IoT", "tech", "futuristic"],
+    title: "Sistem Ekosistem Rumah Pintar Terintegrasi AI",
+    description: "Sebuah ilustrasi konsep canggih yang menggambarkan interaksi manusia masa depan dengan ekosistem pintar di rumah mereka. Menampilkan UI holografik mengambang dengan visualisasi suhu ruangan, konsumsi energi, status keamanan real-time, dan kontrol pencahayaan otomatis. Sangat dicari oleh agensi desain editorial, pengembang aplikasi IoT, dan startup teknologi masa kini.",
+    prompt: "A highly detailed flat vector illustration depicting a futuristic smart home automation system. A young developer is seen standing in the center of a modern minimalist living room, interacting with glowing semi-transparent holographic interface panels showing room temperature graphs, energy usage charts, home security map, and automated lighting controls. Deep corporate blue and neon white gradient color palette, clean isometric grid layout, elegant geometric shapes, isolated on a white background, premium commercial stock design.",
+    tags: ["smart home", "technology", "vector", "business"],
     estimatedSales: "8,400+ downloads",
-    difficulty: "Medium",
+    difficulty: "Complex",
   },
   {
     id: "mi2",
-    title: "Mental Health & Mindfulness Wellness Set",
-    description: "Soft pastel vector characters practicing mindfulness — top 5% seller category with evergreen commercial demand from health apps and publishers.",
-    prompt: "Flat vector illustration of a calm character sitting in lotus meditation pose, surrounded by floating botanical leaves and soft glowing orbs, pastel lavender and mint green palette, clean rounded shapes, white background, mental health wellness concept, premium editorial illustration style",
-    tags: ["wellness", "mindfulness", "health", "calm"],
+    title: "Meditasi & Wellness Kesehatan Mental Kontemporer",
+    description: "Karakter bergaya flat pastel lembut sedang mempraktikkan mindfulness dan yoga. Kategori terlaris top 5% dengan permintaan komersial yang konsisten sepanjang tahun untuk aplikasi kesehatan, editorial kesehatan mental, brosur spiritual, dan media sosial gaya hidup sehat.",
+    prompt: "An elegant, clean flat vector illustration of a calm character sitting in a cross-legged lotus meditation pose, floating gently above a giant green monstera leaf. The background is filled with abstract organic pastel shapes, soft floating orbs, and botanical leaves in lavender, mint green, and coral. Minimal face detail, high visual peace, smooth gradients, ideal for modern meditation app onboarding screen.",
+    tags: ["wellness", "meditation", "illustrator", "scenery"],
     estimatedSales: "12,200+ downloads",
     difficulty: "Easy",
   },
   {
     id: "mi3",
-    title: "Green Energy Renewable Technology Pack",
-    description: "Solar panels, wind turbines, EV charging — ESG content has 300% growth in B2B licensing. Perfect for corporate reports and sustainability campaigns.",
-    prompt: "Flat isometric vector illustration of a green energy landscape with solar farm, wind turbines, electric vehicle charging station, smart grid lines, lush green hills, clean sky blue background, eco-friendly technology concept, detailed vector illustration for commercial use",
-    tags: ["sustainability", "ESG", "green energy", "climate"],
+    title: "Peta Ekosistem Energi Hijau & Keberlanjutan",
+    description: "Kombinasi panel surya, turbin angin, stasiun pengisian daya EV, dan grid listrik cerdas. Konten bertema ESG (Environmental, Social, Governance) mengalami lonjakan lisensi hingga 300% dari korporasi untuk laporan tahunan dan kampanye ramah lingkungan.",
+    prompt: "Complex flat isometric vector illustration of a sustainable green energy landscape. Features wind turbines spinning on rolling green hills, a large solar panel farm tracking the sun, smart electrical grid towers, and a modern electric vehicle charging at a clean solar-powered station. Vibrant eco-friendly colors, clear blue sky, highly detailed elements, perfect for corporate sustainability reports.",
+    tags: ["sustainability", "energy", "vector", "scenery"],
     estimatedSales: "9,600+ downloads",
     difficulty: "Complex",
   },
   {
     id: "mi4",
-    title: "Remote Work & Digital Nomad Lifestyle",
-    description: "Evergreen bestseller — remote work flat vectors convert 40% higher than studio photography for SaaS and productivity software marketing.",
-    prompt: "Flat vector illustration of a digital nomad working on laptop at a beach cafe, tropical plants around, warm sunset colors, coffee cup on table, minimal focused workspace vibe, modern professional flat vector art style, for commercial stock illustration use",
-    tags: ["remote work", "freelance", "lifestyle", "productivity"],
+    title: "Gaya Hidup Bekerja Remote & Nomad Digital",
+    description: "Bestseller abadi di kategori bisnis modern. Ilustrasi nomad digital bekerja di cafe pantai menghasilkan tingkat konversi lisensi 40% lebih tinggi dibanding fotografi studio biasa untuk landing page SaaS dan produk produktivitas.",
+    prompt: "A modern professional flat vector illustration of a digital nomad working on a laptop at a rustic outdoor cafe table overlooking a sunny tropical beach. Surrounded by potted palm plants, a fresh coconut water drink on the table, and warm golden hour sunlight casting soft shadows. Relaxed work-from-anywhere lifestyle, vibrant warm orange and teal color scheme, clean vector lines.",
+    tags: ["remote work", "business", "illustrator", "travel"],
     estimatedSales: "15,800+ downloads",
-    difficulty: "Easy",
-  },
-  {
-    id: "mi5",
-    title: "Blockchain & DeFi Finance Ecosystem",
-    description: "Crypto and decentralized finance illustration is massively underserved in vector stock — early mover advantage with high CPM licensing rates.",
-    prompt: "Complex flat vector illustration of blockchain network visualization, interconnected nodes forming hexagonal web, cryptocurrency coins floating, digital wallet interface, dark navy background with neon blue and gold accents, modern fintech editorial illustration, clean geometric shapes",
-    tags: ["blockchain", "crypto", "fintech", "defi"],
-    estimatedSales: "6,300+ downloads",
-    difficulty: "Complex",
-  },
-  {
-    id: "mi6",
-    title: "Diverse Team Collaboration & Inclusion",
-    description: "DEI content is mandated purchasing in Fortune 500 HR departments — diverse team illustrations consistently rank top 10 in commercial licensing.",
-    prompt: "Flat vector illustration of diverse multicultural team of 4 professionals collaborating around circular table, laptops open, sticky notes on glass wall, inclusive workplace concept, warm coral and indigo color palette, modern editorial illustration for business use",
-    tags: ["diversity", "teamwork", "inclusion", "business"],
-    estimatedSales: "18,400+ downloads",
     difficulty: "Medium",
   },
 ];
-
-// ── Toggle Component ─────────────────────────────────────────────────────────
-function Toggle({ value, onChange, label, desc }: { value: boolean; onChange: (v: boolean) => void; label: string; desc?: string }) {
-  return (
-    <div className={`vc-toggle ${value ? "vc-toggle--active" : ""}`} onClick={() => onChange(!value)}>
-      <div className="vc-toggle__text-group">
-        <div className="vc-toggle__label">{label}</div>
-        {desc && <div className="vc-toggle__desc">{desc}</div>}
-      </div>
-      <div className="vc-toggle__switch">
-        <div className="vc-toggle__knob" />
-      </div>
-    </div>
-  );
-}
 
 // ── Main Component ────────────────────────────────────────────────────────────
 interface VectorCreatorProps {
@@ -225,20 +164,14 @@ export default function VectorCreator({ onTokensUpdated }: VectorCreatorProps = 
   const [complexity, setComplexity]     = useState<Complexity>("medium");
   const [targetUse, setTargetUse]       = useState(TARGET_USE_OPTIONS[0]);
   const [promptCount, setPromptCount]   = useState(4);
-  const [mode, setMode]           = useState<VectorMode>("noprompt");
-  const [userPrompt, setUserPrompt] = useState("");
-  const [selectedTheme, setSelectedTheme] = useState(THEME_PRESETS[0]);
-  const [customTheme, setCustomTheme]     = useState("");
+  const [customTheme, setCustomTheme]   = useState("");
 
-  const [compSubject, setCompSubject]     = useState(COMPOSER_BANK.subjects[0]);
-  const [compAesthetic, setCompAesthetic] = useState(COMPOSER_BANK.aesthetics[0]);
-  const [compBackground, setCompBackground] = useState(COMPOSER_BANK.backgrounds[0]);
-  const [compLighting, setCompLighting]   = useState(COMPOSER_BANK.lightings[0]);
+  const [selectedArtThemes, setSelectedArtThemes] = useState<string[]>(["vector"]);
+  const [selectedConcepts, setSelectedConcepts]   = useState<string[]>(["business"]);
 
   const [generatedPlan, setGeneratedPlan] = useState<GeneratedPlan | null>(null);
   const [magicIdeas, setMagicIdeas]       = useState<MagicIdea[]>(STATIC_MAGIC_IDEAS);
   const [enhancedPrompt, setEnhancedPrompt] = useState<{ prompt: string; improvements: string[] } | null>(null);
-  const [history, setHistory]             = useState<HistoryItem[]>([]);
 
   const [beforeSvg, setBeforeSvg]       = useState("");
   const [afterSvg, setAfterSvg]         = useState("");
@@ -256,6 +189,7 @@ export default function VectorCreator({ onTokensUpdated }: VectorCreatorProps = 
   const [isEnhancing, setIsEnhancing]   = useState(false);
   const [error, setError]               = useState("");
   const [copiedId, setCopiedId]         = useState("");
+  const [expandedIdeaId, setExpandedIdeaId] = useState<string | null>(null);
 
   // ── Token tracking for vector platform ─────────────────────────────────────
   const [sessionTokens, setSessionTokens] = useState({ prompt: 0, completion: 0, total: 0, requests: 0 });
@@ -274,7 +208,20 @@ export default function VectorCreator({ onTokensUpdated }: VectorCreatorProps = 
     onTokensUpdated?.();
   }, [onTokensUpdated]);
 
-  // ── Pointer drag for slider ─────────────────────────────────────────────────
+  // ── Toggle multi-select chips ──
+  const toggleArtTheme = (val: string) => {
+    setSelectedArtThemes(prev =>
+      prev.includes(val) ? prev.filter(v => v !== val) : [...prev, val]
+    );
+  };
+
+  const toggleConcept = (val: string) => {
+    setSelectedConcepts(prev =>
+      prev.includes(val) ? prev.filter(v => v !== val) : [...prev, val]
+    );
+  };
+
+  // ── Pointer drag for slider ──
   const handlePointerDown = () => setIsDraggingSlider(true);
 
   useEffect(() => {
@@ -288,7 +235,7 @@ export default function VectorCreator({ onTokensUpdated }: VectorCreatorProps = 
     return () => { window.removeEventListener("pointermove", onMove); window.removeEventListener("pointerup", onUp); };
   }, [isDraggingSlider]);
 
-  // ── Extract colors from SVG ─────────────────────────────────────────────────
+  // ── Extract colors from SVG ──
   useEffect(() => {
     if (!afterSvg) { setDetectedColors([]); return; }
     const matches = afterSvg.match(/#[0-9A-Fa-f]{3,8}\b/g);
@@ -300,19 +247,6 @@ export default function VectorCreator({ onTokensUpdated }: VectorCreatorProps = 
       setCopiedId(id);
       setTimeout(() => setCopiedId(""), 2000);
     });
-  };
-
-  const getComposedPrompt = useCallback(() =>
-    `A professional vector illustration of ${compSubject}, rendered in ${compAesthetic}, with ${compBackground}, lit by ${compLighting}. Clean precise geometry, crisp vector lines, optimized for commercial stock use.`,
-  [compSubject, compAesthetic, compBackground, compLighting]);
-
-  const handleSurpriseMe = () => {
-    const pick = <T,>(arr: T[]) => arr[Math.floor(Math.random() * arr.length)];
-    setCompSubject(pick(COMPOSER_BANK.subjects));
-    setCompAesthetic(pick(COMPOSER_BANK.aesthetics));
-    setCompBackground(pick(COMPOSER_BANK.backgrounds));
-    setCompLighting(pick(COMPOSER_BANK.lightings));
-    setMode("composer");
   };
 
   const handleColorReplace = (oldColor: string, newColor: string) => {
@@ -347,7 +281,7 @@ export default function VectorCreator({ onTokensUpdated }: VectorCreatorProps = 
     setAfterSvg(updatedAfter); setBeforeSvg(updatedBefore); setEditableSvgCode(updatedAfter);
   };
 
-  // ── handleRenderSvg defined FIRST (before handleGenerate uses it) ─────────
+  // ── handleRenderSvg ──
   const handleRenderSvg = useCallback(async (targetPrompt: string, label: string) => {
     setError(""); setIsGeneratingSvg(true); setBeforeSvg(""); setAfterSvg(""); setShowCodeInspector(false);
     try {
@@ -371,19 +305,42 @@ export default function VectorCreator({ onTokensUpdated }: VectorCreatorProps = 
     } finally { setIsGeneratingSvg(false); }
   }, [style, ratio, faceless, colorPalette, trackVectorTokens]);
 
-  // ── handleGenerate (after handleRenderSvg) ──────────────────────────────────
+  // ── handleGenerate ──
   const handleGenerate = useCallback(async () => {
+    if (!customTheme.trim()) {
+      setError("Masukkan tema terlebih dahulu.");
+      return;
+    }
     setError(""); setGeneratedPlan(null); setBeforeSvg(""); setAfterSvg("");
     setIsGenerating(true); setIsGeneratingSvg(true);
-    const theme = customTheme.trim() || selectedTheme;
-    const promptText = mode === "composer" ? getComposedPrompt() : userPrompt;
+
+    const artThemesText = selectedArtThemes.map(t => ART_THEMES.find(a => a.value === t)?.label || t).join(", ");
+    const conceptsText = selectedConcepts.map(c => CONCEPT_CATEGORIES.find(co => co.value === c)?.label || c).join(", ");
+
+    const combinedTheme = [
+      `Theme/Subject: ${customTheme.trim()}`,
+      artThemesText ? `Art Style/Themes: ${artThemesText}` : "",
+      conceptsText ? `Concept Categories: ${conceptsText}` : ""
+    ].filter(Boolean).join(" | ");
+
     try {
       const res = await fetch("/api/vector", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           action: "generate",
-          payload: { mode: (mode === "composer" || userPrompt.trim()) ? "prompt" : "noprompt", prompt: promptText, theme, style, ratio, faceless, consistency, colorPalette, complexity, targetUse, count: promptCount },
+          payload: {
+            mode: "noprompt",
+            theme: combinedTheme,
+            style,
+            ratio,
+            faceless,
+            consistency,
+            colorPalette,
+            complexity,
+            targetUse,
+            count: promptCount
+          },
         }),
       });
       if (!res.ok) throw new Error(await res.text() || "Gagal membuat rencana");
@@ -391,13 +348,6 @@ export default function VectorCreator({ onTokensUpdated }: VectorCreatorProps = 
       if (data.success && data.result) {
         setGeneratedPlan(data.result);
         trackVectorTokens(data.usage);
-        if (data.result.plan?.conceptTitle) {
-          setHistory(prev => [{
-            id: `h-${Date.now()}`, timestamp: new Date().toLocaleTimeString("id-ID"),
-            mode, style, ratio, conceptTitle: data.result.plan.conceptTitle,
-            promptCount: data.result.prompts?.length ?? 0,
-          }, ...prev.slice(0, 19)]);
-        }
         const firstPrompt = data.result.prompts?.[0];
         if (firstPrompt) await handleRenderSvg(firstPrompt.prompt, firstPrompt.label);
         else setIsGeneratingSvg(false);
@@ -406,15 +356,25 @@ export default function VectorCreator({ onTokensUpdated }: VectorCreatorProps = 
       setError(e instanceof Error ? e.message : "Terjadi kesalahan");
       setIsGeneratingSvg(false);
     } finally { setIsGenerating(false); }
-  }, [mode, userPrompt, getComposedPrompt, selectedTheme, customTheme, style, ratio, faceless, consistency, colorPalette, complexity, targetUse, promptCount, handleRenderSvg]);
+  }, [customTheme, selectedArtThemes, selectedConcepts, style, ratio, faceless, consistency, colorPalette, complexity, targetUse, promptCount, handleRenderSvg, trackVectorTokens]);
 
+  // ── handleMagic ──
   const handleMagic = useCallback(async () => {
     setError(""); setIsMagicking(true);
     try {
       const res = await fetch("/api/vector", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "magic", payload: { theme: customTheme.trim() || selectedTheme, style, faceless, count: 6 } }),
+        body: JSON.stringify({
+          action: "magic",
+          payload: {
+            artType: selectedArtThemes[0] || "vector",
+            concept: selectedConcepts[0] || "business",
+            customTheme: customTheme.trim(),
+            faceless,
+            count: 6
+          }
+        }),
       });
       if (!res.ok) throw new Error(await res.text() || "Gagal menghasilkan ide");
       const data = await res.json();
@@ -422,16 +382,17 @@ export default function VectorCreator({ onTokensUpdated }: VectorCreatorProps = 
       trackVectorTokens(data.usage);
     } catch (e) { setError(e instanceof Error ? e.message : "Terjadi kesalahan"); }
     finally { setIsMagicking(false); }
-  }, [selectedTheme, customTheme, style, faceless]);
+  }, [selectedArtThemes, selectedConcepts, customTheme, faceless, trackVectorTokens]);
 
+  // ── handleEnhance ──
   const handleEnhance = useCallback(async () => {
-    if (!userPrompt.trim()) return;
+    if (!customTheme.trim()) return;
     setError(""); setEnhancedPrompt(null); setIsEnhancing(true);
     try {
       const res = await fetch("/api/vector", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "enhance", payload: { prompt: userPrompt, style, ratio, faceless, colorPalette, targetUse } }),
+        body: JSON.stringify({ action: "enhance", payload: { prompt: customTheme, style, ratio, faceless, colorPalette, targetUse } }),
       });
       if (!res.ok) throw new Error(await res.text() || "Gagal enhance prompt");
       const data = await res.json();
@@ -439,7 +400,7 @@ export default function VectorCreator({ onTokensUpdated }: VectorCreatorProps = 
       trackVectorTokens(data.usage);
     } catch (e) { setError(e instanceof Error ? e.message : "Terjadi kesalahan"); }
     finally { setIsEnhancing(false); }
-  }, [userPrompt, style, ratio, faceless, colorPalette, targetUse]);
+  }, [customTheme, style, ratio, faceless, colorPalette, targetUse, trackVectorTokens]);
 
   const handleDownloadImage = (svg: string, label: "before" | "after") => {
     if (!svg) return;
@@ -476,13 +437,11 @@ export default function VectorCreator({ onTokensUpdated }: VectorCreatorProps = 
         </div>
         <div className="vc-header__right">
           <div className="mon-tabs">
-            {([
-              { id:"generate" as PanelTab,  label:"⚡ Studio"   },
-              { id:"composer" as PanelTab,  label:"⚙️ Composer" },
-              { id:"magic"    as PanelTab,  label:"✨ Ideas"    },
-              { id:"analytics"as PanelTab,  label:"📈 Analytics"},
-              { id:"history"  as PanelTab,  label:`📋 History (${history.length})` },
-            ]).map(t => (
+            {[
+              { id: "generate" as PanelTab, label: "⚡ Studio"   },
+              { id: "magic"    as PanelTab, label: "✨ Ideas"    },
+              { id: "analytics"as PanelTab, label: "📈 Analytics"},
+            ].map(t => (
               <button key={t.id} type="button" onClick={() => setPanelTab(t.id)} className={`mon-tab ${panelTab === t.id ? "mon-tab--active" : ""}`}>
                 {t.label}
               </button>
@@ -508,18 +467,91 @@ export default function VectorCreator({ onTokensUpdated }: VectorCreatorProps = 
       {panelTab === "generate" && (
         <div className="vc-panel">
 
-          {/* Mode selector */}
-          <div className="vc-chip-group">
-            <span className="vc-field-label" style={{ marginBottom: 0 }}>Mode:</span>
-            {[
-              { v:"noprompt" as VectorMode, label:"🤖 Autopilot (No Prompt)" },
-              { v:"prompt"   as VectorMode, label:"✍️ Custom Prompt"         },
-            ].map(m => (
-              <button key={m.v} type="button" onClick={() => setMode(m.v)} className={`vc-chip ${mode === m.v ? "vc-chip--active" : ""}`}>{m.label}</button>
-            ))}
-            <div style={{ marginLeft:"auto" }} className="vc-chip-group">
-              <button onClick={() => setFaceless(!faceless)} className={`vc-chip ${faceless ? "vc-chip--active vc-chip--toggle" : ""}`}>🙈 Faceless</button>
-              <button onClick={() => setConsistency(!consistency)} className={`vc-chip ${consistency ? "vc-chip--active" : ""}`}>🔗 Consistency</button>
+          {/* Theme Input */}
+          <div>
+            <div className="vc-header" style={{ alignItems: "center", marginBottom: 8 }}>
+              <span className="vc-field-label" style={{ marginBottom: 0 }}>Input Tema</span>
+              <button type="button" onClick={handleEnhance} disabled={isEnhancing} className="btn btn--ghost" style={{ color: "#7b5ae0" }}>
+                {isEnhancing ? "✨ Enhancing..." : "✨ AI Enhance Theme →"}
+              </button>
+            </div>
+            <textarea
+              value={customTheme}
+              onChange={e => setCustomTheme(e.target.value)}
+              className="vc-textarea"
+              style={{ minHeight: "100px", resize: "vertical" }}
+              placeholder="Ketik tema vector yang ingin dibuat secara detail (contoh: Kucing astronot memakan ramen di luar angkasa dengan latar belakang kosmik cyberpunk)..."
+            />
+            {enhancedPrompt && (
+              <div className="mon-section" style={{ marginTop: 12, background: "rgba(123,90,224,0.06)", borderColor: "rgba(123,90,224,0.2)" }}>
+                <div className="mon-section__title" style={{ color: "#7b5ae0" }}>✨ AI-Enhanced Prompt:</div>
+                <p style={{ margin: 0, fontSize: 13, lineHeight: 1.6 }}>{enhancedPrompt.prompt}</p>
+                <button onClick={() => setCustomTheme(enhancedPrompt.prompt)} className="btn btn--primary" style={{ marginTop: 12, background: "#7b5ae0" }}>Gunakan Prompt Ini</button>
+              </div>
+            )}
+          </div>
+
+          {/* Theme Filters (Art style & Concept) */}
+          <div className="vc-grid-2">
+            <div>
+              <span className="vc-field-label">Pilih Tema / Art Style</span>
+              <div className="vc-chip-group">
+                {ART_THEMES.map(theme => {
+                  const isActive = selectedArtThemes.includes(theme.value);
+                  return (
+                    <button
+                      key={theme.value}
+                      type="button"
+                      onClick={() => toggleArtTheme(theme.value)}
+                      className={`vc-theme-chip ${isActive ? "vc-theme-chip--active" : ""}`}
+                    >
+                      {theme.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div>
+              <span className="vc-field-label">Pilih Konsep</span>
+              <div className="vc-chip-group">
+                {CONCEPT_CATEGORIES.map(concept => {
+                  const isActive = selectedConcepts.includes(concept.value);
+                  return (
+                    <button
+                      key={concept.value}
+                      type="button"
+                      onClick={() => toggleConcept(concept.value)}
+                      className={`vc-concept-chip ${isActive ? "vc-concept-chip--active" : ""}`}
+                    >
+                      {concept.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+
+          {/* Faceless and Consistency row */}
+          <div style={{ display: "flex", gap: "16px", flexWrap: "wrap" }}>
+            <div
+              className={`vc-checkbox-container ${faceless ? "vc-checkbox-container--active" : ""}`}
+              onClick={() => setFaceless(!faceless)}
+            >
+              <div className="vc-checkbox">
+                <span className="vc-checkbox-checkmark">✓</span>
+              </div>
+              <span style={{ fontSize: "12px", fontWeight: 600, color: "var(--text)" }}>🙈 Faceless (Karakter Tanpa Wajah)</span>
+            </div>
+
+            <div
+              className={`vc-checkbox-container ${consistency ? "vc-checkbox-container--active" : ""}`}
+              onClick={() => setConsistency(!consistency)}
+            >
+              <div className="vc-checkbox">
+                <span className="vc-checkbox-checkmark">✓</span>
+              </div>
+              <span style={{ fontSize: "12px", fontWeight: 600, color: "var(--text)" }}>🔗 Style Consistency (Konsistensi Gaya)</span>
             </div>
           </div>
 
@@ -587,40 +619,6 @@ export default function VectorCreator({ onTokensUpdated }: VectorCreatorProps = 
             </div>
           </div>
 
-          {/* Theme / Prompt input */}
-          {mode === "noprompt" ? (
-            <div>
-              <div className="vc-header" style={{ alignItems: "center", marginBottom: 4 }}>
-                <span className="vc-field-label" style={{ marginBottom: 0 }}>Tema Vector Komersial</span>
-                <input value={customTheme} onChange={e => setCustomTheme(e.target.value)} placeholder="atau ketik tema custom..." className="vc-input" style={{ width: "auto", flexGrow: 1, maxWidth: "40%" }} />
-              </div>
-              <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(260px,1fr))", gap:8 }}>
-                {THEME_PRESETS.map(t => (
-                  <button key={t} type="button" onClick={() => { setSelectedTheme(t); setCustomTheme(""); }} className={`vc-chip ${selectedTheme === t && !customTheme ? "vc-chip--active" : ""}`} style={{ textAlign: "left" }}>{t}</button>
-                ))}
-              </div>
-            </div>
-          ) : (
-            <div>
-              <div className="vc-header" style={{ alignItems: "center", marginBottom: 0 }}>
-                <span className="vc-field-label" style={{ marginBottom: 0 }}>Custom Prompt</span>
-                <button type="button" onClick={handleEnhance} disabled={isEnhancing} className="btn btn--ghost" style={{ color: "#7b5ae0" }}>
-                  {isEnhancing ? "✨ Enhancing..." : "✨ AI Enhance →"}
-                </button>
-              </div>
-              <textarea value={userPrompt} onChange={e => setUserPrompt(e.target.value)} className="vc-textarea"
-                placeholder="Deskripsikan vector yang ingin dibuat secara detail — subjek, gaya, warna, komposisi, mood..."
-              />
-              {enhancedPrompt && (
-                <div className="mon-section" style={{ marginTop: 12, background: "rgba(123,90,224,0.06)", borderColor: "rgba(123,90,224,0.2)" }}>
-                  <div className="mon-section__title" style={{ color: "#7b5ae0" }}>✨ AI-Enhanced Prompt:</div>
-                  <p style={{ margin: 0, fontSize: 13, lineHeight: 1.6 }}>{enhancedPrompt.prompt}</p>
-                  <button onClick={() => setUserPrompt(enhancedPrompt.prompt)} className="btn btn--primary" style={{ marginTop: 12, background: "#7b5ae0" }}>Gunakan Prompt Ini</button>
-                </div>
-              )}
-            </div>
-          )}
-
           {/* Generate CTA */}
           <button type="button" onClick={handleGenerate} disabled={isGenerating} className="vc-generate-btn">
             {isGenerating ? "⏳ AI sedang membuat vector..." : "🎨 Create Vector"}
@@ -628,81 +626,160 @@ export default function VectorCreator({ onTokensUpdated }: VectorCreatorProps = 
         </div>
       )}
 
-      {/* ── COMPOSER TAB ───────────────────────────────────────────────────── */}
-      {panelTab === "composer" && (
-        <div className="vc-panel">
-          <div>
-            <h3 className="mon-section__title" style={{ fontSize: 18 }}>⚙️ Advanced Prompt Composer</h3>
-            <p className="vc-header__subtitle">Bangun prompt detail dengan memilih komponen. AI akan menggabungkannya menjadi prompt komersial yang optimal.</p>
-          </div>
-          <div className="vc-grid-2">
-            {[
-              { label:"Subject / Protagonist", value: compSubject, set: setCompSubject, options: COMPOSER_BANK.subjects },
-              { label:"Aesthetic / Art Style",  value: compAesthetic, set: setCompAesthetic, options: COMPOSER_BANK.aesthetics },
-              { label:"Background / Environment", value: compBackground, set: setCompBackground, options: COMPOSER_BANK.backgrounds },
-              { label:"Lighting & Atmosphere",    value: compLighting, set: setCompLighting, options: COMPOSER_BANK.lightings },
-            ].map(field => (
-              <div key={field.label}>
-                <span className="vc-field-label">{field.label}</span>
-                <select value={field.value} onChange={e => field.set(e.target.value)} className="vc-select">
-                  {field.options.map(o => <option key={o} value={o}>{o}</option>)}
-                </select>
-              </div>
-            ))}
-          </div>
-          <div className="mon-section" style={{ background: "rgba(74,144,226,0.05)", borderColor: "rgba(74,144,226,0.15)" }}>
-            <div className="mon-section__title" style={{ color: "#4a90e2" }}>Preview Composed Prompt:</div>
-            <p style={{ margin: 0, fontSize: 13, lineHeight: 1.7 }}>{getComposedPrompt()}</p>
-          </div>
-          <div className="vc-grid-3" style={{ gap: 12 }}>
-            <button type="button" onClick={handleSurpriseMe} className="btn btn--secondary">🎲 Acak Semua</button>
-            <button type="button" onClick={() => copyToClipboard(getComposedPrompt(), "composed")} className="btn btn--secondary">
-              {copiedId === "composed" ? "✓ Tersalin" : "📋 Copy Prompt"}
-            </button>
-            <button type="button" onClick={() => { setUserPrompt(getComposedPrompt()); setMode("prompt"); setPanelTab("generate"); }} className="btn btn--primary">
-              Gunakan di Studio →
-            </button>
-          </div>
-        </div>
-      )}
-
       {/* ── MAGIC IDEAS TAB ────────────────────────────────────────────────── */}
       {panelTab === "magic" && (
         <div className="vc-panel">
-          <div className="vc-header">
+          <div className="vc-header" style={{ marginBottom: "10px" }}>
             <div>
-              <h3 className="mon-section__title" style={{ fontSize: 18 }}>✨ High-Demand Vector Ideas</h3>
-              <p className="vc-header__subtitle">Ide vector komersial dengan estimasi penjualan tertinggi di Adobe Stock. Klik ide untuk langsung gunakan sebagai prompt.</p>
+              <h3 className="mon-section__title" style={{ fontSize: 18 }}>✨ High-Demand Creative Ideas Generator</h3>
+              <p className="vc-header__subtitle">Ide komersial kompleks yang dioptimalkan untuk Adobe Stock. Pilih filter, ketik tema opsional, lalu generate ide baru.</p>
             </div>
-            <button type="button" onClick={handleMagic} disabled={isMagicking} className="btn btn--primary" style={{ background: "linear-gradient(135deg,#7b5ae0,#4a90e2)" }}>
-              {isMagicking ? "⏳ Generating..." : "🔄 Regenerate Ideas"}
+            <button
+              type="button"
+              onClick={handleMagic}
+              disabled={isMagicking}
+              className="btn btn--primary"
+              style={{ background: "linear-gradient(135deg,#7b5ae0,#4a90e2)" }}
+            >
+              {isMagicking ? "⏳ Generating..." : "🔄 Generate AI Ideas"}
             </button>
           </div>
-          <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(320px,1fr))", gap:14 }}>
-            {magicIdeas.map(idea => (
-              <div key={idea.id} onClick={() => { setUserPrompt(idea.prompt); setMode("prompt"); setPanelTab("generate"); }} className="vc-idea-card">
-                {/* Market stats */}
-                <div className="vc-idea-card__stats">
-                  <div className="vc-idea-card__stat" style={{ background:"rgba(76,175,80,0.1)", border:"1px solid rgba(76,175,80,0.2)" }}>
-                    <div className="vc-idea-card__stat-label">Est. Sales</div>
-                    <div className="vc-idea-card__stat-value" style={{ color:"#4caf50" }}>{idea.estimatedSales}</div>
-                  </div>
-                  <div className="vc-idea-card__stat" style={{ background: idea.difficulty==="Easy"?"rgba(76,175,80,0.1)":idea.difficulty==="Medium"?"rgba(255,152,0,0.1)":"rgba(239,68,68,0.1)", border:"1px solid var(--border)" }}>
-                    <div className="vc-idea-card__stat-label">Difficulty</div>
-                    <div className="vc-idea-card__stat-value" style={{ color: idea.difficulty==="Easy"?"#4caf50":idea.difficulty==="Medium"?"#ff9800":"#ef4444" }}>{idea.difficulty}</div>
-                  </div>
+
+          {/* Ideas Filters */}
+          <div className="vc-panel" style={{ padding: "16px", background: "var(--bg-secondary)", gap: "14px" }}>
+            <div>
+              <span className="vc-field-label">Tema Custom Khusus (Opsional)</span>
+              <input
+                type="text"
+                value={customTheme}
+                onChange={e => setCustomTheme(e.target.value)}
+                placeholder="Misalnya: Kopi luar angkasa, kucing lucu, robot cyberpunk..."
+                className="vc-input"
+                style={{ width: "100%" }}
+              />
+            </div>
+            <div className="vc-grid-2">
+              <div>
+                <span className="vc-field-label">Tema Utama</span>
+                <div className="vc-chip-group">
+                  {ART_THEMES.slice(0, 5).map(theme => (
+                    <button
+                      key={theme.value}
+                      type="button"
+                      onClick={() => setSelectedArtThemes([theme.value])}
+                      className={`vc-theme-chip ${selectedArtThemes.includes(theme.value) ? "vc-theme-chip--active" : ""}`}
+                    >
+                      {theme.label}
+                    </button>
+                  ))}
                 </div>
-                <h4 className="vc-idea-card__title">{idea.title}</h4>
-                <p className="vc-idea-card__desc">{idea.description}</p>
-                <div className="vc-idea-card__prompt">
-                  "{idea.prompt.slice(0, 120)}..."
-                </div>
-                <div className="vc-idea-card__tags">
-                  {idea.tags.map(tag => <span key={tag} className="keyword-tag">{tag}</span>)}
-                </div>
-                <div className="vc-idea-card__cta">Klik untuk pakai prompt ini →</div>
               </div>
-            ))}
+              <div>
+                <span className="vc-field-label">Konsep Utama</span>
+                <div className="vc-chip-group">
+                  {CONCEPT_CATEGORIES.slice(0, 5).map(concept => (
+                    <button
+                      key={concept.value}
+                      type="button"
+                      onClick={() => setSelectedConcepts([concept.value])}
+                      className={`vc-concept-chip ${selectedConcepts.includes(concept.value) ? "vc-concept-chip--active" : ""}`}
+                    >
+                      {concept.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+            <div>
+              <div
+                className={`vc-checkbox-container ${faceless ? "vc-checkbox-container--active" : ""}`}
+                onClick={() => setFaceless(!faceless)}
+                style={{ width: "fit-content" }}
+              >
+                <div className="vc-checkbox">
+                  <span className="vc-checkbox-checkmark">✓</span>
+                </div>
+                <span style={{ fontSize: "12px", fontWeight: 600, color: "var(--text)" }}>🙈 Karakter Faceless</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Ideas Grid */}
+          <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(320px,1fr))", gap:16, marginTop: "10px" }}>
+            {magicIdeas.map(idea => {
+              const isExpanded = expandedIdeaId === idea.id;
+              return (
+                <div key={idea.id} className="vc-idea-card" style={{ display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
+                  <div>
+                    {/* Market stats */}
+                    <div className="vc-idea-card__stats" style={{ marginBottom: "12px" }}>
+                      <div className="vc-idea-card__stat" style={{ background:"rgba(76,175,80,0.06)", border:"1px solid rgba(76,175,80,0.15)" }}>
+                        <div className="vc-idea-card__stat-label">Est. Sales</div>
+                        <div className="vc-idea-card__stat-value" style={{ color:"#4caf50" }}>{idea.estimatedSales}</div>
+                      </div>
+                      <div className="vc-idea-card__stat" style={{ background: idea.difficulty==="Easy"?"rgba(76,175,80,0.06)":idea.difficulty==="Medium"?"rgba(255,152,0,0.06)":"rgba(239,68,68,0.06)", border:"1px solid var(--border)" }}>
+                        <div className="vc-idea-card__stat-label">Difficulty</div>
+                        <div className="vc-idea-card__stat-value" style={{ color: idea.difficulty==="Easy"?"#4caf50":idea.difficulty==="Medium"?"#ff9800":"#ef4444" }}>{idea.difficulty}</div>
+                      </div>
+                    </div>
+
+                    <h4 className="vc-idea-card__title" style={{ fontSize: "15px", fontWeight: 700, margin: "0 0 8px 0" }}>{idea.title}</h4>
+                    <p className="vc-idea-card__desc" style={{ fontSize: "12px", color: "var(--text-secondary)", lineHeight: "1.6", margin: "0 0 12px 0" }}>{idea.description}</p>
+
+                    {/* Collapsible Prompt Display */}
+                    <div className="vc-idea-prompt-box">
+                      <div
+                        className="vc-idea-prompt-header"
+                        onClick={() => setExpandedIdeaId(isExpanded ? null : idea.id)}
+                      >
+                        <span>📋 Prompt AI Generator</span>
+                        <span>{isExpanded ? "Tutup ▲" : "Tampilkan ▼"}</span>
+                      </div>
+                      {isExpanded && (
+                        <>
+                          <p className="vc-idea-prompt-text">{idea.prompt}</p>
+                          <div style={{ display: "flex", gap: "8px", marginTop: "10px" }}>
+                            <button
+                              type="button"
+                              onClick={() => copyToClipboard(idea.prompt, idea.id)}
+                              className="btn btn--small btn--ghost text-xs"
+                            >
+                              {copiedId === idea.id ? "✓ Disalin" : "📋 Copy Prompt"}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleRenderSvg(idea.prompt, idea.title)}
+                              className="btn btn--small btn--ghost text-xs"
+                              style={{ color: "#4a90e2", borderColor: "#4a90e2" }}
+                            >
+                              🖼️ Render Langsung
+                            </button>
+                          </div>
+                        </>
+                      )}
+                    </div>
+
+                    {/* Tags */}
+                    <div className="vc-idea-card__tags" style={{ display: "flex", flexWrap: "wrap", gap: "4px", marginTop: "12px" }}>
+                      {idea.tags.map(tag => <span key={tag} className="keyword-tag">{tag}</span>)}
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setCustomTheme(idea.prompt);
+                      setPanelTab("generate");
+                      window.scrollTo({ top: 0, behavior: "smooth" });
+                    }}
+                    className="btn btn--primary w-full text-center"
+                    style={{ marginTop: "16px", background: "linear-gradient(135deg, #7b5ae0, #6366f1)" }}
+                  >
+                    Gunakan di Studio →
+                  </button>
+                </div>
+              );
+            })}
           </div>
         </div>
       )}
@@ -830,28 +907,6 @@ export default function VectorCreator({ onTokensUpdated }: VectorCreatorProps = 
               </>
             );
           })()}
-        </div>
-      )}
-
-      {/* ── HISTORY TAB ────────────────────────────────────────────────────── */}
-      {panelTab === "history" && (
-        <div className="vc-panel">
-          <h3 className="mon-section__title" style={{ fontSize: 18 }}>📋 Generation History</h3>
-          {history.length === 0 ? (
-            <p className="vc-header__subtitle">Belum ada history. Hasil generate akan muncul di sini.</p>
-          ) : (
-            <div className="mon-section" style={{ padding: 0, background: 'transparent' }}>
-              {history.map(item => (
-                <div key={item.id} className="mon-info-row" style={{ background: "rgba(255,255,255,0.02)", padding: "11px 16px", borderRadius: 10 }}>
-                  <div>
-                    <strong style={{ fontSize:13 }}>{item.conceptTitle}</strong>
-                    <div style={{ fontSize:11, color:"var(--text-muted)", marginTop:2 }}>{item.promptCount} prompts · {item.style} · {item.ratio} · {item.mode}</div>
-                  </div>
-                  <span style={{ fontSize:11, color:"var(--text-muted)", fontFamily:"monospace", flexShrink: 0 }}>{item.timestamp}</span>
-                </div>
-              ))}
-            </div>
-          )}
         </div>
       )}
 

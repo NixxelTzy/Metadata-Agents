@@ -1,4 +1,4 @@
-export const MAX_IMAGES = 15;
+export const MAX_IMAGES = 50;
 
 export function compressImage(file: File, maxWidth = 1200, quality = 0.82): Promise<string> {
   return new Promise((resolve, reject) => {

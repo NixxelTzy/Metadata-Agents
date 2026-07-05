@@ -47,6 +47,9 @@ export async function POST(request: NextRequest) {
         complexity?: "simple" | "medium" | "complex";
         targetUse?: string;
         count?: number;
+        artType?: string;
+        concept?: string;
+        customTheme?: string;
       };
     };
 
@@ -72,29 +75,36 @@ export async function POST(request: NextRequest) {
     // ACTION: MAGIC IDEAS — Generate creative vector concept ideas
     // ─────────────────────────────────────────────────────────────────────────
     if (action === "magic") {
-      const { theme = "business", style = "flat", count = 6, faceless = false } = payload || {};
+      const {
+        artType = "vector",
+        concept = "business",
+        customTheme = "",
+        count = 6,
+        faceless = false,
+      } = payload || {};
 
       const systemMsg = [
         VECTOR_SYSTEM_PROMPT,
-        "Generate creative and highly marketable vector art concepts.",
-        "Return ONLY a valid JSON object:",
-        `{ "ideas": [ { "id": "string", "title": "string", "description": "string", "prompt": "string", "tags": ["string", ...], "estimatedSales": "string", "difficulty": "Easy" | "Medium" | "Complex" } ] }`,
-        "Each prompt should be 20-40 words, detailed, and ready to use in an AI image generator.",
+        "Generate extremely detailed, complex, and highly marketable art concept ideas based on user filters.",
+        "Ensure each concept is a unique masterpiece suitable for digital agencies and stock portals.",
+        "Return ONLY a valid JSON object matching this schema. No markdown formatting outside of JSON, no explanations:",
+        `{ "ideas": [ { "id": "string", "title": "string", "description": "string (highly detailed, complex description of the scene and its commercial viability, 3-5 long sentences)", "prompt": "string (extremely detailed, complex prompt for AI generation, 75-120 words detailing subject, layout, precise colors, angle, camera shot type, lighting, and style)", "tags": ["string", ...], "estimatedSales": "string", "difficulty": "Easy" | "Medium" | "Complex" } ] }`,
       ].join("\n");
 
       const userMsg = [
-        `Theme: ${theme}`,
-        `Vector Style: ${style === "flat" ? "Flat Vector" : style === "outline" ? "Outline / Line Art" : "Flat Vector + Outline Hybrid"}`,
-        `Faceless Characters: ${faceless ? "YES — no faces, use abstract or back-view silhouettes" : "NO — normal characters allowed"}`,
+        `Art Style/Type: ${artType}`,
+        `Concept Category: ${concept}`,
+        customTheme ? `Custom Specific Theme: ${customTheme}` : "",
+        `Faceless Characters Option: ${faceless ? "YES — all characters must be faceless (back views, silhouettes, abstract)" : "NO — standard character features allowed"}`,
         `Count: ${count} ideas`,
         "",
-        "Generate diverse, highly commercial vector art concepts for Adobe Stock.",
-      ].join("\n");
+        "Generate highly unique, detailed, and complex art ideas with very long, detailed prompts and descriptions.",
+      ].filter(Boolean).join("\n");
 
       const res = await callGroq([
         { role: "system", content: systemMsg },
         { role: "user", content: userMsg },
-      ], { temperature: 0.75, max_tokens: 3000 });
+      ], { temperature: 0.8, max_tokens: 4000 });
 
       let ideas: any[] = [];
       const match = res.text.match(/\{[\s\S]*\}/);
@@ -105,6 +115,7 @@ export async function POST(request: NextRequest) {
 
       return NextResponse.json({ success: true, ideas, usage: res.usage });
     }
+
 
     // ─────────────────────────────────────────────────────────────────────────
     // ACTION: ENHANCE — AI rewrites / improves a user-written prompt
@@ -192,6 +203,10 @@ export async function POST(request: NextRequest) {
       const systemMsg = [
         VECTOR_SYSTEM_PROMPT,
         "Generate a complete vector art creation plan with optimized prompts, metadata, and technical specs.",
+        "CRITICAL PROMPT DIVERSITY RULES:",
+        "1. Every single prompt inside the 'prompts' array MUST have a completely different visual concept, subject story, and visual layout. They must be 100% different conceptually.",
+        "2. EVERY PROMPT MUST USE A COMPLETELY DIFFERENT CAMERA ANGLE AND PERSPECTIVE (e.g. Prompt #1 is a low-angle dynamic shot, Prompt #2 is a flat top-down flat lay, Prompt #3 is a 3D isometric scene, Prompt #4 is a straight-on close-up/macro detail). No two prompts should share the same angle or composition.",
+        "3. Ensure high visual contrast between all generated prompts so they represent a diverse set of creative options rather than near-duplicates.",
         "Return ONLY a valid JSON object:",
         `{
           "plan": {
@@ -241,13 +256,16 @@ export async function POST(request: NextRequest) {
         "",
         consistencyNote,
         "",
+        "CRITICAL: Remember, every prompt MUST be 100% unique in concept, composition, layout, and CAMERA ANGLE. Ensure maximum diversity.",
+        "",
         "Generate a complete, professional vector art creation plan now.",
       ].join("\n");
 
       const res = await callGroq([
         { role: "system", content: systemMsg },
         { role: "user", content: userMsg },
-      ], { temperature: 0.45, max_tokens: 4000 });
+      ], { temperature: 0.5, max_tokens: 4000 });
+
 
       let result: any = null;
       const match = res.text.match(/\{[\s\S]*\}/);
