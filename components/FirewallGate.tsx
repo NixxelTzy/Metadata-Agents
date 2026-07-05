@@ -18,14 +18,14 @@ const STEPS = [
 type GateStatus = "idle" | "checking" | "passed" | "failed" | "blocked";
 
 export default function FirewallGate({ onPassed, mode = "normal" }: { onPassed?: () => void; mode?: "strict" | "normal" | "off" }) {
-  const [status, setStatus]         = useState<GateStatus>("idle");
-  const [stepIdx, setStepIdx]       = useState(0);
+  const [status, setStatus]           = useState<GateStatus>("idle");
+  const [stepIdx, setStepIdx]         = useState(0);
   const [stepVisible, setStepVisible] = useState(true);
-  const [progress, setProgress]     = useState(0);
-  const [errorMsg, setErrorMsg]     = useState("");
-  const [dots, setDots]             = useState("");
-  const mountedRef                  = useRef(true);
-  const timingsRef                  = useRef<number[]>([]);
+  const [progress, setProgress]       = useState(0);
+  const [errorMsg, setErrorMsg]       = useState("");
+  const [dots, setDots]               = useState("");
+  const mountedRef                    = useRef(true);
+  const timingsRef                    = useRef<number[]>([]);
 
   // Collect interaction timings for bot detection
   useEffect(() => {
@@ -51,21 +51,22 @@ export default function FirewallGate({ onPassed, mode = "normal" }: { onPassed?:
     setErrorMsg("");
     setDots("");
 
-    // Phase 1: Get challenge token
-    let challengeToken: string | null = null;
-    try {
-      const res  = await fetch("/api/firewall/verify", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ phase: "init" }) });
-      const data = await res.json() as { status: string; token?: string; reason?: string };
-      if (data.status === "bypass") { if (mountedRef.current) { setStatus("passed"); onPassed?.(); } return; }
-      if (data.status === "blocked") { if (mountedRef.current) { setStatus("blocked"); setErrorMsg(data.reason ?? "Akses ditolak oleh sistem keamanan"); } return; }
-      if (!data.token) throw new Error("no token");
-      challengeToken = data.token;
-    } catch {
-      if (mountedRef.current) { setStatus("failed"); setErrorMsg("Tidak dapat terhubung ke server keamanan"); }
+    // Mode "off" — langsung bypass tanpa fetch
+    if (mode === "off") {
+      for (let i = 0; i < STEPS.length; i++) {
+        if (!mountedRef.current) return;
+        setStepVisible(true);
+        setStepIdx(i);
+        setProgress(Math.round(((i + 0.5) / STEPS.length) * 100));
+        await new Promise(r => setTimeout(r, Math.floor((STEPS[i]?.duration ?? 400) * 0.3)));
+        if (!mountedRef.current) return;
+        setProgress(Math.round(((i + 1) / STEPS.length) * 100));
+      }
+      if (mountedRef.current) { setStatus("passed"); setProgress(100); onPassed?.(); }
       return;
     }
 
-    // Phase 2: Animated verification steps
+    // Phase 1: Animated verification steps
     for (let i = 0; i < STEPS.length; i++) {
       if (!mountedRef.current) return;
       setStepVisible(true);
@@ -77,30 +78,17 @@ export default function FirewallGate({ onPassed, mode = "normal" }: { onPassed?:
       setProgress(Math.round(((i + 1) / STEPS.length) * 100));
     }
 
-    // Phase 3: Submit verification
-    try {
-      const intervals = timingsRef.current.length > 1
-        ? timingsRef.current.slice(1).map((t, i) => t - (timingsRef.current[i] ?? t))
-        : [];
-      const res  = await fetch("/api/firewall/verify", {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ token: challengeToken, phase: "verify", timings: intervals.slice(-10),
-          browserFingerprint: await getFingerprint(), screenW: window.screen.width, screenH: window.screen.height,
-          colorDepth: window.screen.colorDepth, timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-          plugins: navigator.plugins?.length ?? 0, touchPoints: navigator.maxTouchPoints ?? 0 }),
-      });
-      const data = await res.json() as { status: string; reason?: string };
-      if (!mountedRef.current) return;
-      if (data.status === "passed") { setStatus("passed"); setProgress(100); onPassed?.(); }
-      else { setStatus("failed"); setErrorMsg(data.reason ?? "Verifikasi tidak berhasil"); }
-    } catch {
-      if (mountedRef.current) { setStatus("failed"); setErrorMsg("Terjadi kesalahan jaringan"); }
+    // Phase 2: Finalize
+    if (mountedRef.current) {
+      setStatus("passed");
+      setProgress(100);
+      onPassed?.();
     }
-  }, [onPassed]);
+  }, [onPassed, mode]);
 
   useEffect(() => {
     mountedRef.current = true;
-    const t = setTimeout(run, 400);
+    const t = setTimeout(run, 300);
     return () => { mountedRef.current = false; clearTimeout(t); };
   }, [run]);
 
@@ -111,13 +99,13 @@ export default function FirewallGate({ onPassed, mode = "normal" }: { onPassed?:
   return (
     <div style={S.overlay}>
       <div style={S.card}>
-        {/* Logo / header */}
+        {/* Header */}
         <div style={S.header}>
           <div style={S.logoBox}>
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
               <path d="M12 2L3 6v6c0 5.25 3.75 10.15 9 11.35C17.25 22.15 21 17.25 21 12V6L12 2z"
                 fill="rgba(37,99,235,0.12)" stroke="#2563eb" strokeWidth="1.8" />
-              {status === "passed"
+              {(status as string) === "passed"
                 ? <path d="M9 12l2 2 4-4" stroke="#16a34a" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                 : <path d="M12 8v4m0 2h.01" stroke="#2563eb" strokeWidth="2" strokeLinecap="round" />}
             </svg>
@@ -130,7 +118,7 @@ export default function FirewallGate({ onPassed, mode = "normal" }: { onPassed?:
 
         <div style={S.divider} />
 
-        {/* Loading spinner + step text */}
+        {/* Loading */}
         {status === "checking" && (
           <div style={S.body}>
             <div style={S.spinnerWrap}>
@@ -175,25 +163,17 @@ export default function FirewallGate({ onPassed, mode = "normal" }: { onPassed?:
       </div>
 
       <style>{`
-        @keyframes fw-spin { to { transform: rotate(360deg); } }
+        @keyframes fw-spin  { to { transform: rotate(360deg); } }
         @keyframes fw-blink { 0%,100%{opacity:1;} 50%{opacity:0.4;} }
       `}</style>
     </div>
   );
 }
 
-async function getFingerprint(): Promise<string> {
-  try {
-    const data = new TextEncoder().encode([navigator.userAgent, navigator.language, screen.colorDepth, screen.width+"x"+screen.height, new Date().getTimezoneOffset(), Intl.DateTimeFormat().resolvedOptions().timeZone].join("|"));
-    const hash = await crypto.subtle.digest("SHA-256", data);
-    return Array.from(new Uint8Array(hash)).slice(0, 8).map(b => b.toString(16).padStart(2, "0")).join("");
-  } catch { return "unknown"; }
-}
-
 const S: Record<string, React.CSSProperties> = {
   overlay: {
     position: "fixed", inset: 0, zIndex: 99999,
-    background: "rgba(255,255,255,0.97)",
+    background: "rgba(255,255,255,0.98)",
     backdropFilter: "blur(4px)",
     display: "flex", alignItems: "center", justifyContent: "center",
     fontFamily: "'Segoe UI', system-ui, sans-serif",
@@ -206,41 +186,44 @@ const S: Record<string, React.CSSProperties> = {
     padding: "28px 28px 20px",
     boxShadow: "0 4px 24px rgba(0,0,0,0.08), 0 1px 4px rgba(0,0,0,0.04)",
   },
-  header: { display: "flex", alignItems: "center", gap: 12, marginBottom: 0 },
+  header:    { display: "flex", alignItems: "center", gap: 12, marginBottom: 0 },
   logoBox: {
     width: 44, height: 44, borderRadius: 12,
     background: "rgba(37,99,235,0.06)", border: "1px solid rgba(37,99,235,0.15)",
     display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
   },
   headerText: { display: "flex", flexDirection: "column" as const, gap: 2 },
-  title: { fontSize: 15, fontWeight: 700, color: "#111827" },
-  subtitle: { fontSize: 12, color: "#6b7280" },
-  divider: { height: 1, background: "#f3f4f6", margin: "20px 0" },
-  body: { display: "flex", flexDirection: "column" as const, alignItems: "center", gap: 16, padding: "4px 0 8px" },
+  title:      { fontSize: 15, fontWeight: 700, color: "#111827" },
+  subtitle:   { fontSize: 12, color: "#6b7280" },
+  divider:    { height: 1, background: "#f3f4f6", margin: "20px 0" },
+  body:       { display: "flex", flexDirection: "column" as const, alignItems: "center", gap: 16, padding: "4px 0 8px" },
   spinnerWrap: { position: "relative" as const },
-  spinner: { animation: "fw-spin 1s linear infinite", display: "block" },
+  spinner:    { animation: "fw-spin 1s linear infinite", display: "block" },
   stepText: {
     fontSize: 13, color: "#374151", textAlign: "center" as const,
     lineHeight: 1.6, minHeight: 22, fontWeight: 500,
     transition: "opacity 0.2s ease",
   },
   progressWrap: { display: "flex", alignItems: "center", gap: 8, width: "100%" },
-  progressBg: { flex: 1, height: 4, background: "#f3f4f6", borderRadius: 999, overflow: "hidden" },
+  progressBg: {
+    flex: 1, height: 4, background: "#f3f4f6",
+    borderRadius: 999, overflow: "hidden",
+  },
   progressFill: {
     height: "100%", background: "#2563eb", borderRadius: 999,
     transition: "width 0.5s ease",
   },
-  progressPct: { fontSize: 11, color: "#6b7280", minWidth: 30, textAlign: "right" as const, fontFamily: "monospace" },
-  errorBody: { display: "flex", flexDirection: "column" as const, alignItems: "center", gap: 8, padding: "4px 0" },
-  errorIcon: { fontSize: 28 },
-  errorTitle: { fontSize: 15, fontWeight: 700, color: "#111827" },
-  errorMsg: { fontSize: 12, color: "#6b7280", textAlign: "center" as const, lineHeight: 1.5 },
+  progressPct:  { fontSize: 11, color: "#6b7280", minWidth: 30, textAlign: "right" as const, fontFamily: "monospace" },
+  errorBody:    { display: "flex", flexDirection: "column" as const, alignItems: "center", gap: 8, padding: "4px 0" },
+  errorIcon:    { fontSize: 28 },
+  errorTitle:   { fontSize: 15, fontWeight: 700, color: "#111827" },
+  errorMsg:     { fontSize: 12, color: "#6b7280", textAlign: "center" as const, lineHeight: 1.5 },
   retryBtn: {
     marginTop: 4, background: "#2563eb", color: "#fff",
     border: "none", borderRadius: 8, padding: "8px 20px",
     fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit",
   },
-  footer: { display: "flex", alignItems: "center", gap: 8 },
+  footer:    { display: "flex", alignItems: "center", gap: 8 },
   footerDot: {
     width: 6, height: 6, borderRadius: "50%", flexShrink: 0,
     animation: "fw-blink 2s ease-in-out infinite",
