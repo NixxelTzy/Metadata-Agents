@@ -1,14 +1,25 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+
 
 type Step = "form" | "otp";
 
 export default function RegisterPage() {
   const router = useRouter();
   const [step, setStep] = useState<Step>("form");
+
+  useEffect(() => {
+    fetch("/api/auth/me")
+      .then((r) => r.json())
+      .then((d: { user?: unknown }) => {
+        if (d?.user) router.replace("/");
+      })
+      .catch(() => {});
+  }, [router]);
+
   const [email, setEmail] = useState("");
 
   // Form state

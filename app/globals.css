@@ -1198,16 +1198,17 @@ body {
   transition: all 0.25s;
 }
 .auth-steps__dot--active {
-  border-color: #4f46e5;
-  background: #4f46e5;
-  color: white;
-  box-shadow: 0 0 0 4px rgba(79,70,229,0.2);
+  border-color: rgba(255,255,255,0.95);
+  background: rgba(255,255,255,0.95);
+  color: #080810;
+  box-shadow: 0 0 0 4px rgba(255,255,255,0.15);
 }
 .auth-steps__dot--done {
-  border-color: #22c55e;
-  background: #22c55e;
-  color: white;
+  border-color: rgba(255,255,255,0.95);
+  background: rgba(255,255,255,0.95);
+  color: #080810;
 }
+
 .auth-steps__line {
   flex: 1;
   height: 2px;
