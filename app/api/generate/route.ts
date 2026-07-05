@@ -155,8 +155,34 @@ async function generateMetadata(
   };
 }
 
-const DELAY_BETWEEN_IMAGES_MS = 500;
+const DELAY_BETWEEN_IMAGES_MS = 1500; // 1.5s between images prevents Groq rate limits
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+async function generateMetadataWithRetry(
+  dataUrl: string,
+  filename: string,
+  visualHints?: string,
+): Promise<MetadataResult> {
+  const MAX_ATTEMPTS = 3;
+  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+    try {
+      const result = await generateMetadata(dataUrl, filename, visualHints, attempt);
+      return result;
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "";
+      // If rate limited and more attempts left, wait before retrying
+      if ((msg.includes("429") || msg.includes("rate limit") || msg.includes("Rate limit")) && attempt < MAX_ATTEMPTS) {
+        const waitMs = attempt * 8000; // 8s, 16s
+        console.warn(`[generate] Groq 429 on attempt ${attempt}. Waiting ${waitMs}ms...`);
+        await sleep(waitMs);
+        continue;
+      }
+      throw err;
+    }
+  }
+  throw new Error("Max retries reached");
+}
+
 
 export async function POST(request: NextRequest) {
   const headersObj: Record<string, string> = {};
@@ -197,33 +223,19 @@ export async function POST(request: NextRequest) {
 
     const results: MetadataResult[] = [];
 
-    // Track Groq usage per-image for accurate totals (komponen frontend tetap pakai sum dari results.usage)
-    let totalPromptTokens = 0;
-    let totalCompletionTokens = 0;
-    let totalTokens = 0;
-
-
     for (let i = 0; i < images.length; i++) {
       const image = images[i];
       try {
-        const result = await generateMetadata(image.dataUrl, image.filename, image.visualHints, 1);
+        const result = await generateMetadataWithRetry(image!.dataUrl, image!.filename, image!.visualHints);
         results.push({ ...result, stabilized });
       } catch (error) {
-        // Retry sekali untuk kasus parse/response tidak valid
-        try {
-          const result = await generateMetadata(image.dataUrl, image.filename, image.visualHints, 2);
-          results.push({ ...result, stabilized });
-        } catch (error2) {
-          results.push({
-            filename: image.filename,
-            title: "",
-            keywords: [],
-            error:
-              (error2 instanceof Error ? error2.message : "Gagal memproses gambar") ||
-              (error instanceof Error ? error.message : "Gagal memproses gambar"),
-            stabilized,
-          });
-        }
+        results.push({
+          filename: image!.filename,
+          title: "",
+          keywords: [],
+          error: error instanceof Error ? error.message : "Gagal memproses gambar",
+          stabilized,
+        });
       }
       if (stabilized && i < images.length - 1) await sleep(DELAY_BETWEEN_IMAGES_MS);
     }

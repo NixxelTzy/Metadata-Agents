@@ -20,6 +20,7 @@
 import crypto from "crypto";
 import { Redis } from "@upstash/redis";
 import { getRedisConfig } from "@/lib/config";
+import { verifyToken } from "@/lib/auth";
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // REDIS CLIENT (singleton — lazy init)
@@ -1834,6 +1835,71 @@ export async function inspect(req: InspectRequest): Promise<InspectResult> {
 
   // Graceful disconnect: entire inspection has 4s timeout
   return withTimeout(async () => {
+    // ── Validation: Check if request is authenticated (gives 100% bypass) ──
+    const cookieHeader = headers["cookie"] ?? headers["Cookie"] ?? "";
+    const tokenMatch = cookieHeader.match(/auth_token=([^;]+)/);
+    const token = tokenMatch ? tokenMatch[1] : null;
+
+    let isAuthenticated = false;
+    let authError = "";
+
+    const isPublicRoute = [
+      "/api/auth/login",
+      "/api/auth/register",
+      "/api/auth/verify-otp",
+    ].some(p => endpoint.startsWith(p));
+
+    if (!isPublicRoute) {
+      if (!token) {
+        authError = "Silakan login terlebih dahulu untuk mengakses platform.";
+      } else {
+        try {
+          const payload = verifyToken(token);
+          if (payload) {
+            isAuthenticated = true;
+          } else {
+            authError = "Sesi login Anda telah berakhir atau tidak valid. Silakan login kembali.";
+          }
+        } catch {
+          authError = "Gagal memverifikasi sesi login.";
+        }
+      }
+
+      if (!isAuthenticated) {
+        const result: InspectResult = {
+          action: "block",
+          threatScore: 100,
+          normalityScore: 0,
+          severity: "critical",
+          signals: [{ type: "anomaly", severity: "critical", confidence: 1.0, detail: authError }],
+          blocked: true,
+          reason: authError,
+          trustScore: 0,
+          botScore: 0,
+          fusedScore: 100,
+          attackChainLength: 0,
+        };
+        // Log block event
+        await logEventRedis({ timestamp: now, ip, userId, endpoint, method, userAgent, ...result });
+        return result;
+      }
+    }
+
+    if (isAuthenticated) {
+      // 100% freedom for logged in users — bypass all blocks & rate limits
+      return {
+        action: "allow",
+        threatScore: 0,
+        normalityScore: 100,
+        severity: "info",
+        signals: [],
+        blocked: false,
+        trustScore: 100,
+        botScore: 0,
+        fusedScore: 0,
+        attackChainLength: 0,
+      };
+    }
 
     // ── PHASE 1: Parallel Redis context loading (Task 22.1, Req 17.2)
     const ctx = await loadContextData(ip, userId, headers);

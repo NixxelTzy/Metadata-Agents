@@ -196,6 +196,30 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
+  const isPublicPath = PUBLIC_PATHS.some(p => pathname.startsWith(p));
+  const isApiPath    = pathname.startsWith("/api/");
+  const token        = request.cookies.get("auth_token")?.value;
+
+  // ── LAYER 5: Auth token validation (All Protected Pages & APIs) ──
+  if (!isPublicPath) {
+    if (!token) {
+      if (isApiPath) {
+        return blockedResponse(401, "UNAUTHORIZED", "Silakan login terlebih dahulu untuk mengakses platform.");
+      } else {
+        const loginUrl = new URL("/login", request.url);
+        loginUrl.searchParams.set("next", pathname);
+        return NextResponse.redirect(loginUrl);
+      }
+    }
+  }
+
+  // ── LAYER BYPASS: Authenticated users get 100% freedom (no rate limit / threat blocking) ──
+  if (token) {
+    const response = NextResponse.next();
+    addSecurityHeaders(response);
+    return response;
+  }
+
   // ── Extract request metadata ──────────────────────────────────────────────
   const userAgent = request.headers.get("user-agent") ?? "";
   const method    = request.method;
@@ -247,8 +271,6 @@ export async function middleware(request: NextRequest) {
   }
 
   // ── LAYER 2: Rate Limiting ────────────────────────────────────────────────
-  const isPublicPath = PUBLIC_PATHS.some(p => pathname.startsWith(p));
-  const isApiPath    = pathname.startsWith("/api/");
   const isHeavyApi   = HEAVY_API_PREFIXES.some(p => pathname.startsWith(p));
   const isAuthApi    = pathname.startsWith("/api/auth/");
 
@@ -300,16 +322,6 @@ export async function middleware(request: NextRequest) {
       return blockedResponse(413, "PAYLOAD_TOO_LARGE",
         `Ukuran permintaan melebihi batas (${(maxSize / 1e6).toFixed(0)}MB)`
       );
-    }
-  }
-
-  // ── LAYER 5: Auth token validation for page routes ────────────────────────
-  if (!isPublicPath && !isApiPath) {
-    const token = request.cookies.get("auth_token")?.value;
-    if (!token) {
-      const loginUrl = new URL("/login", request.url);
-      loginUrl.searchParams.set("next", pathname);
-      return NextResponse.redirect(loginUrl);
     }
   }
 

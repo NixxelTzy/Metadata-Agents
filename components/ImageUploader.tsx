@@ -103,9 +103,14 @@ export default function ImageUploader({ onTokensUpdated }: Props = {}) {
 
     const collected: MetadataResult[] = [];
 
+    // Delay between requests to avoid hitting Groq rate limits
+    const INTER_REQUEST_DELAY_MS = 1500;   // 1.5s between images (normal)
+    const RATE_LIMIT_PAUSE_MS    = 10_000; // 10s pause if we hit a 429
+    const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
+
     try {
       if (stabilized) {
-        // Proses 1 foto per 1 foto, dan lanjut sampai habis
+        // Proses 1 foto per 1 foto, dengan delay antar request
         for (let i = 0; i < images.length; i++) {
           const img = images[i];
           setProgress(`Mode Stabil: Memproses foto ${i + 1}/${images.length}...`);
@@ -117,9 +122,9 @@ export default function ImageUploader({ onTokensUpdated }: Props = {}) {
               body: JSON.stringify({
                 images: [
                   {
-                    filename: img.file.name,
-                    dataUrl: img.preview,
-                    visualHints: img.visualHints,
+                    filename: img!.file.name,
+                    dataUrl: img!.preview,
+                    visualHints: img!.visualHints,
                   },
                 ],
                 stabilized: true,
@@ -134,20 +139,26 @@ export default function ImageUploader({ onTokensUpdated }: Props = {}) {
             }
 
             if (!response.ok) {
+              const isRateLimit = response.status === 429;
               collected.push({
-                filename: img.file.name,
+                filename: img!.file.name,
                 title: "",
                 keywords: [],
                 error: data.error || `Gagal dengan status ${response.status}`,
                 stabilized: true,
               });
+
+              // If rate limited — pause before continuing
+              if (isRateLimit && i < images.length - 1) {
+                setProgress(`⚠️ Rate limit terdeteksi. Menunggu 10 detik sebelum melanjutkan...`);
+                await sleep(RATE_LIMIT_PAUSE_MS);
+              }
             } else {
-              // API mengembalikan array hasil dengan 1 item
               collected.push(...(data.results as MetadataResult[]));
             }
           } catch (loopError) {
             collected.push({
-              filename: img.file.name,
+              filename: img!.file.name,
               title: "",
               keywords: [],
               error: loopError instanceof Error ? loopError.message : "Koneksi error",
@@ -156,12 +167,17 @@ export default function ImageUploader({ onTokensUpdated }: Props = {}) {
           }
 
           setResults([...collected]);
+
+          // Inter-request delay to avoid Groq rate limit
+          if (i < images.length - 1) {
+            await sleep(INTER_REQUEST_DELAY_MS);
+          }
         }
 
         const success = collected.filter((r) => !r.error).length;
-        setProgress(`Selesai! ${success}/${images.length} foto berhasil`);
+        setProgress(`✅ Selesai! ${success}/${images.length} foto berhasil`);
       } else {
-        // Mode cepat (bulk)
+        // Mode cepat (bulk) — kirim semua sekaligus
         setProgress(`Memproses ${images.length} foto (mode cepat)...`);
 
         const payload = images.map((img) => ({
@@ -188,7 +204,7 @@ export default function ImageUploader({ onTokensUpdated }: Props = {}) {
         }
 
         setResults(data.results as MetadataResult[]);
-        setProgress(`Selesai! ${data.results.length} foto diproses`);
+        setProgress(`✅ Selesai! ${data.results.length} foto diproses`);
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Terjadi kesalahan");
