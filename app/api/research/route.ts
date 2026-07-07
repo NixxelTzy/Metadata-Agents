@@ -169,55 +169,158 @@ export async function POST(request: NextRequest) {
     }
 
     // ─────────────────────────────────────────────────────────────────────────
-    // TAB: EVENTS (Riset Event - AI 100%)
+    // TAB: EVENTS (Riset Event - AI 100% — Auto-detect bulan ini)
     // ─────────────────────────────────────────────────────────────────────────
     if (tab === "events") {
-      const { eventRegion = "Global", eventSeason = "Upcoming 3 months" } = payload || {};
+      const { eventRegion = "Global" } = payload || {};
+
+      // Auto-detect current month/year — inject ke AI prompt
+      const now = new Date();
+      const currentYear = now.getFullYear();
+      const currentMonth = now.getMonth(); // 0-based
+      const currentMonthName = now.toLocaleString("en-US", { month: "long" });
+      const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+      const todayDay = now.getDate();
 
       const systemPrompt = [
-        "You are an expert stock photography event forecaster.",
-        "Generate 3 highly popular, commercial event themes for Adobe Stock based on the selected region and timeline.",
-        "Ensure all generated event briefs target high demand (thousands of buyers searching for event assets).",
-        "Return ONLY a valid JSON object matching this format precisely:",
+        "You are an elite stock photography campaign researcher and event forecaster.",
+        `TODAY'S DATE: ${now.toISOString().split("T")[0]} (${currentMonthName} ${currentYear}).`,
+        `You MUST generate ONLY real events, holidays, observances, and campaigns happening in ${currentMonthName} ${currentYear}.`,
+        "These must be REAL, VERIFIABLE events that actually occur this month — no generic or future events.",
+        `Generate at least 8 events/campaigns for ${currentMonthName} ${currentYear} in the specified region.`,
+        "For each event, provide accurate start and end dates within this month.",
+        "startDay/endDay must be integers within [1..daysInMonth], and endDay >= startDay.",
+        "Popularity percent must reflect actual search volume demand for stock content (1-100).",
+        "Return ONLY a valid JSON object matching this format (no markdown, no extra text):",
         `{
+          "currentMonth": "${currentMonthName}",
+          "currentYear": ${currentYear},
           "events": [
             {
-              "id": "string",
-              "name": "string (event name, e.g. 'Global Climate Tech Summit')",
-              "window": "string (timeline of the event or campaign)",
-              "photoIdeas": ["string (brief 1)", "string (brief 2)", "string (brief 3)", "string (brief 4)"],
-              "contentTypes": ["string", "string", ...],
+              "id": "string (e.g. 'ev-1')",
+              "name": "string (real event/holiday/campaign name)",
+              "category": "string (e.g. 'Holiday', 'Tech', 'Awareness', 'Sports', 'Cultural', 'Business')",
+              "startDay": number (day of month, 1-${daysInMonth}),
+              "endDay": number (day of month, 1-${daysInMonth}),
+              "startDate": "string (e.g. '${currentMonthName} 1, ${currentYear}')",
+              "endDate": "string (e.g. '${currentMonthName} 31, ${currentYear}')",
+              "popularityPercent": number (1-100, based on stock demand),
+              "campaignPhase": "string (e.g. 'Preparation', 'Peak', 'Post-event')",
+              "photoIdeas": ["string", "string", "string", "string"],
+              "contentTypes": ["string", "string"],
               "recommendedShots": number,
               "queries": ["string", "string", "string"],
               "estimatedSales": "string (e.g., '3,200+ downloads')",
-              "opportunityScore": "string (e.g., '89%')"
+              "opportunityScore": "string (e.g., '89%')",
+              "description": "string (brief description in Indonesian, why this event matters for stock creators)"
             }
           ]
         }`,
-        "All queries and descriptions must be in English. Keep titles clean and brand-safe.",
+        "CRITICAL: All events MUST happen in " + currentMonthName + " " + currentYear + ". No events from other months.",
+        "Events must be from real calendar: holidays, awareness months, sporting events, business summits, cultural events, etc.",
+        "All photo ideas and queries: English. Description: Indonesian.",
       ].join("\n");
 
       const userPrompt = [
         `Region: ${eventRegion}`,
-        `Timeline: ${eventSeason}`,
+        `Target Month: ${currentMonthName} ${currentYear} (day 1 to day ${daysInMonth})`,
+        `Today: Day ${todayDay} of ${currentMonthName}`,
         "",
-        "Generate 3 high-volume event concepts for stock creators.",
+        `Generate 8 real events happening in ${currentMonthName} ${currentYear} for stock photography campaigns.`,
+        "Include: national holidays, international observances, tech/business conferences, awareness campaigns, sporting events, cultural celebrations.",
+        "Sort by popularityPercent descending.",
       ].join("\n");
 
-      const res = await aiClient.complete([
-        { role: "system", content: systemPrompt },
-        { role: "user", content: userPrompt }
-      ], { temperature: 0.45, maxTokens: 2500 });
+      const tryParseEvents = (text: string): { events: any[] } => {
+        let parsed: { events: any[] } = { events: [] };
+        const match = text.match(/\{[\s\S]*\}/);
+        if (match) {
+          try {
+            parsed = JSON.parse(match[0]);
+          } catch {
+            const arrMatch = text.match(/"events"\s*:\s*(\[[\s\S]*?\])/);
+            if (arrMatch) {
+              parsed.events = JSON.parse(arrMatch[1]);
+            }
+          }
+        }
+        return parsed;
+      };
 
-      let parsedEvents = { events: [] };
-      const match = res.text.match(/\{[\s\S]*\}/);
-      if (match) {
-        parsedEvents = JSON.parse(match[0]);
+      const validateEventsInMonth = (events: any[]) => {
+        const cleaned = (events ?? [])
+          .map((e: any, idx: number) => {
+            const startDay = Number(e?.startDay);
+            const endDay = Number(e?.endDay);
+            const popularityPercent = Number(e?.popularityPercent);
+
+            if (!Number.isFinite(startDay) || !Number.isFinite(endDay)) return null;
+            const sd = Math.max(1, Math.min(daysInMonth, Math.floor(startDay)));
+            const ed = Math.max(1, Math.min(daysInMonth, Math.floor(endDay)));
+            if (ed < sd) return null;
+
+            return {
+              id: typeof e?.id === "string" && e.id.trim() ? e.id : `ev-${idx + 1}`,
+              name: String(e?.name ?? `Event #${idx + 1}`),
+              category: e?.category ? String(e.category) : undefined,
+              startDay: sd,
+              endDay: ed,
+              startDate: e?.startDate ? String(e.startDate) : `${currentMonthName} ${sd}, ${currentYear}`,
+              endDate: e?.endDate ? String(e.endDate) : `${currentMonthName} ${ed}, ${currentYear}`,
+              popularityPercent: Number.isFinite(popularityPercent)
+                ? Math.max(1, Math.min(100, Math.round(popularityPercent)))
+                : undefined,
+              campaignPhase: e?.campaignPhase ? String(e.campaignPhase) : undefined,
+              photoIdeas: Array.isArray(e?.photoIdeas) ? e.photoIdeas.slice(0, 8).map(String) : [],
+              contentTypes: Array.isArray(e?.contentTypes) ? e.contentTypes.slice(0, 8).map(String) : [],
+              recommendedShots: Number.isFinite(Number(e?.recommendedShots))
+                ? Math.max(1, Math.round(Number(e.recommendedShots)))
+                : 6,
+              queries: Array.isArray(e?.queries) ? e.queries.slice(0, 8).map(String) : [],
+              estimatedSales: e?.estimatedSales ? String(e.estimatedSales) : undefined,
+              opportunityScore: e?.opportunityScore ? String(e.opportunityScore) : undefined,
+              description: e?.description ? String(e.description) : undefined,
+            };
+          })
+          .filter(Boolean) as any[];
+
+        cleaned.sort((a, b) => (b.popularityPercent ?? 0) - (a.popularityPercent ?? 0));
+        return cleaned;
+      };
+
+      let validatedEvents: any[] = [];
+      const maxAttempts = 3;
+      for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+        const res = await aiClient.complete([
+          { role: "system", content: systemPrompt },
+          { role: "user", content: userPrompt }
+        ], { temperature: 0.3, maxTokens: 4500 });
+
+        const parsed = tryParseEvents(res.text);
+        const cleaned = validateEventsInMonth(parsed.events);
+
+        // Enforce hard month constraint + minimum count
+        if (cleaned.length >= 8) {
+          validatedEvents = cleaned;
+          break;
+        }
+
+        // If AI sometimes returns fewer than 8, retry with stricter constraint
+        if (attempt < maxAttempts && cleaned.length > 0) {
+          validatedEvents = cleaned;
+        }
+
+
+        if (attempt === maxAttempts) validatedEvents = cleaned;
       }
 
       return NextResponse.json({
         success: true,
-        events: parsedEvents.events,
+        currentMonth: currentMonthName,
+        currentYear,
+        daysInMonth,
+        todayDay,
+        events: validatedEvents || [],
       });
     }
 

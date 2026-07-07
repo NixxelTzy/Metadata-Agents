@@ -1831,6 +1831,53 @@ async function withTimeout<T>(fn: () => Promise<T>, timeoutMs: number, fallback:
 
 export async function inspect(req: InspectRequest): Promise<InspectResult> {
   const { ip, userId, endpoint, method, userAgent, headers, body, requestDurationMs } = req;
+
+  // ── Feature usage enforcement: block if identity/email is missing ──
+  // Requirement: Defence/Attack hanya mendeteksi penggunaan fitur.
+  // Jika auth_token tidak ada => userId/email tidak ada, maka block sementara.
+  const FEATURE_USAGE_ENDPOINTS = new Set([
+    "/api/research",
+    "/api/generate",
+    "/api/vector",
+    "/api/validate/links",
+    "/api/chat",
+  ]);
+
+  const isFeatureUsage = Array.from(FEATURE_USAGE_ENDPOINTS).some((p) => endpoint === p || endpoint.startsWith(p));
+  const isIdentityMissing = !userId;
+
+  if (isFeatureUsage && isIdentityMissing) {
+    const durationSec = 86400; // 24h
+    await manualBlockIp(ip, `blocked_by_missing_email: ${endpoint} ${method}`, durationSec);
+
+    const now = Date.now();
+    const result: InspectResult = {
+      action: "block",
+      threatScore: 95,
+      normalityScore: 0,
+      severity: "critical",
+      signals: [
+        {
+          type: "anomaly",
+          severity: "critical",
+          confidence: 1.0,
+          detail: `blocked_by_missing_email (${endpoint} ${method})`,
+        },
+      ],
+      blocked: true,
+      reason: `blocked_by_missing_email`,
+      trustScore: 0,
+      botScore: 0,
+      fusedScore: 100,
+      attackChainLength: 0,
+    };
+
+    // Store event in Redis so monitor UI can show it
+    await logEventRedis({ timestamp: now, ip, userId, endpoint, method, userAgent, ...result });
+
+    return result;
+  }
+
   const now = Date.now();
 
   // Graceful disconnect: entire inspection has 4s timeout

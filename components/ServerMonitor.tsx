@@ -17,7 +17,7 @@ interface MonitorData {
   network: { name: string; address: string; family: string }[];
   security: {
     stats: { total: number; bySeverity: Record<string, number>; byType: Record<string, number>; last24h: number; lastHour: number; last10min: number; blocked: number; normalRequests: number; abnormalRequests: number; avgNormality: number; topIps: { ip: string; count: number }[]; storageUsed: number; storageMax: number; storagePercent: number; avgTrustScore?: number; botDetections?: number; chainAttacks?: number; promptInjections?: number; geoAnomalies?: number };
-    recentAttacks: { type: string; severity: string; ip: string; endpoint: string; method: string; threatScore: number; normalityScore: number; trustScore?: number; botScore?: number; fusedScore?: number; action: string; blocked: boolean; timestamp: number; requestId: string; signals: { type: string; severity: string; confidence: number; detail: string }[] }[];
+    recentAttacks: { type: string; severity: string; ip: string; endpoint: string; method: string; threatScore: number; normalityScore: number; trustScore?: number; botScore?: number; fusedScore?: number; action: string; blocked: boolean; timestamp: number; requestId: string; userEmail?: string; userAgent?: string; platform?: string; reason?: string; blockedReason?: string; signals: { type: string; severity: string; confidence: number; detail: string }[] }[];
     defenceStatus: Record<string, string>;
   };
 }
@@ -124,6 +124,49 @@ function useSse(url: string) {
 }
 
 // ── Sub-components ────────────────────────────────────────────────────────────
+
+function GlassOverlay({
+  title,
+  message,
+}: {
+  title: string;
+  message: string;
+}) {
+  return (
+    <div
+      style={{
+        position: "fixed",
+        inset: 0,
+        zIndex: 99999,
+        background: "rgba(255,255,255,0.98)",
+        backdropFilter: "blur(6px)",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: 16,
+        fontFamily: "'Segoe UI', system-ui, sans-serif",
+      }}
+    >
+      <div
+        style={{
+          width: "100%",
+          maxWidth: 520,
+          background: "rgba(255,255,255,0.95)",
+          border: "1px solid rgba(229,231,235,1)",
+          borderRadius: 16,
+          padding: "22px 20px",
+          boxShadow: "0 10px 32px rgba(0,0,0,0.12)",
+        }}
+      >
+        <div style={{ fontSize: 18, fontWeight: 900, color: "#ef4444" }}>{title}</div>
+        <div style={{ marginTop: 10, fontSize: 13, color: "#6b7280", lineHeight: 1.6, whiteSpace: "pre-wrap" }}>
+          {message}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 
 function MiniBar({ value, max = 100, color }: { value: number; max?: number; color: string }) {
   const pct = Math.min(Math.round((value / max) * 100), 100);
