@@ -1832,9 +1832,9 @@ async function withTimeout<T>(fn: () => Promise<T>, timeoutMs: number, fallback:
 export async function inspect(req: InspectRequest): Promise<InspectResult> {
   const { ip, userId, endpoint, method, userAgent, headers, body, requestDurationMs } = req;
 
-  // ── Feature usage enforcement: block if identity/email is missing ──
+  // ── Feature usage enforcement: identity missing ONLY when token is actually absent ──
   // Requirement: Defence/Attack hanya mendeteksi penggunaan fitur.
-  // Jika auth_token tidak ada => userId/email tidak ada, maka block sementara.
+  // Jangan block kalau user sebenarnya sudah terautentikasi, tetapi userId tidak terpropagasi.
   const FEATURE_USAGE_ENDPOINTS = new Set([
     "/api/research",
     "/api/generate",
@@ -1843,11 +1843,20 @@ export async function inspect(req: InspectRequest): Promise<InspectResult> {
     "/api/chat",
   ]);
 
-  const isFeatureUsage = Array.from(FEATURE_USAGE_ENDPOINTS).some((p) => endpoint === p || endpoint.startsWith(p));
+  const isFeatureUsage = Array.from(FEATURE_USAGE_ENDPOINTS).some(
+    (p) => endpoint === p || endpoint.startsWith(p),
+  );
+
+  // Detect whether auth_token cookie exists in this request.
+  const cookieHeader = headers["cookie"] ?? headers["Cookie"] ?? "";
+  const tokenMatch = cookieHeader.match(/auth_token=([^;]+)/);
+  const tokenInRequest = tokenMatch ? tokenMatch[1] : null;
+
+  // Only block when token is missing AND userId is missing.
   const isIdentityMissing = !userId;
 
-  if (isFeatureUsage && isIdentityMissing) {
-    const durationSec = 86400; // 24h
+  if (isFeatureUsage && isIdentityMissing && !tokenInRequest) {
+    const durationSec = 24 * 60 * 60; // 24h
     await manualBlockIp(ip, `blocked_by_missing_email: ${endpoint} ${method}`, durationSec);
 
     const now = Date.now();
@@ -1877,6 +1886,7 @@ export async function inspect(req: InspectRequest): Promise<InspectResult> {
 
     return result;
   }
+
 
   const now = Date.now();
 
