@@ -421,41 +421,142 @@ function replacePoliticalRoles(title: string): string {
     .trim();
 }
 
-/** Replace newsworthy event nouns with softer equivalents */
+/** Replace newsworthy event nouns with natural, descriptive equivalents */
 function replaceNewsworthyNouns(title: string): string {
   return title
-    // Disasters → generic "emergency"
-    .replace(/\b(earthquake|tsunami|flood(ing|s)?|hurricane|typhoon|cyclone|tornado|eruption|wildfire|bushfire|landslide|avalanche|blizzard)\b/gi, "emergency event")
-    .replace(/\b(explosion|blast|collapse|wreckage|catastrophe|tragedy)\b/gi, "crisis event")
-    // Conflict → generic "conflict"
-    .replace(/\b(war|battle|invasion|bombing|airstrike|siege|gunfire|shooting|terror(ist)?|massacre|genocide)\b/gi, "conflict")
-    .replace(/\b(missile|warfare|occupation)\b/gi, "crisis")
-    // Social unrest → generic "social movement"
-    .replace(/\b(protest(s)?|riot(s)?|uprising|revolution|coup|strike|rebellion|crackdown|clash(es)?|unrest)\b/gi, "social movement")
-    .replace(/\b(demonstration(s)?|rally|march)\b/gi, "gathering")
-    // Political events → generic
-    .replace(/\b(election(s)?|vote|voting|ballot|referendum|inauguration|impeachment|assassination|sanction(s)?)\b/gi, "civic event")
-    .replace(/\b(summit)\b/gi, "conference")
-    // Breaking news → remove
-    .replace(/\b(breaking|breaking news|live coverage|live news|developing|update(s)?|latest|coverage)\b/gi, "")
+    // Natural disasters → visual/environmental descriptions
+    .replace(/\bearthquake(s)?\b/gi, "ground tremor")
+    .replace(/\btsunami(s)?\b/gi, "ocean wave surge")
+    .replace(/\bflooding\b/gi, "rising water surge")
+    .replace(/\bfloods?\b/gi, "rising water")
+    .replace(/\bhurricane(s)?\b/gi, "powerful storm")
+    .replace(/\btyphoon(s)?\b/gi, "tropical storm")
+    .replace(/\bcyclone(s)?\b/gi, "severe storm")
+    .replace(/\btornado(es)?\b/gi, "windstorm")
+    .replace(/\b(volcanic eruption|eruption)\b/gi, "volcanic activity")
+    .replace(/\bwildfire(s)?\b/gi, "fire in the wilderness")
+    .replace(/\bbushfire(s)?\b/gi, "fire in the landscape")
+    .replace(/\blandslide(s)?\b/gi, "terrain movement")
+    .replace(/\bavalanche(s)?\b/gi, "mountain slide")
+    .replace(/\bblizzard(s)?\b/gi, "winter storm")
+    .replace(/\bdrought(s)?\b/gi, "water scarcity")
+    // Human incidents → neutral scene descriptions
+    .replace(/\bexplosion(s)?\b/gi, "industrial scene")
+    .replace(/\bblast(s)?\b/gi, "dramatic scene")
+    .replace(/\bcollapse(s)?\b/gi, "structural failure")
+    .replace(/\bwreckage\b/gi, "debris scene")
+    .replace(/\bcatastrophe(s)?\b/gi, "challenging situation")
+    .replace(/\btragedy\b/gi, "difficult situation")
+    .replace(/\bdisaster(s)?\b/gi, "challenging environment")
+    // Social unrest → neutral public activity
+    .replace(/\bprotests?\b/gi, "public gathering")
+    .replace(/\briots?\b/gi, "street scene")
+    .replace(/\buprising(s)?\b/gi, "social movement")
+    .replace(/\brevolution(s)?\b/gi, "social transformation")
+    .replace(/\bcoup\b/gi, "power shift")
+    .replace(/\brebellion(s)?\b/gi, "resistance movement")
+    .replace(/\bcrackdown(s)?\b/gi, "security operation")
+    .replace(/\bclashes?\b/gi, "tense encounter")
+    .replace(/\bunrest\b/gi, "social tension")
+    .replace(/\bstrike(s)?\b/gi, "labor action")
+    .replace(/\bdemonstrations?\b/gi, "organized gathering")
+    .replace(/\brally\b/gi, "public event")
+    .replace(/\bmarch(es)?\b/gi, "procession")
+    // Conflict / war → neutral descriptions
+    .replace(/\bworld war\b/gi, "global conflict scenario")
+    .replace(/\bcivil war\b/gi, "internal conflict")
+    .replace(/\bwar(fare)?\b/gi, "armed scenario")
+    .replace(/\bbattle(s)?\b/gi, "confrontation scene")
+    .replace(/\binvasion(s)?\b/gi, "military operation")
+    .replace(/\bbombing(s)?\b/gi, "aerial operation")
+    .replace(/\bairstrike(s)?\b/gi, "aerial operation")
+    .replace(/\bsiege(s)?\b/gi, "military encirclement")
+    .replace(/\bgunfire\b/gi, "action scene")
+    .replace(/\bshooting(s)?\b/gi, "action scene")
+    .replace(/\bterrorist?\b/gi, "threat scenario")
+    .replace(/\bmassacre(s)?\b/gi, "tragic event")
+    .replace(/\bgenocide\b/gi, "historical atrocity")
+    .replace(/\bmissile(s)?\b/gi, "aerial device")
+    .replace(/\boccupation\b/gi, "military presence")
+    // Political events → civic descriptions
+    .replace(/\belections?\b/gi, "civic process")
+    .replace(/\b(vote|voting)\b/gi, "civic participation")
+    .replace(/\bballot(s)?\b/gi, "civic decision")
+    .replace(/\breferendum\b/gi, "public vote")
+    .replace(/\binauguration\b/gi, "leadership ceremony")
+    .replace(/\bimpeachment\b/gi, "political procedure")
+    .replace(/\bassassination\b/gi, "security crisis")
+    .replace(/\bsanctions?\b/gi, "economic measure")
+    .replace(/\btreaty\b/gi, "diplomatic agreement")
+    .replace(/\bsummit\b/gi, "international meeting")
+    // Breaking news markers → remove
+    .replace(/\bbreaking news\b/gi, "")
+    .replace(/\bbreaking\b/gi, "")
+    .replace(/\blive coverage\b/gi, "")
+    .replace(/\blive news\b/gi, "")
+    .replace(/\bdeveloping\b/gi, "")
+    .replace(/\blatest\b/gi, "")
     .replace(/\s{2,}/g, " ")
     .trim();
 }
 
 /**
- * Pick an appropriate conceptual prefix based on the content signals.
+ * Generate a seeded pseudorandom number [0,1) from a string seed.
+ * Used to make anchor selection deterministic per title (same title = same template)
+ * while varying naturally across different titles.
  */
-function pickPrefix(signals: ComplianceSignal[]): string {
-  if (signals.includes("location_plus_event") || signals.includes("temporal_marker_plus_event")) {
-    return "Conceptual illustration of";
+function seededRandom(seed: string): number {
+  let hash = 2166136261; // FNV-1a offset basis
+  for (let i = 0; i < seed.length; i++) {
+    hash ^= seed.charCodeAt(i);
+    hash = (hash * 16777619) >>> 0; // FNV prime, keep 32-bit unsigned
   }
-  if (signals.includes("location_plus_political") || signals.includes("temporal_marker_plus_political")) {
-    return "Corporate visualization of";
-  }
-  if (signals.includes("forbidden_phrase") || signals.includes("breaking_news_marker")) {
-    return "Abstract concept of";
-  }
-  return "Conceptual illustration of";
+  return hash / 4294967296; // normalize to [0, 1)
+}
+
+/**
+ * 20+ natural-sounding anchor templates.
+ * Each takes a cleaned base phrase and weaves in a compliance anchor word naturally.
+ * Templates are varied in structure: suffix, prefix, mid-sentence.
+ */
+type AnchorTemplate = (base: string) => string;
+
+const NATURAL_ANCHOR_TEMPLATES: readonly AnchorTemplate[] = [
+  // Suffix variants (anchor at end)
+  (b) => `${b} concept`,
+  (b) => `${b} illustration`,
+  (b) => `${b} conceptual design`,
+  (b) => `${b} visualization`,
+  (b) => `${b} creative concept`,
+  (b) => `${b} symbolic scene`,
+  (b) => `${b} artistic rendering`,
+  (b) => `${b} fictional scenario`,
+  (b) => `${b} imaginative scene`,
+  (b) => `${b} creative visualization`,
+  (b) => `${b} conceptual artwork`,
+  (b) => `${b} allegorical scene`,
+  (b) => `${b} visual metaphor`,
+  (b) => `${b} design concept`,
+  // Prefix variants (anchor at start)
+  (b) => `conceptual ${b}`,
+  (b) => `illustrated ${b}`,
+  (b) => `abstract ${b} design`,
+  (b) => `symbolic ${b} scene`,
+  (b) => `imagined ${b}`,
+  (b) => `rendered ${b} scene`,
+  (b) => `fictional ${b} scenario`,
+  (b) => `artistic ${b} visualization`,
+];
+
+/**
+ * Apply a randomly selected (but deterministically seeded) anchor template.
+ * Uses the original title as seed so the same title always gets the same template.
+ */
+function applyNaturalAnchor(cleanedBase: string, seedTitle: string): string {
+  const rng = seededRandom(seedTitle);
+  const index = Math.floor(rng * NATURAL_ANCHOR_TEMPLATES.length);
+  const template = NATURAL_ANCHOR_TEMPLATES[index]!;
+  return template(cleanedBase);
 }
 
 /**
@@ -484,53 +585,61 @@ function enforceWordLimit(title: string, maxWords = 12): string {
  *
  * Strategy (applied in order):
  *  1. Strip years and temporal markers
- *  2. Replace real location names with generic equivalents
- *  3. Replace political role words with neutral words
- *  4. Replace newsworthy event nouns with softer equivalents
- *  5. If still violating, prepend a "Conceptual illustration of" prefix
- *  6. If the base title is too mangled (< 3 words), use a safe fallback prefix
+ *  2. Replace real location names with natural generic equivalents
+ *  3. Replace political role words with neutral alternatives
+ *  4. Replace newsworthy event nouns with descriptive neutral words
+ *  5. Apply a randomly-selected (seeded) natural anchor template
+ *  6. If title base is too short/mangled (< 3 words), rebuild from original
  *  7. Enforce 12-word limit and capitalize
  *
- * @param title - Raw title from AI that failed isTitleNewsworthy()
- * @param signals - Signals from the compliance check (to pick best prefix)
- * @returns A sanitized, policy-compliant title string
+ * @param title   - Raw title from AI that failed isTitleNewsworthy()
+ * @param signals - Signals from the compliance check (unused here, kept for API compat)
+ * @returns A sanitized, policy-compliant title string that sounds natural
  */
 export function sanitizeTitle(
   title: string,
   signals: ComplianceSignal[] = []
 ): string {
+  // Suppress unused-variable warning — signals kept in signature for API compat
+  void signals;
+
   let working = title;
 
   // Step 1: Strip years + temporal markers
   working = stripYears(working);
   working = stripTemporalMarkers(working);
 
-  // Step 2: Replace real locations
+  // Step 2: Replace real locations with natural generic equivalents
   working = replaceLocations(working);
 
-  // Step 3: Replace political roles
+  // Step 3: Replace political roles with neutral alternatives
   working = replacePoliticalRoles(working);
 
-  // Step 4: Replace newsworthy nouns
+  // Step 4: Replace newsworthy nouns with descriptive neutral words
   working = replaceNewsworthyNouns(working);
 
-  // Step 5: If still violating after all replacements, prepend conceptual prefix
-  const recheck = isTitleNewsworthy(working);
-  if (recheck.isViolation) {
-    const prefix = pickPrefix(signals);
-    working = `${prefix} ${working.toLowerCase()}`;
+  // Step 5: Apply a natural, varied anchor template
+  // — only if the base itself doesn't already have a safe anchor
+  if (!hasSafeContext(working)) {
+    // If base is too short/mangled after all replacements, rebuild from original
+    const baseWordCount = working.trim().split(/\s+/).filter(Boolean).length;
+    if (baseWordCount < 3) {
+      // Rebuild: strip the original more gently (only remove the most egregious parts)
+      const rebuilt = replaceNewsworthyNouns(
+        replacePoliticalRoles(
+          replaceLocations(
+            stripTemporalMarkers(stripYears(title))
+          )
+        )
+      );
+      working = rebuilt.trim() || title.replace(/[^a-zA-Z\s]/g, "").trim();
+    }
+
+    // Apply a natural anchor template seeded by the original title
+    working = applyNaturalAnchor(working.toLowerCase(), title);
   }
 
-  // Step 6: If title is too short/mangled after stripping, use prefix + cleaned version
-  const wordCount = working.trim().split(/\s+/).length;
-  if (wordCount < 3) {
-    const prefix = pickPrefix(signals);
-    // Use a stripped-down version of the original
-    const stripped = replaceNewsworthyNouns(replaceLocations(stripYears(title)));
-    working = `${prefix} ${stripped.toLowerCase()}`;
-  }
-
-  // Step 7: Final cleanup
+  // Step 6: Final cleanup and word limit
   working = cleanupTitle(working);
   working = enforceWordLimit(working, 12);
 
