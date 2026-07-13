@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { MAX_IMAGES } from "@/lib/utils";
 import { callGroq, type GroqMessage } from "@/lib/groq";
 import { inspect, getClientIp, recordIpError } from "@/lib/security/core";
-import { validateAndSanitize, COMPLIANCE_TITLE_RULES } from "@/lib/stock-compliance";
 
 export const runtime = "nodejs"; // Required for Redis (security core)
 export const maxDuration = 300;
@@ -28,9 +27,7 @@ const SYSTEM_PROMPT = `You are a world-class Adobe Stock metadata specialist wit
 
 Your task: Analyze the provided stock photo with extreme precision and generate highly relevant, commercially optimized metadata.
 
-${COMPLIANCE_TITLE_RULES}
-
-═══ ADDITIONAL TITLE RULES ═══
+═══ TITLE RULES ═══
 - Write EXACTLY in English
 - Length: 7–12 words
 - Structure: [Main Subject] + [Action/State] + [Setting/Context] + [Mood/Style] when applicable
@@ -147,13 +144,9 @@ async function generateMetadata(
     );
   }
 
-  // ── Adobe Stock Compliance: validate & auto-sanitize title ──────────────────
-  const complianceResult = validateAndSanitize(parsed.title.trim());
-  const finalTitle = complianceResult.title;
-
   return {
     filename,
-    title: finalTitle,
+    title: parsed.title.trim(),
     keywords: finalKeywords,
     modelUsed: result.modelUsed,
     stabilized: true,
@@ -260,4 +253,3 @@ export async function POST(request: NextRequest) {
     );
   }
 }
-
