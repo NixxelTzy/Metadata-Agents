@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { callGroq } from "@/lib/groq";
 import { inspect, getClientIp, recordIpError } from "@/lib/security/core";
+import { validateAndSanitize, COMPLIANCE_TITLE_RULES } from "@/lib/stock-compliance";
 
 export const runtime = "nodejs";
 export const maxDuration = 120;
@@ -126,6 +127,7 @@ export async function POST(request: NextRequest) {
       "- ANTI-INTELLECTUAL PROPERTY: Never reference brand names, logos, trademarks, celebrities, fictional characters, or copyrighted designs.",
       "- COMMERCIAL VIABILITY: Every idea must have clear commercial use case (marketing, app UI, editorial, packaging, social media).",
       "- STOCK COMPLIANCE: Safe for all audiences, no violence, no political content, no discriminatory imagery.",
+      COMPLIANCE_TITLE_RULES,
       "",
       // ── Concept constraint ──
       `=== CONCEPT CONSTRAINT ===`,
@@ -168,7 +170,21 @@ export async function POST(request: NextRequest) {
     if (match) {
       const cleaned = cleanJsonForParsing(match[0]);
       const parsed = JSON.parse(cleaned) as { ideas?: unknown[] };
-      ideas = parsed?.ideas ?? [];
+      const rawIdeas = parsed?.ideas ?? [];
+
+      // ── Adobe Stock Compliance: validate & auto-sanitize every idea title ───
+      ideas = rawIdeas.map((idea) => {
+        if (!idea || typeof idea !== "object") return idea;
+        const typedIdea = idea as Record<string, unknown>;
+        const rawTitle = typeof typedIdea.title === "string" ? typedIdea.title : "";
+        if (!rawTitle) return idea;
+
+        const result = validateAndSanitize(rawTitle);
+        if (result.wasModified) {
+          return { ...typedIdea, title: result.title };
+        }
+        return idea;
+      });
     }
 
     return NextResponse.json({ success: true, ideas, usage: res.usage });
