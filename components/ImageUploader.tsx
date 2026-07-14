@@ -280,7 +280,8 @@ export default function ImageUploader({ onTokensUpdated }: Props = {}) {
         const keywords = `"${keywordsArr.join(',').replace(/"/g, '""')}"`;
 
         const categoriesArr = Array.isArray(r?.categories) ? r!.categories : [];
-        const categories = `"${categoriesArr.join(',').replace(/"/g, '""')}"`;
+        const cleanCategories = categoriesArr.filter(Boolean);
+        const categories = `"${cleanCategories.join(',').replace(/"/g, '""')}"`;
 
         const editorial = r?.editorial || "no";
         const matureContent = r?.matureContent || "no";
@@ -650,9 +651,10 @@ export default function ImageUploader({ onTokensUpdated }: Props = {}) {
                         <select
                           value={result.categories?.[0] || ""}
                           onChange={(e) => {
-                            const cats = [...(result.categories || [])];
+                            const cats = result.categories ? [...result.categories] : ["", ""];
+                            while (cats.length < 2) cats.push("");
                             cats[0] = e.target.value;
-                            handleUpdateResult(i, { categories: cats.filter(Boolean) });
+                            handleUpdateResult(i, { categories: cats });
                           }}
                           style={{ background: "var(--bg-secondary)", border: "1px solid var(--border)", borderRadius: "4px", color: "var(--text)", fontSize: "12px", padding: "6px", width: "100%" }}
                         >
@@ -664,9 +666,10 @@ export default function ImageUploader({ onTokensUpdated }: Props = {}) {
                         <select
                           value={result.categories?.[1] || ""}
                           onChange={(e) => {
-                            const cats = [...(result.categories || [])];
+                            const cats = result.categories ? [...result.categories] : ["", ""];
+                            while (cats.length < 2) cats.push("");
                             cats[1] = e.target.value;
-                            handleUpdateResult(i, { categories: cats.filter(Boolean) });
+                            handleUpdateResult(i, { categories: cats });
                           }}
                           style={{ background: "var(--bg-secondary)", border: "1px solid var(--border)", borderRadius: "4px", color: "var(--text)", fontSize: "12px", padding: "6px", width: "100%" }}
                         >

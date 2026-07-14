@@ -21,7 +21,7 @@ type Tab = "metadata" | "chat" | "research" | "vector" | "upscale" | "watermark"
 const ADMIN_EMAIL = "nixxeltzy@gmail.com";
 
 const TAB_CONFIG: { id: Tab; icon: string; label: string; desc: string; color: string }[] = [
-  { id: "metadata",  icon: "🏷️", label: "Metadata",    desc: "Adobe Stock AI",   color: "#4a90e2" },
+  { id: "metadata",  icon: "🏷️", label: "Metadata",    desc: "Adobe Stock & Shutterstock", color: "#4a90e2" },
   { id: "upscale",   icon: "🔍", label: "Upscale",     desc: "Super Resolution", color: "#ec4899" },
   { id: "watermark", icon: "🧹", label: "Hapus WM",    desc: "Watermark Remover",color: "#14b8a6" },
   { id: "research",  icon: "🔎", label: "Riset",        desc: "Keyword Research", color: "#7b5ae0" },
