@@ -100,3 +100,25 @@ export async function getReportsByUserId(userId: string): Promise<BugReport[]> {
   const all = await getAllReports();
   return all.filter((r) => r.userId === userId);
 }
+
+// ── Download Links ──────────────────────────────────────────────────────────
+
+export interface DownloadLinks {
+  apk: string;
+  exe: string;
+}
+
+export async function getDownloadLinks(): Promise<DownloadLinks> {
+  const apk = await redis.get<string>("download:link:apk") || "";
+  const exe = await redis.get<string>("download:link:exe") || "";
+  return { apk, exe };
+}
+
+export async function setDownloadLink(type: "apk" | "exe", link: string): Promise<void> {
+  await redis.set(`download:link:${type}`, link);
+}
+
+export async function deleteDownloadLink(type: "apk" | "exe"): Promise<void> {
+  await redis.del(`download:link:${type}`);
+}
+
