@@ -55,12 +55,22 @@ export function getGroqRisetApiKey(): string {
   );
 }
 
-/** Konfigurasi Upstash Redis */
+/** Konfigurasi Upstash Redis (instance utama) */
 export function getRedisConfig(): { url: string; token: string } {
   const url = process.env.UPSTASH_REDIS_REST_URL;
   const token = process.env.UPSTASH_REDIS_REST_TOKEN;
   if (!url || !token) {
     console.warn("[WARN] UPSTASH_REDIS_REST_URL atau UPSTASH_REDIS_REST_TOKEN tidak ditemukan.");
+  }
+  return { url: url ?? "", token: token ?? "" };
+}
+
+/** Konfigurasi Upstash Redis #2 (Storage/File DB) */
+export function getRedisConfig2(): { url: string; token: string } {
+  const url = process.env.UPSTASH_REDIS_REST_URL2;
+  const token = process.env.UPSTASH_REDIS_REST_TOKEN2;
+  if (!url || !token) {
+    console.warn("[WARN] UPSTASH_REDIS_REST_URL2 atau UPSTASH_REDIS_REST_TOKEN2 tidak ditemukan.");
   }
   return { url: url ?? "", token: token ?? "" };
 }

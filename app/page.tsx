@@ -11,6 +11,7 @@ import ResearchPanel from "@/components/ResearchPanel";
 import VectorCreator from "@/components/VectorCreator";
 import FeedbackPanel from "@/components/FeedbackPanel";
 import AdminMessagesPanel from "@/components/AdminMessagesPanel";
+import StoragePanel from "@/components/StoragePanel";
 import { useDevice } from "@/lib/useDevice";
 import { useRouter } from "next/navigation";
 import {
@@ -19,7 +20,7 @@ import {
   estimateCost, type Platform,
 } from "@/lib/tokenStore";
 
-type Tab = "metadata" | "chat" | "research" | "vector" | "upscale" | "watermark" | "accounts" | "feedback" | "admin-messages";
+type Tab = "metadata" | "chat" | "research" | "vector" | "upscale" | "watermark" | "accounts" | "feedback" | "admin-messages" | "storage";
 const ADMIN_EMAIL = "nixxeltzy@gmail.com";
 
 const TAB_CONFIG: { id: Tab; icon: string; label: string; desc: string; color: string }[] = [
@@ -32,6 +33,7 @@ const TAB_CONFIG: { id: Tab; icon: string; label: string; desc: string; color: s
   { id: "feedback",  icon: "💬", label: "Lapor & Usulan", desc: "Kirim Bug & Usulan Fitur", color: "#ec4899" },
   { id: "accounts",  icon: "🛡️", label: "Accounts",    desc: "Account Checker",  color: "#ef4444" },
   { id: "admin-messages", icon: "📬", label: "Pesan & Broadcast", desc: "Feedback & Mass Email", color: "#f59e0b" },
+  { id: "storage",   icon: "🗄️", label: "Storage",     desc: "Redis DB Monitor",  color: "#10b981" },
 ];
 
 interface UserInfo {
@@ -181,6 +183,15 @@ export default function Home() {
                 <span className="sidebar__item-content">
                   <span className="sidebar__item-label">Pesan & Broadcast</span>
                   <span className="sidebar__item-desc">Feedback & Broadcast</span>
+                </span>
+              </button>
+              <button type="button"
+                className={`sidebar__item ${activeTab === "storage" && !monitorOpen ? "sidebar__item--active" : ""}`}
+                onClick={() => { handleTabChange("storage"); }}>
+                <span className="sidebar__icon">🗄️</span>
+                <span className="sidebar__item-content">
+                  <span className="sidebar__item-label">Storage</span>
+                  <span className="sidebar__item-desc">Redis DB Monitor</span>
                 </span>
               </button>
             </nav>
@@ -377,6 +388,8 @@ export default function Home() {
             <AdminAccountChecker />
           ) : isAdmin && activeTab === "admin-messages" ? (
             <AdminMessagesPanel />
+          ) : isAdmin && activeTab === "storage" ? (
+            <StoragePanel />
           ) : activeTab === "feedback" ? (
             <FeedbackPanel />
           ) : activeTab === "metadata" ? (
