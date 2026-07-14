@@ -65,14 +65,28 @@ export function getRedisConfig(): { url: string; token: string } {
   return { url: url ?? "", token: token ?? "" };
 }
 
-/** Konfigurasi Upstash Redis #2 (Storage/File DB) */
+/**
+ * Konfigurasi Upstash Redis #2 (Storage DB).
+ * Mendukung format TCP: rediss://default:{token}@{host}:{port}
+ * Secara otomatis dikonversi ke Upstash REST API URL.
+ */
 export function getRedisConfig2(): { url: string; token: string } {
-  const url = process.env.UPSTASH_REDIS_REST_URL_STORAGE;
-  const token = process.env.UPSTASH_REDIS_REST_TOKEN_STORAGE;
-  if (!url || !token) {
-    console.warn("[WARN] UPSTASH_REDIS_REST_URL_STORAGE atau UPSTASH_REDIS_REST_TOKEN_STORAGE tidak ditemukan.");
+  const redisUrl = process.env.REDIS_URL;
+  if (!redisUrl) {
+    console.warn("[WARN] REDIS_URL tidak ditemukan untuk Redis #2 (Storage DB).");
+    return { url: "", token: "" };
   }
-  return { url: url ?? "", token: token ?? "" };
+  try {
+    // Parse: rediss://default:{token}@{host}:{port}
+    const parsed = new URL(redisUrl);
+    const token = parsed.password;          // token = password field
+    const restUrl = `https://${parsed.hostname}`; // REST = https://host (ignore port)
+    if (!token || !restUrl) throw new Error("token atau host kosong");
+    return { url: restUrl, token };
+  } catch (e) {
+    console.warn("[WARN] Format REDIS_URL tidak valid:", e);
+    return { url: "", token: "" };
+  }
 }
 
 /** Konfigurasi Vercel API (untuk Server Monitor) */
