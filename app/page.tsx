@@ -9,6 +9,8 @@ import AdminAccountChecker from "@/components/AdminAccountChecker";
 import AIChat from "@/components/AIChat";
 import ResearchPanel from "@/components/ResearchPanel";
 import VectorCreator from "@/components/VectorCreator";
+import FeedbackPanel from "@/components/FeedbackPanel";
+import AdminMessagesPanel from "@/components/AdminMessagesPanel";
 import { useDevice } from "@/lib/useDevice";
 import { useRouter } from "next/navigation";
 import {
@@ -17,7 +19,7 @@ import {
   estimateCost, type Platform,
 } from "@/lib/tokenStore";
 
-type Tab = "metadata" | "chat" | "research" | "vector" | "upscale" | "watermark" | "accounts";
+type Tab = "metadata" | "chat" | "research" | "vector" | "upscale" | "watermark" | "accounts" | "feedback" | "admin-messages";
 const ADMIN_EMAIL = "nixxeltzy@gmail.com";
 
 const TAB_CONFIG: { id: Tab; icon: string; label: string; desc: string; color: string }[] = [
@@ -27,7 +29,9 @@ const TAB_CONFIG: { id: Tab; icon: string; label: string; desc: string; color: s
   { id: "research",  icon: "🔎", label: "Riset",        desc: "Keyword Research", color: "#7b5ae0" },
   { id: "vector",    icon: "✨", label: "Vector Ideas", desc: "AI Ideas Gen",    color: "#22c55e" },
   { id: "chat",      icon: "🤖", label: "AI Chat",      desc: "Groq Assistant",   color: "#f59e0b" },
+  { id: "feedback",  icon: "💬", label: "Lapor & Usulan", desc: "Kirim Bug & Usulan Fitur", color: "#ec4899" },
   { id: "accounts",  icon: "🛡️", label: "Accounts",    desc: "Account Checker",  color: "#ef4444" },
+  { id: "admin-messages", icon: "📬", label: "Pesan & Broadcast", desc: "Feedback & Mass Email", color: "#f59e0b" },
 ];
 
 interface UserInfo {
@@ -132,7 +136,7 @@ export default function Home() {
         {/* Nav */}
         <div className="sidebar__section-label">Navigation</div>
         <nav className="sidebar__nav">
-          {TAB_CONFIG.filter((t) => t.id !== "accounts").map((tab) => (
+          {TAB_CONFIG.filter((t) => t.id !== "accounts" && t.id !== "admin-messages").map((tab) => (
             <button key={tab.id} type="button"
               className={`sidebar__item ${activeTab === tab.id && !monitorOpen ? "sidebar__item--active" : ""}`}
               onClick={() => handleTabChange(tab.id)}
@@ -168,6 +172,15 @@ export default function Home() {
                 <span className="sidebar__item-content">
                   <span className="sidebar__item-label">Account Checker</span>
                   <span className="sidebar__item-desc">User Management</span>
+                </span>
+              </button>
+              <button type="button"
+                className={`sidebar__item ${activeTab === "admin-messages" && !monitorOpen ? "sidebar__item--active" : ""}`}
+                onClick={() => { handleTabChange("admin-messages"); }}>
+                <span className="sidebar__icon">📬</span>
+                <span className="sidebar__item-content">
+                  <span className="sidebar__item-label">Pesan & Broadcast</span>
+                  <span className="sidebar__item-desc">Feedback & Broadcast</span>
                 </span>
               </button>
             </nav>
@@ -362,6 +375,10 @@ export default function Home() {
             <ServerMonitor />
           ) : isAdmin && activeTab === "accounts" ? (
             <AdminAccountChecker />
+          ) : isAdmin && activeTab === "admin-messages" ? (
+            <AdminMessagesPanel />
+          ) : activeTab === "feedback" ? (
+            <FeedbackPanel />
           ) : activeTab === "metadata" ? (
             <ImageUploader onTokensUpdated={refreshTokens} />
           ) : activeTab === "upscale" ? (

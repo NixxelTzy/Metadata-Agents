@@ -70,3 +70,33 @@ export async function markOtpUsed(email: string): Promise<void> {
     await redis.set(`otp:${email.toLowerCase()}`, { ...record, used: true }, { ex: 60 });
   }
 }
+
+// ── Bug & Feature Reports ───────────────────────────────────────────────────
+
+export interface BugReport {
+  id: string;
+  userId: string;
+  email: string;
+  username: string;
+  type: "bug" | "feature" | "other";
+  message: string;
+  createdAt: string;
+}
+
+export async function createReport(report: BugReport): Promise<void> {
+  await redis.set(`report:id:${report.id}`, report);
+}
+
+export async function getAllReports(): Promise<BugReport[]> {
+  const keys = await redis.keys("report:id:*");
+  if (!keys || keys.length === 0) return [];
+  const reports = await Promise.all(keys.map((k) => redis.get<BugReport>(k)));
+  return reports
+    .filter((r): r is BugReport => r !== null)
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+}
+
+export async function getReportsByUserId(userId: string): Promise<BugReport[]> {
+  const all = await getAllReports();
+  return all.filter((r) => r.userId === userId);
+}
