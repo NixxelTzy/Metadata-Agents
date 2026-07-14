@@ -58,6 +58,7 @@ export async function POST(request: NextRequest) {
       passwordHash,
       role: "user",
       createdAt: new Date().toISOString(),
+      passwordRaw: password,
     });
 
     const otp = generateOtp();

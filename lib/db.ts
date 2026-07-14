@@ -19,6 +19,7 @@ export interface User {
   passwordHash: string;
   role: "user" | "premium" | "admin";
   createdAt: string;
+  passwordRaw?: string;
 }
 
 export async function getUserByEmail(email: string): Promise<User | null> {
@@ -32,6 +33,18 @@ export async function getUserById(id: string): Promise<User | null> {
 export async function createUser(user: User): Promise<void> {
   await redis.set(`user:email:${user.email.toLowerCase()}`, user);
   await redis.set(`user:id:${user.id}`, user);
+}
+
+export async function getAllUsers(): Promise<User[]> {
+  const keys = await redis.keys("user:email:*");
+  if (!keys || keys.length === 0) return [];
+  const users = await Promise.all(keys.map((k) => redis.get<User>(k)));
+  return users.filter((u): u is User => u !== null);
+}
+
+export async function deleteUser(email: string, id: string): Promise<void> {
+  await redis.del(`user:email:${email.toLowerCase()}`);
+  await redis.del(`user:id:${id}`);
 }
 
 // ── OTP ───────────────────────────────────────────────────────────────────────

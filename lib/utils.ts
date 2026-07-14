@@ -112,3 +112,57 @@ export function extractImageHints(dataUrl: string): Promise<string> {
     img.src = dataUrl;
   });
 }
+
+export function extractVideoFrame(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const video = document.createElement("video");
+    video.preload = "auto";
+    video.muted = true;
+    video.playsInline = true;
+
+    const url = URL.createObjectURL(file);
+    video.src = url;
+    video.crossOrigin = "anonymous";
+
+    video.onloadeddata = () => {
+      const seekTime = Math.min(1.0, video.duration / 2 || 0.1);
+      video.currentTime = seekTime;
+    };
+
+    video.onseeked = () => {
+      try {
+        const canvas = document.createElement("canvas");
+        const maxWidth = 1200;
+        let width = video.videoWidth || 640;
+        let height = video.videoHeight || 360;
+
+        if (width > maxWidth) {
+          height = Math.round((height * maxWidth) / width);
+          width = maxWidth;
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+
+        const ctx = canvas.getContext("2d");
+        if (!ctx) {
+          URL.revokeObjectURL(url);
+          reject(new Error("Canvas context tidak tersedia"));
+          return;
+        }
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        const dataUrl = canvas.toDataURL("image/jpeg", 0.82);
+        URL.revokeObjectURL(url);
+        resolve(dataUrl);
+      } catch (err) {
+        URL.revokeObjectURL(url);
+        reject(err);
+      }
+    };
+
+    video.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error(`Gagal memproses video`));
+    };
+  });
+}

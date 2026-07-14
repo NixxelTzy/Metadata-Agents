@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { MAX_IMAGES } from "@/lib/utils";
 import { callGroq, type GroqMessage } from "@/lib/groq";
 import { inspect, getClientIp, recordIpError } from "@/lib/security/core";
+import { validateAndSanitize } from "@/lib/stock-compliance";
 
 export const runtime = "nodejs"; // Required for Redis (security core)
 export const maxDuration = 300;
@@ -10,6 +11,10 @@ export interface MetadataResult {
   filename: string;
   title: string;
   keywords: string[];
+  categories?: string[];
+  editorial?: "yes" | "no";
+  matureContent?: "yes" | "no";
+  illustration?: "yes" | "no";
   error?: string;
   attempts?: number;
   stabilized?: boolean;
@@ -23,9 +28,9 @@ interface ImagePayload {
   visualHints?: string;
 }
 
-const SYSTEM_PROMPT = `You are a world-class Adobe Stock metadata specialist with deep expertise in visual content analysis and stock photography SEO.
+const ADOBE_SYSTEM_PROMPT = `You are a world-class Adobe Stock metadata specialist with deep expertise in visual content analysis and stock photography SEO.
 
-Your task: Analyze the provided stock photo with extreme precision and generate highly relevant, commercially optimized metadata.
+Your task: Analyze the provided stock photo/media frame with extreme precision and generate highly relevant, commercially optimized metadata.
 
 ═══ TITLE RULES ═══
 - Write EXACTLY in English
@@ -56,6 +61,52 @@ Your task: Analyze the provided stock photo with extreme precision and generate 
 Respond ONLY with valid JSON — no explanation, no markdown:
 {"title": "Exact descriptive title here", "keywords": ["keyword1", "keyword2", ...49 total...]}`;
 
+const SHUTTERSTOCK_SYSTEM_PROMPT = `You are a world-class Shutterstock metadata specialist with deep expertise in visual content analysis, keywording, and stock industry SEO.
+
+Your task: Analyze the provided media frame (photo or video thumbnail) and generate highly relevant, commercially optimized metadata for Shutterstock.
+
+═══ DESCRIPTION / TITLE RULES ═══
+- Write EXACTLY in English
+- Length: 7–15 words
+- Describe the main subject, setting, and context clearly and objectively
+- NO generic phrases like "beautiful", "amazing", "great"
+- NO questions, ellipsis, or punctuation
+
+═══ KEYWORDS RULES ═══
+- Provide EXACTLY 50 keywords in English — no more, no less. This is a hard requirement.
+- RELEVANCE IS MANDATORY: every keyword must directly relate to actual visual content
+- NO hallucinated content: only describe what is genuinely visible in the image
+- Structure your 50 keywords in this exact distribution:
+  1. PRIMARY (12–14): exact subjects, main objects, people, animals, or items clearly visible
+  2. DESCRIPTIVE (10–12): colors, textures, materials, patterns, lighting quality, shadows
+  3. CONTEXTUAL (8–10): location type, setting, environment, time of day, season
+  4. CONCEPTUAL (7–9): emotions, moods, concepts, themes, symbolism
+  5. COMMERCIAL (5–6): use-cases, target audience, business applications
+  6. TECHNICAL (4–5): photo style, composition technique, camera angle, image type
+- Count carefully before responding — you MUST have exactly 50 items in the keywords array
+- Use SINGULAR form for nouns unless plural is more commercially searchable
+- Each keyword = 1–3 words maximum
+- No duplicates, no brand names, no generic filler words
+
+═══ CATEGORIES ═══
+- Choose exactly 1 or 2 categories from this exact list (do not invent categories):
+  "Animals/Wildlife", "The Arts", "Backgrounds/Textures", "Beauty/Fashion", "Buildings/Landmarks", "Business/Finance", "Celebrities", "Education", "Food and Drink", "Healthcare/Medical", "Holidays", "Industrial", "Interiors", "Miscellaneous", "Nature", "Parks/Outdoor", "People", "Religion", "Science", "Signs/Symbols", "Sports/Recreation", "Technology", "Transportation", "Vectors", "Vintage"
+
+═══ TECHNICAL ATTRIBUTES ═══
+- editorial: "yes" if the image/video contains logos, trademarked brands, editorial scenes, or recognizable public crowds without model releases; otherwise "no"
+- matureContent: "yes" if the image/video depicts nudity, suggestive themes, violence, or sensitive content; otherwise "no"
+- illustration: "yes" if the media is an illustration, digital painting, CGI, 3D render, vector, or generative AI art; "no" if it is a real photograph or live-action video frame
+
+Respond ONLY with valid JSON — no explanation, no markdown:
+{
+  "title": "Exact descriptive description here",
+  "keywords": ["keyword1", "keyword2", ...50 total...],
+  "categories": ["Category1", "Category2"],
+  "editorial": "yes" | "no",
+  "matureContent": "yes" | "no",
+  "illustration": "yes" | "no"
+}`;
+
 function extractJsonFromText(text: string): string {
   const trimmed = text.trim();
   const codeBlock = trimmed.match(/```(?:json)?\s*([\s\S]*?)```/);
@@ -70,18 +121,21 @@ async function generateMetadata(
   base64DataUrl: string,
   filename: string,
   visualHints?: string,
+  platform: "adobe_stock" | "shutterstock" = "adobe_stock",
+  complianceGuard: boolean = false,
   attempt: number = 1
 ): Promise<MetadataResult> {
   if (!base64DataUrl.startsWith("data:image/")) {
     throw new Error("Format data URL tidak valid");
   }
 
+  const promptText = platform === "shutterstock" ? SHUTTERSTOCK_SYSTEM_PROMPT : ADOBE_SYSTEM_PROMPT;
   const textPart = visualHints
-    ? `Analyze this stock photo and generate Adobe Stock title and keywords following the rules.\n\nFilename: ${filename}\nVisual hints: ${visualHints}`
-    : `Analyze this stock photo and generate Adobe Stock title and keywords following the rules.\n\nFilename: ${filename}`;
+    ? `Analyze this media frame and generate metadata following the rules.\n\nFilename: ${filename}\nVisual hints: ${visualHints}`
+    : `Analyze this media frame and generate metadata following the rules.\n\nFilename: ${filename}`;
 
   const messages: GroqMessage[] = [
-    { role: "system", content: SYSTEM_PROMPT },
+    { role: "system", content: promptText },
     {
       role: "user",
       content: [
@@ -98,7 +152,14 @@ async function generateMetadata(
   });
 
   const jsonText = extractJsonFromText(result.text);
-  const parsed = JSON.parse(jsonText) as { title?: string; keywords?: string[] };
+  const parsed = JSON.parse(jsonText) as {
+    title?: string;
+    keywords?: string[];
+    categories?: string[];
+    editorial?: string;
+    matureContent?: string;
+    illustration?: string;
+  };
 
   if (!parsed.title || !Array.isArray(parsed.keywords)) {
     throw new Error("Format respons AI tidak valid");
@@ -109,15 +170,15 @@ async function generateMetadata(
     .filter(Boolean)
     .filter((k, i, arr) => arr.indexOf(k) === i);
 
-  const TARGET_KEYWORDS = 49;
+  const TARGET_KEYWORDS = platform === "shutterstock" ? 50 : 49;
 
-  // Hard-enforce exactly 49 keywords.
+  // Hard-enforce exactly target keywords.
   // If AI returned fewer, pad with derived variations from existing keywords.
-  // If AI returned more, trim to 49 (keeps highest-priority ones at front).
+  // If AI returned more, trim (keeps highest-priority ones at front).
   let finalKeywords = keywords.slice(0, TARGET_KEYWORDS);
 
   if (finalKeywords.length < TARGET_KEYWORDS) {
-    // Derive additional keywords by combining/splitting existing ones until we hit 49
+    // Derive additional keywords by combining/splitting existing ones until we hit target
     const extras: string[] = [];
     for (const kw of keywords) {
       const parts = kw.split(" ");
@@ -137,17 +198,59 @@ async function generateMetadata(
     finalKeywords = [...finalKeywords, ...extras].slice(0, TARGET_KEYWORDS);
   }
 
-  // Final safety: if still short (edge case), throw so retry logic kicks in
+  // Fallback padding if still short
+  const fallbackKeywords = ["concept", "illustration", "media", "content", "creative", "stock", "design", "background", "art", "graphic"];
+  let fallbackIndex = 0;
+  while (finalKeywords.length < TARGET_KEYWORDS && fallbackIndex < fallbackKeywords.length) {
+    const fallback = fallbackKeywords[fallbackIndex]!;
+    if (!finalKeywords.includes(fallback)) {
+      finalKeywords.push(fallback);
+    }
+    fallbackIndex++;
+  }
+
+  // Final safety check
   if (finalKeywords.length !== TARGET_KEYWORDS) {
     throw new Error(
       `AI returned ${finalKeywords.length} keywords after normalization — expected exactly ${TARGET_KEYWORDS}. Retrying.`
     );
   }
 
+  // Handle Shutterstock specific attributes
+  let editorial: "yes" | "no" = "no";
+  if (parsed.editorial === "yes") editorial = "yes";
+
+  let matureContent: "yes" | "no" = "no";
+  if (parsed.matureContent === "yes") matureContent = "yes";
+
+  let illustration: "yes" | "no" = "no";
+  if (parsed.illustration === "yes") illustration = "yes";
+
+  const categoryWhitelist = [
+    "Animals/Wildlife", "The Arts", "Backgrounds/Textures", "Beauty/Fashion", "Buildings/Landmarks", "Business/Finance", "Celebrities", "Education", "Food and Drink", "Healthcare/Medical", "Holidays", "Industrial", "Interiors", "Miscellaneous", "Nature", "Parks/Outdoor", "People", "Religion", "Science", "Signs/Symbols", "Sports/Recreation", "Technology", "Transportation", "Vectors", "Vintage"
+  ];
+  const categories = Array.isArray(parsed.categories)
+    ? parsed.categories
+        .map((cat) => String(cat).trim())
+        .filter((cat) => categoryWhitelist.some((wl) => wl.toLowerCase() === cat.toLowerCase()))
+        .map((cat) => categoryWhitelist.find((wl) => wl.toLowerCase() === cat.toLowerCase())!)
+        .slice(0, 2)
+    : [];
+
+  let finalTitle = parsed.title.trim();
+  if (complianceGuard) {
+    const check = validateAndSanitize(finalTitle);
+    finalTitle = check.title;
+  }
+
   return {
     filename,
-    title: parsed.title.trim(),
+    title: finalTitle,
     keywords: finalKeywords,
+    categories,
+    editorial,
+    matureContent,
+    illustration,
     modelUsed: result.modelUsed,
     stabilized: true,
     attempts: attempt,
@@ -162,11 +265,13 @@ async function generateMetadataWithRetry(
   dataUrl: string,
   filename: string,
   visualHints?: string,
+  platform: "adobe_stock" | "shutterstock" = "adobe_stock",
+  complianceGuard: boolean = false,
 ): Promise<MetadataResult> {
   const MAX_ATTEMPTS = 3;
   for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
     try {
-      const result = await generateMetadata(dataUrl, filename, visualHints, attempt);
+      const result = await generateMetadata(dataUrl, filename, visualHints, platform, complianceGuard, attempt);
       return result;
     } catch (err) {
       const msg = err instanceof Error ? err.message : "";
@@ -222,11 +327,13 @@ export async function POST(request: NextRequest) {
 
 
     const results: MetadataResult[] = [];
+    const platform = body.platform === "shutterstock" ? "shutterstock" : "adobe_stock";
+    const complianceGuard = body.complianceGuard === true;
 
     for (let i = 0; i < images.length; i++) {
       const image = images[i];
       try {
-        const result = await generateMetadataWithRetry(image!.dataUrl, image!.filename, image!.visualHints);
+        const result = await generateMetadataWithRetry(image!.dataUrl, image!.filename, image!.visualHints, platform, complianceGuard);
         results.push({ ...result, stabilized });
       } catch (error) {
         results.push({

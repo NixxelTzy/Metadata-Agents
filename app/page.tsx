@@ -2,7 +2,10 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import ImageUploader from "@/components/ImageUploader";
+import ImageUpscaler from "@/components/ImageUpscaler";
+import WatermarkRemover from "@/components/WatermarkRemover";
 import ServerMonitor from "@/components/ServerMonitor";
+import AdminAccountChecker from "@/components/AdminAccountChecker";
 import AIChat from "@/components/AIChat";
 import ResearchPanel from "@/components/ResearchPanel";
 import VectorCreator from "@/components/VectorCreator";
@@ -14,14 +17,17 @@ import {
   estimateCost, type Platform,
 } from "@/lib/tokenStore";
 
-type Tab = "metadata" | "chat" | "research" | "vector";
+type Tab = "metadata" | "chat" | "research" | "vector" | "upscale" | "watermark" | "accounts";
 const ADMIN_EMAIL = "nixxeltzy@gmail.com";
 
 const TAB_CONFIG: { id: Tab; icon: string; label: string; desc: string; color: string }[] = [
-  { id: "metadata", icon: "🏷️", label: "Metadata",   desc: "Adobe Stock AI",   color: "#4a90e2" },
-  { id: "research", icon: "🔎", label: "Riset",       desc: "Keyword Research", color: "#7b5ae0" },
-  { id: "vector",   icon: "✨", label: "Vector Ideas", desc: "AI Ideas Gen",    color: "#22c55e" },
-  { id: "chat",     icon: "🤖", label: "AI Chat",     desc: "Groq Assistant",   color: "#f59e0b" },
+  { id: "metadata",  icon: "🏷️", label: "Metadata",    desc: "Adobe Stock AI",   color: "#4a90e2" },
+  { id: "upscale",   icon: "🔍", label: "Upscale",     desc: "Super Resolution", color: "#ec4899" },
+  { id: "watermark", icon: "🧹", label: "Hapus WM",    desc: "Watermark Remover",color: "#14b8a6" },
+  { id: "research",  icon: "🔎", label: "Riset",        desc: "Keyword Research", color: "#7b5ae0" },
+  { id: "vector",    icon: "✨", label: "Vector Ideas", desc: "AI Ideas Gen",    color: "#22c55e" },
+  { id: "chat",      icon: "🤖", label: "AI Chat",      desc: "Groq Assistant",   color: "#f59e0b" },
+  { id: "accounts",  icon: "🛡️", label: "Accounts",    desc: "Account Checker",  color: "#ef4444" },
 ];
 
 interface UserInfo {
@@ -126,7 +132,7 @@ export default function Home() {
         {/* Nav */}
         <div className="sidebar__section-label">Navigation</div>
         <nav className="sidebar__nav">
-          {TAB_CONFIG.map((tab) => (
+          {TAB_CONFIG.filter((t) => t.id !== "accounts").map((tab) => (
             <button key={tab.id} type="button"
               className={`sidebar__item ${activeTab === tab.id && !monitorOpen ? "sidebar__item--active" : ""}`}
               onClick={() => handleTabChange(tab.id)}
@@ -148,11 +154,20 @@ export default function Home() {
             <nav className="sidebar__nav">
               <button type="button"
                 className={`sidebar__item ${monitorOpen ? "sidebar__item--active" : ""}`}
-                onClick={() => { setMonitorOpen((v) => !v); if (!device.isDesktop) setSidebarOpen(false); }}>
+                onClick={() => { setMonitorOpen(true); if (!device.isDesktop) setSidebarOpen(false); }}>
                 <span className="sidebar__icon">📡</span>
                 <span className="sidebar__item-content">
                   <span className="sidebar__item-label">Server Monitor</span>
                   <span className="sidebar__item-desc">System Health</span>
+                </span>
+              </button>
+              <button type="button"
+                className={`sidebar__item ${activeTab === "accounts" && !monitorOpen ? "sidebar__item--active" : ""}`}
+                onClick={() => { handleTabChange("accounts"); }}>
+                <span className="sidebar__icon">🛡️</span>
+                <span className="sidebar__item-content">
+                  <span className="sidebar__item-label">Account Checker</span>
+                  <span className="sidebar__item-desc">User Management</span>
                 </span>
               </button>
             </nav>
@@ -345,8 +360,14 @@ export default function Home() {
         <main className="workspace__content">
           {isAdmin && monitorOpen ? (
             <ServerMonitor />
+          ) : isAdmin && activeTab === "accounts" ? (
+            <AdminAccountChecker />
           ) : activeTab === "metadata" ? (
             <ImageUploader onTokensUpdated={refreshTokens} />
+          ) : activeTab === "upscale" ? (
+            <ImageUpscaler />
+          ) : activeTab === "watermark" ? (
+            <WatermarkRemover />
           ) : activeTab === "research" ? (
             <ResearchPanel />
           ) : activeTab === "vector" ? (
