@@ -67,10 +67,10 @@ export function getRedisConfig(): { url: string; token: string } {
 
 /** Konfigurasi Upstash Redis #2 (Storage/File DB) */
 export function getRedisConfig2(): { url: string; token: string } {
-  const url = process.env.UPSTASH_REDIS_REST_URL2;
-  const token = process.env.UPSTASH_REDIS_REST_TOKEN2;
+  const url = process.env.UPSTASH_REDIS_REST_URL_STORAGE;
+  const token = process.env.UPSTASH_REDIS_REST_TOKEN_STORAGE;
   if (!url || !token) {
-    console.warn("[WARN] UPSTASH_REDIS_REST_URL2 atau UPSTASH_REDIS_REST_TOKEN2 tidak ditemukan.");
+    console.warn("[WARN] UPSTASH_REDIS_REST_URL_STORAGE atau UPSTASH_REDIS_REST_TOKEN_STORAGE tidak ditemukan.");
   }
   return { url: url ?? "", token: token ?? "" };
 }

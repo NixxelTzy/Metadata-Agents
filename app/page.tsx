@@ -138,7 +138,7 @@ export default function Home() {
         {/* Nav */}
         <div className="sidebar__section-label">Navigation</div>
         <nav className="sidebar__nav">
-          {TAB_CONFIG.filter((t) => t.id !== "accounts" && t.id !== "admin-messages").map((tab) => (
+          {TAB_CONFIG.filter((t) => t.id !== "accounts" && t.id !== "admin-messages" && t.id !== "storage").map((tab) => (
             <button key={tab.id} type="button"
               className={`sidebar__item ${activeTab === tab.id && !monitorOpen ? "sidebar__item--active" : ""}`}
               onClick={() => handleTabChange(tab.id)}
