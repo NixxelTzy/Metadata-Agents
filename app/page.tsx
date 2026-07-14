@@ -11,7 +11,6 @@ import ResearchPanel from "@/components/ResearchPanel";
 import VectorCreator from "@/components/VectorCreator";
 import FeedbackPanel from "@/components/FeedbackPanel";
 import AdminMessagesPanel from "@/components/AdminMessagesPanel";
-import BuildsPanel from "@/components/BuildsPanel";
 import { useDevice } from "@/lib/useDevice";
 import { useRouter } from "next/navigation";
 import {
@@ -20,7 +19,7 @@ import {
   estimateCost, type Platform,
 } from "@/lib/tokenStore";
 
-type Tab = "metadata" | "chat" | "research" | "vector" | "upscale" | "watermark" | "accounts" | "feedback" | "admin-messages" | "builds";
+type Tab = "metadata" | "chat" | "research" | "vector" | "upscale" | "watermark" | "accounts" | "feedback" | "admin-messages";
 const ADMIN_EMAIL = "nixxeltzy@gmail.com";
 
 const TAB_CONFIG: { id: Tab; icon: string; label: string; desc: string; color: string }[] = [
@@ -33,7 +32,6 @@ const TAB_CONFIG: { id: Tab; icon: string; label: string; desc: string; color: s
   { id: "feedback",  icon: "💬", label: "Lapor & Usulan", desc: "Kirim Bug & Usulan Fitur", color: "#ec4899" },
   { id: "accounts",  icon: "🛡️", label: "Accounts",    desc: "Account Checker",  color: "#ef4444" },
   { id: "admin-messages", icon: "📬", label: "Pesan & Broadcast", desc: "Feedback & Mass Email", color: "#f59e0b" },
-  { id: "builds", icon: "📦", label: "Build & Apps", desc: "Capacitor & Electron Apps", color: "#3b82f6" },
 ];
 
 interface UserInfo {
@@ -138,7 +136,7 @@ export default function Home() {
         {/* Nav */}
         <div className="sidebar__section-label">Navigation</div>
         <nav className="sidebar__nav">
-          {TAB_CONFIG.filter((t) => t.id !== "accounts" && t.id !== "admin-messages" && t.id !== "builds").map((tab) => (
+          {TAB_CONFIG.filter((t) => t.id !== "accounts" && t.id !== "admin-messages").map((tab) => (
             <button key={tab.id} type="button"
               className={`sidebar__item ${activeTab === tab.id && !monitorOpen ? "sidebar__item--active" : ""}`}
               onClick={() => handleTabChange(tab.id)}
@@ -183,15 +181,6 @@ export default function Home() {
                 <span className="sidebar__item-content">
                   <span className="sidebar__item-label">Pesan & Broadcast</span>
                   <span className="sidebar__item-desc">Feedback & Broadcast</span>
-                </span>
-              </button>
-              <button type="button"
-                className={`sidebar__item ${activeTab === "builds" && !monitorOpen ? "sidebar__item--active" : ""}`}
-                onClick={() => { handleTabChange("builds"); }}>
-                <span className="sidebar__icon">📦</span>
-                <span className="sidebar__item-content">
-                  <span className="sidebar__item-label">Build & Apps</span>
-                  <span className="sidebar__item-desc">Capacitor & Electron Apps</span>
                 </span>
               </button>
             </nav>
@@ -388,8 +377,6 @@ export default function Home() {
             <AdminAccountChecker />
           ) : isAdmin && activeTab === "admin-messages" ? (
             <AdminMessagesPanel />
-          ) : isAdmin && activeTab === "builds" ? (
-            <BuildsPanel />
           ) : activeTab === "feedback" ? (
             <FeedbackPanel />
           ) : activeTab === "metadata" ? (
