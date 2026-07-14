@@ -170,39 +170,32 @@ export default function StoragePanel() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [lastRefresh, setLastRefresh] = useState<Date | null>(null);
-  const [countdown, setCountdown] = useState(30);
 
-  const fetchStats = useCallback(async () => {
+  const fetchStats = useCallback(async (silent = false) => {
     try {
-      setLoading(true);
+      if (!silent) setLoading(true);
       setError(null);
       const res = await fetch("/api/admin/storage", { cache: "no-store" });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const json = await res.json() as StorageData;
       setData(json);
       setLastRefresh(new Date());
-      setCountdown(30);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Gagal mengambil data storage");
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   }, []);
 
-  useEffect(() => { fetchStats(); }, [fetchStats]);
+  useEffect(() => { fetchStats(false); }, [fetchStats]);
 
-  // Auto-refresh every 30 seconds
+  // Auto-refresh every 500ms
   useEffect(() => {
-    const interval = setInterval(fetchStats, 30_000);
+    const interval = setInterval(() => {
+      fetchStats(true);
+    }, 500);
     return () => clearInterval(interval);
   }, [fetchStats]);
-
-  // Countdown timer
-  useEffect(() => {
-    if (loading) return;
-    const tick = setInterval(() => setCountdown((c) => Math.max(0, c - 1)), 1_000);
-    return () => clearInterval(tick);
-  }, [loading]);
 
   const totalKeys = data?.databases.reduce((sum, db) => sum + db.totalKeys, 0) ?? 0;
   const totalMemBytes = data?.databases.reduce((sum, db) => sum + db.usedMemoryBytes, 0) ?? 0;
@@ -219,15 +212,15 @@ export default function StoragePanel() {
           <p className="stor-header__sub">Real-time monitoring untuk semua Upstash Redis database</p>
         </div>
         <div className="stor-header__right">
-          <button className="stor-refresh-btn" onClick={fetchStats} disabled={loading}>
+          <button className="stor-refresh-btn" onClick={() => fetchStats(false)} disabled={loading}>
             <span className={loading ? "stor-spin" : ""}>🔄</span>
             {loading ? "Loading…" : "Refresh"}
           </button>
-          {!loading && lastRefresh && (
+          {lastRefresh && (
             <div className="stor-refresh-info">
-              <span>Auto-refresh: <strong>{countdown}s</strong></span>
+              <span>Auto-refresh: <strong>500ms</strong></span>
               <span className="stor-refresh-time">
-                Last: {lastRefresh.toLocaleTimeString("id-ID")}
+                Last: {lastRefresh.toLocaleTimeString("id-ID")}.{String(lastRefresh.getMilliseconds()).padStart(3, "0")}
               </span>
             </div>
           )}
@@ -272,7 +265,7 @@ export default function StoragePanel() {
       {error && !loading && (
         <div className="stor-error-global">
           ⚠️ {error}
-          <button onClick={fetchStats} className="stor-retry-btn">Coba Lagi</button>
+          <button onClick={() => fetchStats(false)} className="stor-retry-btn">Coba Lagi</button>
         </div>
       )}
 

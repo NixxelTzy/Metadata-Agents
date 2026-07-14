@@ -5,10 +5,14 @@
  * Set UPSTASH_REDIS_REST_URL dan UPSTASH_REDIS_REST_TOKEN di Vercel.
  */
 import { Redis } from "@upstash/redis";
-import { getRedisConfig } from "@/lib/config";
+import { getRedisConfig, getRedisConfig2 } from "@/lib/config";
 
 const { url, token } = getRedisConfig();
 const redis = new Redis({ url, token });
+
+// Redis #2 Client (untuk Storage / Feedback / dll)
+const config2 = getRedisConfig2();
+const redis2 = new Redis({ url: config2.url, token: config2.token });
 
 // ── User ──────────────────────────────────────────────────────────────────────
 
@@ -84,13 +88,13 @@ export interface BugReport {
 }
 
 export async function createReport(report: BugReport): Promise<void> {
-  await redis.set(`report:id:${report.id}`, report);
+  await redis2.set(`report:id:${report.id}`, report);
 }
 
 export async function getAllReports(): Promise<BugReport[]> {
-  const keys = await redis.keys("report:id:*");
+  const keys = await redis2.keys("report:id:*");
   if (!keys || keys.length === 0) return [];
-  const reports = await Promise.all(keys.map((k) => redis.get<BugReport>(k)));
+  const reports = await Promise.all(keys.map((k) => redis2.get<BugReport>(k)));
   return reports
     .filter((r): r is BugReport => r !== null)
     .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
