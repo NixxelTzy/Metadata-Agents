@@ -1,7 +1,6 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { verifyToken } from "@/lib/auth";
 import { getRedisConfig, getRedisConfig2 } from "@/lib/config";
-import { cookies } from "next/headers";
 
 const ADMIN_EMAIL = "nixxeltzy@gmail.com";
 
@@ -153,15 +152,14 @@ async function fetchDbStats(url: string, token: string, name: string) {
 }
 
 // ── Route Handler ─────────────────────────────────────────────────────────────
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
-    const cookieStore = await cookies();
-    const token = cookieStore.get("token")?.value;
+    const token = request.cookies.get("auth_token")?.value;
     if (!token) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-    const user = await verifyToken(token);
+    const user = verifyToken(token);
     if (!user || user.email !== ADMIN_EMAIL) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      return NextResponse.json({ error: "Forbidden — Khusus Admin" }, { status: 403 });
     }
 
     const cfg1 = getRedisConfig();
