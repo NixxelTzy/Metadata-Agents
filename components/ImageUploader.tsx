@@ -35,6 +35,7 @@ export default function ImageUploader({ onTokensUpdated }: Props = {}) {
   const [stabilized, setStabilized] = useState(true);
   const [complianceGuard, setComplianceGuard] = useState(true);
   const [platform, setPlatform] = useState<"adobe_stock" | "shutterstock">("adobe_stock");
+  const [csvExtension, setCsvExtension] = useState<"original" | "jpg" | "eps" | "ai">("original");
   const inputRef = useRef<HTMLInputElement>(null);
 
   const addFiles = useCallback(
@@ -270,18 +271,26 @@ export default function ImageUploader({ onTokensUpdated }: Props = {}) {
     let csvRows: string[] = [];
 
     if (platform === "shutterstock") {
-      header = "Filename,Description,Keywords,Categories,Editorial,Mature content,illustration\n";
+      header = "Filename,Description,Keywords,Categories,Editorial,Mature content,illustration\r\n";
       csvRows = images.map((img, idx) => {
         const r = results[idx];
-        const filename = `"${img.file.name.replace(/"/g, '""')}"`;
-        const description = r?.title ? `"${r.title.replace(/"/g, '""')}"` : "\"\"";
+        
+        let rawFilename = img.file.name;
+        if (csvExtension !== "original") {
+          const dotIdx = rawFilename.lastIndexOf(".");
+          const baseName = dotIdx !== -1 ? rawFilename.substring(0, dotIdx) : rawFilename;
+          rawFilename = `${baseName}.${csvExtension}`;
+        }
+        
+        const filename = `"${rawFilename.replace(/[\r\n]+/g, " ").replace(/"/g, '""')}"`;
+        const description = r?.title ? `"${r.title.replace(/[\r\n]+/g, " ").replace(/"/g, '""')}"` : `""`;
 
         const keywordsArr = Array.isArray(r?.keywords) ? r!.keywords : [];
-        const keywords = `"${keywordsArr.join(',').replace(/"/g, '""')}"`;
+        const keywords = `"${keywordsArr.map(k => k.trim()).join(',').replace(/[\r\n]+/g, " ").replace(/"/g, '""')}"`;
 
         const categoriesArr = Array.isArray(r?.categories) ? r!.categories : [];
         const cleanCategories = categoriesArr.filter(Boolean);
-        const categories = `"${cleanCategories.join(',').replace(/"/g, '""')}"`;
+        const categories = `"${cleanCategories.join(',').replace(/[\r\n]+/g, " ").replace(/"/g, '""')}"`;
 
         const editorial = r?.editorial || "no";
         const matureContent = r?.matureContent || "no";
@@ -290,20 +299,28 @@ export default function ImageUploader({ onTokensUpdated }: Props = {}) {
         return [filename, description, keywords, categories, editorial, matureContent, illustration].join(',');
       });
     } else {
-      header = "Filename,Title,Keywords,Category,Releases\n";
+      header = "Filename,Title,Keywords,Category,Releases\r\n";
       csvRows = images.map((img, idx) => {
         const r = results[idx];
-        const filename = `"${img.file.name.replace(/"/g, '""')}"`;
-        const title = r?.title ? `"${r.title.replace(/"/g, '""')}"` : "\"\"";
+        
+        let rawFilename = img.file.name;
+        if (csvExtension !== "original") {
+          const dotIdx = rawFilename.lastIndexOf(".");
+          const baseName = dotIdx !== -1 ? rawFilename.substring(0, dotIdx) : rawFilename;
+          rawFilename = `${baseName}.${csvExtension}`;
+        }
+
+        const filename = `"${rawFilename.replace(/[\r\n]+/g, " ").replace(/"/g, '""')}"`;
+        const title = r?.title ? `"${r.title.replace(/[\r\n]+/g, " ").replace(/"/g, '""')}"` : `""`;
 
         const keywordsArr = Array.isArray(r?.keywords) ? r!.keywords : [];
-        const keywords = `"${keywordsArr.join(',').replace(/"/g, '""')}"`;
+        const keywords = `"${keywordsArr.map(k => k.trim()).join(', ').replace(/[\r\n]+/g, " ").replace(/"/g, '""')}"`;
 
-        return [filename, title, keywords, "", ""].join(',');
+        return [filename, title, keywords, `""`, `""`].join(',');
       });
     }
 
-    const csvContent = header + csvRows.join("\n");
+    const csvContent = header + csvRows.join("\r\n") + "\r\n";
     const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
     const link = document.createElement("a");
     const url = URL.createObjectURL(blob);
@@ -487,16 +504,39 @@ export default function ImageUploader({ onTokensUpdated }: Props = {}) {
 
       {results.length > 0 && (
         <section className="results-section">
-          <div className="results-header">
+          <div className="results-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "12px" }}>
             <h2>Hasil Metadata & Inline Editor Workspace</h2>
-            <button
-              type="button"
-              className="btn btn--secondary"
-              onClick={exportCsv}
-              disabled={!hasGeneratedResults}
-            >
-              ⬇ Export .csv
-            </button>
+            <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                <span style={{ fontSize: "11px", color: "var(--text-muted)", fontWeight: "500" }}>Ubah Ekstensi di CSV:</span>
+                <select
+                  value={csvExtension}
+                  onChange={(e) => setCsvExtension(e.target.value as any)}
+                  style={{
+                    background: "var(--surface)",
+                    border: "1px solid var(--border)",
+                    borderRadius: "4px",
+                    color: "var(--text)",
+                    fontSize: "11px",
+                    padding: "4px 8px",
+                    cursor: "pointer"
+                  }}
+                >
+                  <option value="original">Asli (Original)</option>
+                  <option value="jpg">Force .jpg</option>
+                  <option value="eps">Force .eps</option>
+                  <option value="ai">Force .ai</option>
+                </select>
+              </div>
+              <button
+                type="button"
+                className="btn btn--secondary"
+                onClick={exportCsv}
+                disabled={!hasGeneratedResults}
+              >
+                ⬇ Export .csv
+              </button>
+            </div>
           </div>
 
           <div style={{ display: "flex", flexDirection: "column", gap: "16px", marginTop: "16px" }}>

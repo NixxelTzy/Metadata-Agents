@@ -48,17 +48,17 @@ export function formatKeywords(keywords: string[]): string {
 
 export function exportToCsv(results: Array<{ filename: string; title: string; keywords: string[] }>): void {
   // Header sesuai format Adobe Stock bulk upload
-  const header = ["Filename", "Title", "Keywords"];
+  const header = ["Filename", "Title", "Keywords", "Category", "Releases"];
 
   const rows = results.map((r) => {
-    const filename = `"${r.filename.replace(/"/g, '""')}"`;
-    const title = `"${r.title.replace(/"/g, '""')}"`;
-    const keywords = `"${r.keywords.join(", ").replace(/"/g, '""')}"`;
-    return [filename, title, keywords].join(",");
+    const filename = `"${r.filename.replace(/[\r\n]+/g, " ").replace(/"/g, '""')}"`;
+    const title = `"${r.title.replace(/[\r\n]+/g, " ").replace(/"/g, '""')}"`;
+    const keywords = `"${r.keywords.map(k => k.trim()).join(", ").replace(/[\r\n]+/g, " ").replace(/"/g, '""')}"`;
+    return [filename, title, keywords, `""`, `""`].join(",");
   });
 
-  const csv = [header.join(","), ...rows].join("\r\n");
-  const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
+  const csv = [header.join(","), ...rows].join("\r\n") + "\r\n";
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
