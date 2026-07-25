@@ -230,10 +230,10 @@ export default function Home() {
             <span className="sidebar__token-mini-pct" style={{ color: pctColor }}>{tokenPct}%</span>
           </div>
           <div className="sidebar__token-mini-bar">
-            {(["metadata", "chat", "vector"] as Platform[]).map(p => {
+            {(["metadata", "chat", "vector", "motion"] as Platform[]).map(p => {
               const pu = tokenUsage.byPlatform?.[p];
               const w = tokenUsage.totalTokens > 0 && pu ? (pu.totalTokens / tokenUsage.totalTokens) * tokenPct : 0;
-              const colors: Record<Platform, string> = { metadata: "#4a90e2", chat: "#7b5ae0", vector: "#22c55e" };
+              const colors: Record<Platform, string> = { metadata: "#4a90e2", chat: "#7b5ae0", vector: "#22c55e", motion: "#a78bfa" };
               return <div key={p} style={{ width: `${w}%`, height: "100%", background: colors[p], transition: "width 0.5s ease" }} />;
             })}
             <div style={{ flex: 1 }} />
@@ -289,10 +289,10 @@ export default function Home() {
                   <span className="sidebar__token-pct" style={{ color: pctColor }}>{tokenPct}%</span>
                 </div>
                 <div className="sidebar__token-bar" style={{ display: "flex", gap: 1, overflow: "hidden" }}>
-                  {(["metadata", "chat", "vector"] as Platform[]).map(p => {
+                  {(["metadata", "chat", "vector", "motion"] as Platform[]).map(p => {
                     const pu = tokenUsage.byPlatform?.[p];
                     const w = tokenUsage.totalTokens > 0 && pu ? (pu.totalTokens / tokenUsage.totalTokens) * tokenPct : 0;
-                    const colors: Record<Platform, string> = { metadata: "#4a90e2", chat: "#7b5ae0", vector: "#22c55e" };
+                    const colors: Record<Platform, string> = { metadata: "#4a90e2", chat: "#7b5ae0", vector: "#22c55e", motion: "#a78bfa" };
                     return <div key={p} style={{ width: `${w}%`, height: "100%", background: colors[p], transition: "width 0.4s" }} />;
                   })}
                   <div style={{ flex: 1, background: "var(--border)" }} />
@@ -314,10 +314,10 @@ export default function Home() {
 
                 {tokenUsage.byPlatform && tokenUsage.totalTokens > 0 && (
                   <div style={{ marginTop: 8, display: "flex", flexDirection: "column", gap: 4 }}>
-                    {(["metadata", "chat", "vector"] as Platform[]).map(p => {
+                    {(["metadata", "chat", "vector", "motion"] as Platform[]).map(p => {
                       const pu = tokenUsage.byPlatform![p];
                       if (!pu || pu.totalTokens === 0) return null;
-                      const colors: Record<Platform, string> = { metadata: "#4a90e2", chat: "#7b5ae0", vector: "#22c55e" };
+                      const colors: Record<Platform, string> = { metadata: "#4a90e2", chat: "#7b5ae0", vector: "#22c55e", motion: "#a78bfa" };
                       return (
                         <div key={p} className="sidebar__token-platform">
                           <span className="sidebar__token-platform-label" style={{ color: colors[p] }}>{getPlatformLabel(p)}</span>
@@ -424,7 +424,7 @@ export default function Home() {
           ) : activeTab === "watermark" ? (
             <WatermarkRemover />
           ) : activeTab === "motion" ? (
-            <MotionStudio />
+            <MotionStudio onTokensUpdated={refreshTokens} />
           ) : activeTab === "research" ? (
             <ResearchPanel />
           ) : activeTab === "vector" ? (

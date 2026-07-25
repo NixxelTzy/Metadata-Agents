@@ -562,7 +562,7 @@ export default function VectorCreator({ onTokensUpdated }: VectorCreatorProps = 
                   <div style={{ display: "flex", height: 6, borderRadius: 4, overflow: "hidden", gap: 1, marginBottom: 12 }}>
                     {platforms.map(p => {
                       const w = usage.totalTokens > 0 ? (usage.byPlatform[p].totalTokens / usage.totalTokens) * 100 : 0;
-                      const colors: Record<Platform, string> = { metadata: "#4a90e2", chat: "#7b5ae0", vector: "#16a34a" };
+                      const colors: Record<Platform, string> = { metadata: "#4a90e2", chat: "#7b5ae0", vector: "#16a34a", motion: "#a78bfa" };
                       return <div key={p} style={{ width: `${w}%`, background: colors[p], transition: "width 0.5s" }} />;
                     })}
                   </div>
@@ -585,7 +585,7 @@ export default function VectorCreator({ onTokensUpdated }: VectorCreatorProps = 
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(240px,1fr))", gap: 12 }}>
                   {platforms.map(p => {
                     const pu = usage.byPlatform[p];
-                    const colors: Record<Platform, string> = { metadata: "#4a90e2", chat: "#7b5ae0", vector: "#16a34a" };
+                    const colors: Record<Platform, string> = { metadata: "#4a90e2", chat: "#7b5ae0", vector: "#16a34a", motion: "#a78bfa" };
                     const pPct = usage.totalTokens > 0 ? Math.round((pu.totalTokens / usage.totalTokens) * 100) : 0;
                     return (
                       <div key={p} style={{ background: "var(--surface)", border: `1px solid ${colors[p]}33`, borderRadius: 12, padding: 16 }}>

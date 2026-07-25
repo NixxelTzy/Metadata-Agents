@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import JSZip from "jszip";
+import { addUsage } from "@/lib/tokenStore";
 
 // ── Resolution Map ─────────────────────────────────────────────────────────────
 const RESOLUTION_MAP = {
@@ -270,7 +271,7 @@ function SettingGroup({
 }
 
 // ── Main Component ─────────────────────────────────────────────────────────────
-export default function MotionStudio() {
+export default function MotionStudio({ onTokensUpdated }: { onTokensUpdated?: () => void } = {}) {
   const [prompt, setPrompt] = useState("");
   const [fps, setFps] = useState<30 | 60>(30);
   const [resolution, setResolution] = useState<"1K" | "2K" | "4K">("1K");
@@ -350,10 +351,14 @@ export default function MotionStudio() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ prompt, fps, resolution, duration, renderMode }),
       });
-      const data = (await res.json()) as { code?: string; error?: string };
+      const data = (await res.json()) as { code?: string; usage?: { promptTokens: number; completionTokens: number }; error?: string };
       if (!res.ok) throw new Error(data.error ?? "Gagal generate animasi");
       if (!data.code) throw new Error("Kode animasi kosong dari server");
       setGeneratedCode(data.code);
+      if (data.usage) {
+        addUsage(data.usage.promptTokens, data.usage.completionTokens, "motion");
+        onTokensUpdated?.();
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Terjadi kesalahan");
     } finally {

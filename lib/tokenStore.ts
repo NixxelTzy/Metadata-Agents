@@ -10,7 +10,7 @@
 const STORAGE_KEY = "groq_token_usage";
 const DAILY_LIMIT = 100_000; // token per hari (referensi)
 
-export type Platform = "metadata" | "chat" | "vector";
+export type Platform = "metadata" | "chat" | "vector" | "motion";
 
 export interface PlatformUsage {
   promptTokens: number;
@@ -46,6 +46,7 @@ function emptyUsage(): DailyUsage {
       metadata: emptyPlatform(),
       chat: emptyPlatform(),
       vector: emptyPlatform(),
+      motion: emptyPlatform(),
     },
   };
 }
@@ -66,11 +67,12 @@ export function getUsage(): DailyUsage {
           metadata: emptyPlatform(),
           chat: emptyPlatform(),
           vector: emptyPlatform(),
+          motion: emptyPlatform(),
         },
       };
     }
     // Ensure all platform keys exist
-    const platforms: Platform[] = ["metadata", "chat", "vector"];
+    const platforms: Platform[] = ["metadata", "chat", "vector", "motion"];
     for (const p of platforms) {
       if (!parsed.byPlatform[p]) parsed.byPlatform[p] = emptyPlatform();
     }
@@ -86,10 +88,10 @@ export function addUsage(
   platform: Platform = "metadata"
 ): DailyUsage {
   if (typeof window === "undefined") {
-    return { date: today(), promptTokens, completionTokens, totalTokens: promptTokens + completionTokens, byPlatform: { metadata: emptyPlatform(), chat: emptyPlatform(), vector: emptyPlatform() } };
+    return { date: today(), promptTokens, completionTokens, totalTokens: promptTokens + completionTokens, byPlatform: { metadata: emptyPlatform(), chat: emptyPlatform(), vector: emptyPlatform(), motion: emptyPlatform() } };
   }
   const current = getUsage();
-  const prev = current.byPlatform[platform];
+  const prev = current.byPlatform[platform] || emptyPlatform();
   const updated: DailyUsage = {
     date: today(),
     promptTokens: current.promptTokens + promptTokens,
@@ -148,6 +150,7 @@ export function getPlatformLabel(platform: Platform): string {
     metadata: "🏷️ Metadata",
     chat: "🤖 AI Chat",
     vector: "🎨 Vector",
+    motion: "🎬 Motion",
   };
   return labels[platform];
 }

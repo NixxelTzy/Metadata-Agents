@@ -61,7 +61,11 @@ Make it visually stunning and perfectly looping.`;
     let code = result.text.trim();
     code = code.replace(/^```[a-z]*\n?/i, '').replace(/```\s*$/i, '').trim();
 
-    return NextResponse.json({ code, modelUsed: result.modelUsed });
+    return NextResponse.json({
+      code,
+      modelUsed: result.modelUsed,
+      usage: result.usage,
+    });
   } catch (error) {
     console.error('Motion generate error:', error);
     const msg = error instanceof Error ? error.message : 'Server error';

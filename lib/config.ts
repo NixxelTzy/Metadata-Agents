@@ -16,14 +16,31 @@ export function getGroqApiKeys(): string[] {
     const fallback = process.env.GROQ_API_KEY;
     if (fallback?.trim()) keys.push(fallback.trim());
 
-    // Custom key alias (buat fitur riset)
+    // Custom key alias (buat fitur riset & motion)
     const risetKey = process.env.GROQ_API_KEY_RISET;
     if (risetKey?.trim()) keys.push(risetKey.trim());
+
+    const motionKey = process.env.GROQ_API_KEY_MOTION;
+    if (motionKey?.trim()) keys.push(motionKey.trim());
   }
   if (keys.length === 0) {
     console.warn("[WARN] Tidak ada GROQ_API_KEY yang ditemukan. Set di environment variables.");
   }
   return keys;
+}
+
+/**
+ * Groq API key KHUSUS untuk Motion Studio.
+ * Membaca GROQ_API_KEY_MOTION secara prioritas, fallback ke general key.
+ */
+export function getGroqMotionApiKey(): string {
+  const motionKey = process.env.GROQ_API_KEY_MOTION;
+  if (motionKey?.trim()) return motionKey.trim();
+
+  const generalKeys = getGroqApiKeys();
+  if (generalKeys.length > 0) return generalKeys[0]!;
+
+  throw new Error("Groq API key untuk Motion Studio tidak tersedia. Set GROQ_API_KEY atau GROQ_API_KEY_MOTION di env.");
 }
 
 /**
