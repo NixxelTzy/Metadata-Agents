@@ -105,3 +105,62 @@ export async function getReportsByUserId(userId: string): Promise<BugReport[]> {
   return all.filter((r) => r.userId === userId);
 }
 
+// ── User Activity ─────────────────────────────────────────────────────────────
+
+export interface UserActivity {
+  userId: string;
+  email: string;
+  username: string;
+  lastSeen: string; // ISO date string
+  currentFeature: string; // e.g. "metadata", "upscale", "motion"
+}
+
+export async function updateUserActivity(
+  userId: string,
+  email: string,
+  username: string,
+  feature: string
+): Promise<void> {
+  const activity: UserActivity = {
+    userId,
+    email,
+    lastSeen: new Date().toISOString(),
+    currentFeature: feature,
+    username,
+  };
+  // TTL 86400 = 24 hours (so we can show "last seen X days ago" up to a day, not just 2 min)
+  // We use a SEPARATE key with long TTL for historical last-seen
+  await redis.set(`activity:user:${userId}`, activity, { ex: 86400 * 30 });
+  // ALSO store a short-TTL key for "currently online" detection (2 min = 120 sec)
+  await redis.set(`online:user:${userId}`, { userId, feature, lastSeen: activity.lastSeen }, { ex: 120 });
+}
+
+export async function getUserActivity(userId: string): Promise<UserActivity | null> {
+  return redis.get<UserActivity>(`activity:user:${userId}`);
+}
+
+export async function getOnlineStatus(userId: string): Promise<{ feature: string; lastSeen: string } | null> {
+  return redis.get<{ feature: string; lastSeen: string }>(`online:user:${userId}`);
+}
+
+export async function getAllUserActivities(): Promise<UserActivity[]> {
+  const keys = await redis.keys('activity:user:*');
+  if (!keys || keys.length === 0) return [];
+  const activities = await Promise.all(keys.map((k) => redis.get<UserActivity>(k)));
+  return activities.filter((a): a is UserActivity => a !== null);
+}
+
+export async function getAllOnlineUsers(): Promise<Record<string, { feature: string; lastSeen: string }>> {
+  const keys = await redis.keys('online:user:*');
+  if (!keys || keys.length === 0) return {};
+  const result: Record<string, { feature: string; lastSeen: string }> = {};
+  await Promise.all(
+    keys.map(async (k) => {
+      const userId = k.replace('online:user:', '');
+      const data = await redis.get<{ feature: string; lastSeen: string }>(k);
+      if (data) result[userId] = data;
+    })
+  );
+  return result;
+}
+

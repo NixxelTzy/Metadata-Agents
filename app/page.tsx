@@ -12,6 +12,7 @@ import VectorCreator from "@/components/VectorCreator";
 import FeedbackPanel from "@/components/FeedbackPanel";
 import AdminMessagesPanel from "@/components/AdminMessagesPanel";
 import StoragePanel from "@/components/StoragePanel";
+import MotionStudio from "@/components/MotionStudio";
 import { useDevice } from "@/lib/useDevice";
 import { useRouter } from "next/navigation";
 import {
@@ -20,7 +21,7 @@ import {
   estimateCost, type Platform,
 } from "@/lib/tokenStore";
 
-type Tab = "metadata" | "chat" | "research" | "vector" | "upscale" | "watermark" | "accounts" | "feedback" | "admin-messages" | "storage";
+type Tab = "metadata" | "chat" | "research" | "vector" | "upscale" | "watermark" | "accounts" | "feedback" | "admin-messages" | "storage" | "motion";
 const ADMIN_EMAIL = "nixxeltzy@gmail.com";
 
 const TAB_CONFIG: { id: Tab; icon: string; label: string; desc: string; color: string }[] = [
@@ -30,6 +31,7 @@ const TAB_CONFIG: { id: Tab; icon: string; label: string; desc: string; color: s
   { id: "research",  icon: "🔎", label: "Riset",        desc: "Keyword Research", color: "#7b5ae0" },
   { id: "vector",    icon: "✨", label: "Vector Ideas", desc: "AI Ideas Gen",    color: "#22c55e" },
   { id: "chat",      icon: "🤖", label: "AI Chat",      desc: "Groq Assistant",   color: "#f59e0b" },
+  { id: "motion",    icon: "🎬", label: "Motion Studio", desc: "AI Canvas Animation", color: "#a78bfa" },
   { id: "feedback",  icon: "💬", label: "Lapor & Usulan", desc: "Kirim Bug & Usulan Fitur", color: "#ec4899" },
   { id: "accounts",  icon: "🛡️", label: "Accounts",    desc: "Account Checker",  color: "#ef4444" },
   { id: "admin-messages", icon: "📬", label: "Pesan & Broadcast", desc: "Feedback & Mass Email", color: "#f59e0b" },
@@ -55,6 +57,7 @@ export default function Home() {
   const [tokenPct, setTokenPct] = useState(() => getUsagePercent());
   const device = useDevice();
   const profileRef = useRef<HTMLDivElement>(null);
+  const heartbeatRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
     fetch("/api/auth/me")
@@ -62,6 +65,28 @@ export default function Home() {
       .then((d: { user?: UserInfo }) => { if (d.user) setUser(d.user); })
       .catch(() => {});
   }, []);
+
+  // ── Heartbeat: kirim aktivitas user ke server setiap 30 detik ──────────────
+  useEffect(() => {
+    if (!user) return;
+    const sendHeartbeat = (feature: string) => {
+      fetch("/api/user/activity", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ feature }),
+      }).catch(() => {});
+    };
+    // Kirim langsung saat tab berubah atau user pertama kali load
+    sendHeartbeat(activeTab);
+    // Setup interval 30 detik
+    if (heartbeatRef.current) clearInterval(heartbeatRef.current);
+    heartbeatRef.current = setInterval(() => {
+      sendHeartbeat(activeTab);
+    }, 30000);
+    return () => {
+      if (heartbeatRef.current) clearInterval(heartbeatRef.current);
+    };
+  }, [user, activeTab]);
 
   useEffect(() => {
     if (profileOpen) {
@@ -398,6 +423,8 @@ export default function Home() {
             <ImageUpscaler />
           ) : activeTab === "watermark" ? (
             <WatermarkRemover />
+          ) : activeTab === "motion" ? (
+            <MotionStudio />
           ) : activeTab === "research" ? (
             <ResearchPanel />
           ) : activeTab === "vector" ? (

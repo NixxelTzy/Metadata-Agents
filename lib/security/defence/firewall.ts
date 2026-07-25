@@ -982,11 +982,12 @@ async function layer7BusinessLogic(ip: string, endpoint: string, method: string,
   }
 
   // 7c. Excessive AI resource consumption
-  if (endpoint.startsWith("/api/generate") || endpoint.startsWith("/api/research")) {
+  // Skip this check for authenticated users — they have full access
+  if (!userId && (endpoint.startsWith("/api/generate") || endpoint.startsWith("/api/research"))) {
     const aiCount = await fwIncr(FW.aiGenCount(ip), 600);
     if (aiCount > 25) {
       score += 40;
-      signals.push({ type: "anomaly", severity: "high", confidence: 0.88, detail: `Excessive AI usage: ${aiCount} requests in 10min` });
+      signals.push({ type: "anomaly", severity: "high", confidence: 0.88, detail: `Excessive AI usage (unauthenticated): ${aiCount} requests in 10min` });
       detail += `AI abuse (${aiCount}). `;
     } else if (aiCount > 15) {
       score += 15;

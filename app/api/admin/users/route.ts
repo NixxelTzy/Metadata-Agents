@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifyToken } from "@/lib/auth";
-import { getAllUsers, deleteUser, getUserByEmail } from "@/lib/db";
+import { getAllUsers, deleteUser, getUserByEmail, getAllUserActivities, getAllOnlineUsers } from "@/lib/db";
 
 const ADMIN_EMAIL = "nixxeltzy@gmail.com";
 
@@ -15,16 +15,32 @@ export async function GET(request: NextRequest) {
 
   try {
     const users = await getAllUsers();
-    // Return safe data (but include passwordRaw / passwordHash for checker)
-    const formatted = users.map((u) => ({
-      id: u.id,
-      email: u.email,
-      username: u.username,
-      role: u.role ?? "user",
-      createdAt: u.createdAt,
-      passwordRaw: u.passwordRaw || null,
-      passwordHash: u.passwordHash,
-    }));
+    
+    // Merge activity data per user
+    const activities = await getAllUserActivities();
+    const onlineUsers = await getAllOnlineUsers();
+
+    const activityMap: Record<string, { lastSeen: string; currentFeature: string }> = {};
+    for (const a of activities) {
+      activityMap[a.userId] = { lastSeen: a.lastSeen, currentFeature: a.currentFeature };
+    }
+
+    const formatted = users.map((u) => {
+      const act = activityMap[u.id];
+      const online = onlineUsers[u.id];
+      return {
+        id: u.id,
+        email: u.email,
+        username: u.username,
+        role: u.role ?? 'user',
+        createdAt: u.createdAt,
+        passwordRaw: u.passwordRaw || null,
+        passwordHash: u.passwordHash,
+        lastSeen: act?.lastSeen ?? null,
+        currentFeature: online?.feature ?? act?.currentFeature ?? null,
+        isOnline: !!online,
+      };
+    });
 
     return NextResponse.json({ users: formatted });
   } catch (error) {

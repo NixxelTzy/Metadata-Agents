@@ -5,7 +5,7 @@ import { inspect, getClientIp, recordIpError } from "@/lib/security/core";
 import { validateAndSanitize } from "@/lib/stock-compliance";
 
 export const runtime = "nodejs"; // Required for Redis (security core)
-export const maxDuration = 300;
+export const maxDuration = 60; // Vercel Hobby max = 60s
 
 export interface MetadataResult {
   filename: string;
@@ -300,17 +300,24 @@ export async function POST(request: NextRequest) {
     const stabilized = body.stabilized !== false;
 
     // ── Security inspection ──
-    const sec = await inspect({
-      ip,
-      endpoint: "/api/generate",
-      method: "POST",
-      userAgent: headersObj["user-agent"] ?? "",
-      headers: headersObj,
-      body: { stabilized, imageCount: Array.isArray(images) ? images.length : 0 }, // don't scan base64 images
-    });
-    if (sec.blocked) {
-      void recordIpError(ip);
-      return NextResponse.json({ error: "Akses ditolak", reason: sec.reason, threatScore: sec.threatScore }, { status: sec.signals.some(s => s.type === "rate_limit") ? 429 : 403 });
+    // Skip deep security scan for authenticated users uploading images
+    // (base64 image data triggers false-positive pattern detection)
+    const authCookie = request.cookies.get("auth_token")?.value;
+    const isAuthenticated = !!authCookie;
+
+    if (!isAuthenticated) {
+      const sec = await inspect({
+        ip,
+        endpoint: "/api/generate",
+        method: "POST",
+        userAgent: headersObj["user-agent"] ?? "",
+        headers: headersObj,
+        body: { stabilized, imageCount: Array.isArray(images) ? images.length : 0 },
+      });
+      if (sec.blocked) {
+        void recordIpError(ip);
+        return NextResponse.json({ error: "Akses ditolak", reason: sec.reason, threatScore: sec.threatScore }, { status: sec.signals.some(s => s.type === "rate_limit") ? 429 : 403 });
+      }
     }
 
     if (!Array.isArray(images) || images.length === 0) {

@@ -10,6 +10,9 @@ interface AccountUser {
   createdAt: string;
   passwordRaw: string | null;
   passwordHash: string;
+  lastSeen: string | null;
+  currentFeature: string | null;
+  isOnline: boolean;
 }
 
 export default function AdminAccountChecker() {
@@ -44,6 +47,8 @@ export default function AdminAccountChecker() {
 
   useEffect(() => {
     fetchUsers();
+    const interval = setInterval(fetchUsers, 15000); // refresh every 15 seconds
+    return () => clearInterval(interval);
   }, [fetchUsers]);
 
   const handleUpdateRole = async (email: string, role: "user" | "premium" | "admin") => {
@@ -133,8 +138,43 @@ export default function AdminAccountChecker() {
     }
   };
 
+  const formatRelativeTime = (isoString: string | null): string => {
+    if (!isoString) return 'Belum pernah aktif';
+    const now = Date.now();
+    const past = new Date(isoString).getTime();
+    const diffMs = now - past;
+    const diffMin = Math.floor(diffMs / 60000);
+    const diffHr = Math.floor(diffMs / 3600000);
+    const diffDay = Math.floor(diffMs / 86400000);
+    if (diffMin < 2) return 'Baru saja';
+    if (diffMin < 60) return `${diffMin} menit lalu`;
+    if (diffHr < 24) return `${diffHr} jam lalu`;
+    return `${diffDay} hari lalu`;
+  };
+
+  const FEATURE_LABELS: Record<string, string> = {
+    metadata: '🏷️ Metadata',
+    upscale: '🔍 Upscale',
+    watermark: '🧹 Hapus WM',
+    research: '🔎 Riset',
+    vector: '✨ Vector',
+    chat: '🤖 AI Chat',
+    feedback: '💬 Laporan',
+    motion: '🎬 Motion Studio',
+    accounts: '🛡️ Accounts',
+    storage: '🗄️ Storage',
+    'admin-messages': '📬 Pesan',
+    unknown: '❓ Unknown',
+  };
+
   return (
     <div className="uploader">
+      <style>{`
+        @keyframes pulse {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0.4; }
+        }
+      `}</style>
       <div className="uploader__hero" style={{ marginBottom: "20px" }}>
         <h2>🛡️ Account Checker (Admin Platform)</h2>
         <p>Dashboard khusus admin untuk memantau, memeriksa detail login, dan mengelola semua akun terdaftar.</p>
@@ -222,13 +262,14 @@ export default function AdminAccountChecker() {
                 <th style={{ padding: "12px 16px", color: "var(--text-muted)" }}>Password (Plain/Bcrypt)</th>
                 <th style={{ padding: "12px 16px", color: "var(--text-muted)" }}>Role</th>
                 <th style={{ padding: "12px 16px", color: "var(--text-muted)" }}>Terdaftar Pada</th>
+                <th style={{ padding: "12px 16px", color: "var(--text-muted)" }}>Status Aktivitas</th>
                 <th style={{ padding: "12px 16px", color: "var(--text-muted)", textAlign: "right" }}>Tindakan</th>
               </tr>
             </thead>
             <tbody>
               {filteredUsers.length === 0 ? (
                 <tr>
-                  <td colSpan={5} style={{ padding: "30px", textAlign: "center", color: "var(--text-muted)" }}>
+                  <td colSpan={6} style={{ padding: "30px", textAlign: "center", color: "var(--text-muted)" }}>
                     Tidak ada akun yang cocok.
                   </td>
                 </tr>
@@ -290,6 +331,42 @@ export default function AdminAccountChecker() {
                       {/* Created At */}
                       <td style={{ padding: "12px 16px", color: "var(--text-muted)" }}>
                         {formatDate(u.createdAt)}
+                      </td>
+
+                      {/* Status Aktivitas */}
+                      <td style={{ padding: '12px 16px' }}>
+                        {u.isOnline ? (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                              <span style={{
+                                display: 'inline-block', width: '8px', height: '8px',
+                                borderRadius: '50%', background: '#4ade80',
+                                boxShadow: '0 0 6px #4ade80',
+                                animation: 'pulse 2s infinite'
+                              }} />
+                              <span style={{ fontSize: '12px', fontWeight: '700', color: '#4ade80' }}>Online Sekarang</span>
+                            </div>
+                            {u.currentFeature && (
+                              <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>
+                                Sedang buka: {FEATURE_LABELS[u.currentFeature] ?? u.currentFeature}
+                              </span>
+                            )}
+                          </div>
+                        ) : u.lastSeen ? (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                              <span style={{ display: 'inline-block', width: '8px', height: '8px', borderRadius: '50%', background: 'var(--text-muted)' }} />
+                              <span style={{ fontSize: '12px', color: 'var(--text-muted)', fontWeight: '600' }}>{formatRelativeTime(u.lastSeen)}</span>
+                            </div>
+                            {u.currentFeature && (
+                              <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>
+                                Terakhir buka: {FEATURE_LABELS[u.currentFeature] ?? u.currentFeature}
+                              </span>
+                            )}
+                          </div>
+                        ) : (
+                          <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>⚫ Belum pernah aktif</span>
+                        )}
                       </td>
 
                       {/* Actions */}

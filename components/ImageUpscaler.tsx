@@ -9,6 +9,7 @@ interface ImageFile {
   id: string;
   name: string;
   size: number;
+  type: 'image';
   preview: string;
   width: number;
   height: number;
@@ -20,6 +21,28 @@ interface ImageFile {
   processingStep?: string;
 }
 
+interface VideoFile {
+  id: string;
+  name: string;
+  size: number;
+  type: 'video';
+  file: File;
+  thumbnailDataUrl: string; // first frame
+  duration: number; // in seconds
+  width: number;
+  height: number;
+  frameCount: number;
+  status: 'idle' | 'processing' | 'success' | 'error';
+  processedFrames?: number;
+  totalFrames?: number;
+  outputZipUrl?: string; // blob URL for download
+  previewOriginalDataUrl?: string; // frame 0 original
+  previewUpscaledDataUrl?: string; // frame 0 upscaled
+  processingStep?: string;
+}
+
+type MediaFile = (ImageFile & { type: 'image' }) | VideoFile;
+
 type UpscaleEngine = "ai_super_res" | "bicubic_crisp" | "bilinear_smooth";
 
 interface EngineProfile {
@@ -27,15 +50,13 @@ interface EngineProfile {
   badge: string;
   description: string;
   smoothing: "high" | "low";
-  multiPass: boolean;   // iterative 2× passes before final
-  sharpen: number;      // 0–100, applied as unsharp mask on final pass
-  denoise: number;      // 0–100, bilateral weight sigma
-  contrast: number;     // CSS filter value (1.0 = neutral)
-  saturation: number;   // CSS filter value (1.0 = neutral)
-  quality: number;      // JPEG output quality 0–100
+  multiPass: boolean;
+  sharpen: number;
+  denoise: number;
+  contrast: number;
+  saturation: number;
+  quality: number;
 }
-
-// ─── Engine Profiles — all parameters applied automatically ────────────────────
 
 const ENGINE_PROFILES: Record<UpscaleEngine, EngineProfile> = {
   ai_super_res: {
@@ -103,13 +124,76 @@ function loadImage(src: string): Promise<HTMLImageElement> {
   });
 }
 
+async function extractVideoFrame(file: File, timeSeconds: number): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const video = document.createElement('video');
+    const url = URL.createObjectURL(file);
+    video.src = url;
+    video.muted = true;
+    video.crossOrigin = 'anonymous';
+    video.onloadeddata = () => {
+      video.currentTime = timeSeconds;
+    };
+    video.onseeked = () => {
+      const canvas = document.createElement('canvas');
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      const ctx = canvas.getContext('2d')!;
+      ctx.drawImage(video, 0, 0);
+      URL.revokeObjectURL(url);
+      resolve(canvas.toDataURL('image/jpeg', 0.92));
+    };
+    video.onerror = () => { URL.revokeObjectURL(url); reject(new Error('Gagal load video')); };
+    video.load();
+  });
+}
+
+async function getVideoMetadata(file: File): Promise<{ width: number; height: number; duration: number }> {
+  return new Promise((resolve, reject) => {
+    const video = document.createElement('video');
+    const url = URL.createObjectURL(file);
+    video.src = url;
+    video.muted = true;
+    video.onloadedmetadata = () => {
+      const w = video.videoWidth;
+      const h = video.videoHeight;
+      const d = video.duration;
+      URL.revokeObjectURL(url);
+      resolve({ width: w, height: h, duration: d });
+    };
+    video.onerror = () => { URL.revokeObjectURL(url); reject(new Error('Gagal baca metadata video')); };
+    video.load();
+  });
+}
+
+function VideoThumbnail({ file }: { file: File }) {
+  const [url, setUrl] = useState("");
+  useEffect(() => {
+    const objectUrl = URL.createObjectURL(file);
+    setUrl(objectUrl);
+    return () => URL.revokeObjectURL(objectUrl);
+  }, [file]);
+  
+  if (!url) return null;
+  return (
+    <video
+      src={url}
+      style={{
+        width: "54px",
+        height: "54px",
+        objectFit: "cover",
+        borderRadius: "6px",
+        border: "1px solid var(--border)",
+        display: "block",
+      }}
+      muted
+      playsInline
+    />
+  );
+}
+
 // ─── Image Processing Pipeline ─────────────────────────────────────────────────
 
-/**
- * Bilateral-style edge-preserving denoise.
- * Uses a range-weighted Gaussian kernel: neighbors with similar color are blended,
- * while edges (high color delta) are preserved.
- */
 function applyBilateralDenoise(
   ctx: CanvasRenderingContext2D,
   w: number,
@@ -148,10 +232,6 @@ function applyBilateralDenoise(
   ctx.putImageData(imgData, 0, 0);
 }
 
-/**
- * Unsharp masking: amplifies high-frequency edge detail.
- * Uses a discrete Laplacian kernel blended by `amount`.
- */
 function applyUnsharpMask(
   ctx: CanvasRenderingContext2D,
   w: number,
@@ -183,10 +263,6 @@ function applyUnsharpMask(
   ctx.putImageData(imgData, 0, 0);
 }
 
-/**
- * Draw one scale step: resizes `src` to (targetW × targetH) on a fresh canvas.
- * Applies contrast + saturation CSS filter during draw for color grading.
- */
 function drawScaleStep(
   src: HTMLImageElement | HTMLCanvasElement,
   targetW: number,
@@ -205,22 +281,6 @@ function drawScaleStep(
   return canvas;
 }
 
-/**
- * Full upscale pipeline for one image.
- *
- * ── AI Super Resolution (multi-pass) ──────────────────────────────────────
- *   Doubles resolution iteratively (2×, 2×, …) until target is reached.
- *   Bilateral denoise applied between intermediate passes to prevent
- *   staircase artifacts. Unsharp mask applied only on the final pass.
- *
- * ── Bicubic Crisp (single-pass) ───────────────────────────────────────────
- *   One jump to target with high-quality smoothing, then strong sharpening
- *   and mild denoise for razor-sharp photography results.
- *
- * ── Bilinear Smooth (single-pass) ─────────────────────────────────────────
- *   Gentle single jump with soft interpolation. No sharpening — preserves
- *   the clean look of vector / illustrative content.
- */
 async function runUpscalePipeline(
   imgEl: HTMLImageElement,
   srcW: number,
@@ -233,7 +293,6 @@ async function runUpscalePipeline(
   const profile = ENGINE_PROFILES[engine];
 
   if (profile.multiPass) {
-    // ── Iterative 2× passes ───────────────────────────────────────────────
     let cur: HTMLImageElement | HTMLCanvasElement = imgEl;
     let curW = srcW;
     let curH = srcH;
@@ -248,7 +307,6 @@ async function runUpscalePipeline(
       const isIntermediate = nextW < targetW || nextH < targetH;
 
       if (isIntermediate) {
-        // Light denoise between passes to reduce blocky artifacts
         const ctx = stepped.getContext("2d")!;
         applyBilateralDenoise(ctx, nextW, nextH, Math.round(profile.denoise * 0.55));
       }
@@ -257,10 +315,9 @@ async function runUpscalePipeline(
       curW = nextW;
       curH = nextH;
       pass++;
-      await new Promise((r) => setTimeout(r, 0)); // yield to keep UI responsive
+      await new Promise((r) => setTimeout(r, 0));
     }
 
-    // Final pass: ensure exact target size, then denoise + sharpen
     onStep("Final pass: denoise & unsharp masking...");
     const final = drawScaleStep(cur, targetW, targetH, profile);
     const ctx = final.getContext("2d")!;
@@ -270,7 +327,6 @@ async function runUpscalePipeline(
     applyUnsharpMask(ctx, targetW, targetH, profile.sharpen);
     return final.toDataURL("image/jpeg", profile.quality / 100);
   } else {
-    // ── Single pass ──────────────────────────────────────────────────────
     onStep(`Upscaling ${srcW}×${srcH} → ${targetW}×${targetH}px...`);
     const canvas = drawScaleStep(imgEl, targetW, targetH, profile);
     const ctx = canvas.getContext("2d")!;
@@ -281,6 +337,68 @@ async function runUpscalePipeline(
     return canvas.toDataURL("image/jpeg", profile.quality / 100);
   }
 }
+
+async function processVideoFile(
+  videoFile: VideoFile,
+  targetSize: number,
+  engine: UpscaleEngine,
+  onStep: (step: string, processed?: number, total?: number) => void
+): Promise<{ zipUrl: string; upscaledFrame0: string; originalFrame0: string }> {
+  const fps = 30;
+  let totalFrames = Math.ceil(videoFile.duration * fps);
+  if (totalFrames > 300) {
+    totalFrames = 300; // max 300 frames
+  }
+
+  const zip = new JSZip();
+  let upscaledFrame0 = "";
+  let originalFrame0 = "";
+
+  for (let i = 0; i < totalFrames; i++) {
+    const time = i / fps;
+    onStep(`Mengekstrak frame ${i + 1}/${totalFrames}`, i, totalFrames);
+    const frameDataUrl = await extractVideoFrame(videoFile.file, time);
+    
+    if (i === 0) originalFrame0 = frameDataUrl;
+
+    const imgEl = await loadImage(frameDataUrl);
+    const { naturalWidth: srcW, naturalHeight: srcH } = imgEl;
+    const maxEdge = Math.max(srcW, srcH);
+    let targetW = srcW;
+    let targetH = srcH;
+    if (maxEdge < targetSize) {
+      const scale = targetSize / maxEdge;
+      targetW = Math.round(srcW * scale);
+      targetH = Math.round(srcH * scale);
+    }
+
+    onStep(`Upscale frame ${i + 1}/${totalFrames}`, i, totalFrames);
+    const upscaledDataUrl = await runUpscalePipeline(
+      imgEl,
+      srcW,
+      srcH,
+      targetW,
+      targetH,
+      engine,
+      () => {}
+    );
+    
+    if (i === 0) upscaledFrame0 = upscaledDataUrl;
+
+    const blob = dataURLtoBlob(upscaledDataUrl);
+    const frameName = `frame_${i.toString().padStart(4, "0")}.jpg`;
+    zip.file(frameName, blob);
+
+    await new Promise((r) => setTimeout(r, 10));
+  }
+
+  onStep("Membuat file ZIP...", totalFrames, totalFrames);
+  const zipBlob = await zip.generateAsync({ type: "blob" });
+  const zipUrl = URL.createObjectURL(zipBlob);
+
+  return { zipUrl, upscaledFrame0, originalFrame0 };
+}
+
 
 // ─── SliderCompare Component ───────────────────────────────────────────────────
 
@@ -334,15 +452,12 @@ function SliderCompare({
       onMouseDown={(e) => { e.preventDefault(); setDragging(true); updatePos(e.clientX); }}
       onTouchStart={(e) => { setDragging(true); if (e.touches[0]) updatePos(e.touches[0].clientX); }}
     >
-      {/* ── Upscaled: sets natural container height ── */}
       <img
         src={upscaled}
         alt="Upscaled"
         draggable={false}
         style={{ display: "block", width: "100%", height: "auto", pointerEvents: "none" }}
       />
-
-      {/* ── Original overlay: clipPath keeps left portion visible ── */}
       <img
         src={original}
         alt="Original"
@@ -358,8 +473,6 @@ function SliderCompare({
           pointerEvents: "none",
         }}
       />
-
-      {/* ── Divider + handle ── */}
       <div
         style={{
           position: "absolute",
@@ -396,8 +509,6 @@ function SliderCompare({
           ⇔
         </div>
       </div>
-
-      {/* ── Labels ── */}
       <div style={{ position: "absolute", top: 8, left: 8, background: "rgba(0,0,0,0.72)", color: "white", padding: "3px 9px", borderRadius: "4px", fontSize: "10px", fontWeight: "700", zIndex: 11, pointerEvents: "none", letterSpacing: "0.04em" }}>
         SEBELUM
       </div>
@@ -411,7 +522,7 @@ function SliderCompare({
 // ─── Main Component ────────────────────────────────────────────────────────────
 
 export default function ImageUpscaler() {
-  const [images, setImages] = useState<ImageFile[]>([]);
+  const [images, setImages] = useState<MediaFile[]>([]);
   const [targetSize, setTargetSize] = useState<3000 | 4000 | 8000>(4000);
   const [engine, setEngine] = useState<UpscaleEngine>("ai_super_res");
   const [loading, setLoading] = useState(false);
@@ -428,34 +539,59 @@ export default function ImageUpscaler() {
 
   const addFiles = useCallback(async (files: FileList | File[]) => {
     setError("");
-    const valid = Array.from(files).filter((f) => f.type.startsWith("image/"));
-    if (!valid.length) { setError("Hanya file gambar (JPG, PNG, WEBP) yang didukung."); return; }
+    const valid = Array.from(files).filter(
+      (f) => f.type.startsWith("image/") || f.type.startsWith("video/")
+    );
+    if (!valid.length) {
+      setError("Hanya file gambar dan video yang didukung.");
+      return;
+    }
 
-    const newImgs: ImageFile[] = [];
+    const newMedia: MediaFile[] = [];
     for (const file of valid) {
       try {
-        const dataUrl = await new Promise<string>((res, rej) => {
-          const r = new FileReader();
-          r.onload = (e) => res(e.target!.result as string);
-          r.onerror = rej;
-          r.readAsDataURL(file);
-        });
-        const img = await loadImage(dataUrl);
-        newImgs.push({
-          id: `${file.name}-${Date.now()}-${Math.random()}`,
-          name: file.name,
-          size: file.size,
-          preview: dataUrl,
-          width: img.naturalWidth,
-          height: img.naturalHeight,
-          file,
-          status: "idle",
-        });
+        if (file.type.startsWith("image/")) {
+          const dataUrl = await new Promise<string>((res, rej) => {
+            const r = new FileReader();
+            r.onload = (e) => res(e.target!.result as string);
+            r.onerror = rej;
+            r.readAsDataURL(file);
+          });
+          const img = await loadImage(dataUrl);
+          newMedia.push({
+            id: `${file.name}-${Date.now()}-${Math.random()}`,
+            name: file.name,
+            size: file.size,
+            type: "image",
+            preview: dataUrl,
+            width: img.naturalWidth,
+            height: img.naturalHeight,
+            file,
+            status: "idle",
+          });
+        } else if (file.type.startsWith("video/")) {
+          const meta = await getVideoMetadata(file);
+          const thumb = await extractVideoFrame(file, 0);
+          const frameCount = Math.ceil(meta.duration * 30);
+          newMedia.push({
+            id: `${file.name}-${Date.now()}-${Math.random()}`,
+            name: file.name,
+            size: file.size,
+            type: "video",
+            file,
+            thumbnailDataUrl: thumb,
+            duration: meta.duration,
+            width: meta.width,
+            height: meta.height,
+            frameCount,
+            status: "idle",
+          });
+        }
       } catch {
         setError(`Gagal memuat: ${file.name}`);
       }
     }
-    setImages((prev) => [...prev, ...newImgs]);
+    setImages((prev) => [...prev, ...newMedia]);
   }, []);
 
   const handleDrop = useCallback((e: React.DragEvent) => {
@@ -476,50 +612,76 @@ export default function ImageUpscaler() {
     setModalIndex(null);
 
     for (let i = 0; i < images.length; i++) {
-      const imgFile = images[i]!;
+      const media = images[i]!;
 
       setImages((p) => p.map((item, idx) =>
-        idx === i ? { ...item, status: "processing", processingStep: "Memuat gambar..." } : item
+        idx === i ? { ...item, status: "processing", processingStep: "Memulai...", processedFrames: 0, totalFrames: media.type === 'video' ? Math.min(media.frameCount, 300) : undefined } : item
       ));
 
       try {
-        const imgEl = await loadImage(imgFile.preview);
-        const { naturalWidth: srcW, naturalHeight: srcH } = imgEl;
-        const maxEdge = Math.max(srcW, srcH);
+        if (media.type === 'image') {
+          const imgEl = await loadImage(media.preview);
+          const { naturalWidth: srcW, naturalHeight: srcH } = imgEl;
+          const maxEdge = Math.max(srcW, srcH);
 
-        // Calculate target dimensions maintaining aspect ratio
-        let targetW = srcW;
-        let targetH = srcH;
-        if (maxEdge < targetSize) {
-          const scale = targetSize / maxEdge;
-          targetW = Math.round(srcW * scale);
-          targetH = Math.round(srcH * scale);
-        }
+          let targetW = srcW;
+          let targetH = srcH;
+          if (maxEdge < targetSize) {
+            const scale = targetSize / maxEdge;
+            targetW = Math.round(srcW * scale);
+            targetH = Math.round(srcH * scale);
+          }
 
-        setProgress(`(${i + 1}/${images.length}) Memproses: ${imgFile.name}`);
+          setProgress(`(${i + 1}/${images.length}) Memproses: ${media.name}`);
 
-        const dataUrl = await runUpscalePipeline(
-          imgEl,
-          srcW,
-          srcH,
-          targetW,
-          targetH,
-          engine,
-          (step) =>
-            setImages((p) =>
-              p.map((item, idx) =>
-                idx === i ? { ...item, processingStep: step } : item
+          const dataUrl = await runUpscalePipeline(
+            imgEl,
+            srcW,
+            srcH,
+            targetW,
+            targetH,
+            engine,
+            (step) =>
+              setImages((p) =>
+                p.map((item, idx) =>
+                  idx === i ? { ...item, processingStep: step } : item
+                )
               )
-            )
-        );
+          );
 
-        setImages((p) =>
-          p.map((item, idx) =>
-            idx === i
-              ? { ...item, status: "success", upscaledDataUrl: dataUrl, targetWidth: targetW, targetHeight: targetH, processingStep: undefined }
-              : item
-          )
-        );
+          setImages((p) =>
+            p.map((item, idx) =>
+              idx === i
+                ? { ...item, status: "success", upscaledDataUrl: dataUrl, targetWidth: targetW, targetHeight: targetH, processingStep: undefined }
+                : item
+            )
+          );
+        } else {
+          // Video processing
+          setProgress(`(${i + 1}/${images.length}) Memproses Video: ${media.name}`);
+          const { zipUrl, upscaledFrame0, originalFrame0 } = await processVideoFile(
+            media,
+            targetSize,
+            engine,
+            (step, processed, total) => {
+              setImages((p) =>
+                p.map((item, idx) =>
+                  idx === i
+                    ? { ...item, processingStep: step, processedFrames: processed, totalFrames: total }
+                    : item
+                )
+              );
+            }
+          );
+
+          setImages((p) =>
+            p.map((item, idx) =>
+              idx === i
+                ? { ...item, status: "success", outputZipUrl: zipUrl, previewOriginalDataUrl: originalFrame0, previewUpscaledDataUrl: upscaledFrame0, processingStep: undefined }
+                : item
+            )
+          );
+        }
       } catch (err) {
         console.error(err);
         setImages((p) =>
@@ -532,44 +694,61 @@ export default function ImageUpscaler() {
       await new Promise((r) => setTimeout(r, 80));
     }
 
-    setProgress("✅ Semua gambar berhasil di-upscale!");
+    setProgress("✅ Semua proses berhasil diselesaikan!");
     setLoading(false);
   };
 
   // ── Download handlers ───────────────────────────────────────────────────────
 
-  const handleDownloadSingle = (img: ImageFile) => {
-    if (!img.upscaledDataUrl) return;
-    const a = document.createElement("a");
-    a.href = img.upscaledDataUrl;
-    a.download = `${img.name.replace(/\.[^.]+$/, "")}_upscaled_${resLabel.toLowerCase()}.jpg`;
-    a.click();
+  const handleDownloadSingle = (media: MediaFile) => {
+    if (media.type === 'image' && media.upscaledDataUrl) {
+      const a = document.createElement("a");
+      a.href = media.upscaledDataUrl;
+      a.download = `${media.name.replace(/\.[^.]+$/, "")}_upscaled_${resLabel.toLowerCase()}.jpg`;
+      a.click();
+    } else if (media.type === 'video' && media.outputZipUrl) {
+      const a = document.createElement("a");
+      a.href = media.outputZipUrl;
+      a.download = `${media.name.replace(/\.[^.]+$/, "")}_upscaled_${resLabel.toLowerCase()}_${Date.now()}.zip`;
+      a.click();
+    }
   };
 
   const handleDownloadAll = async () => {
-    const done = images.filter((i) => i.status === "success" && i.upscaledDataUrl);
-    if (!done.length) return;
-    setProgress("📦 Membuat ZIP...");
-    const zip = new JSZip();
-    for (const img of done) {
-      const blob = dataURLtoBlob(img.upscaledDataUrl!);
-      zip.file(`${img.name.replace(/\.[^.]+$/, "")}_upscaled_${resLabel.toLowerCase()}.jpg`, blob);
+    const doneImages = images.filter((i) => i.status === "success" && i.type === 'image' && i.upscaledDataUrl) as (ImageFile & { type: 'image' })[];
+    const doneVideos = images.filter((i) => i.status === "success" && i.type === 'video' && i.outputZipUrl) as VideoFile[];
+    
+    if (!doneImages.length && !doneVideos.length) return;
+    
+    if (doneImages.length > 0) {
+      setProgress("📦 Membuat ZIP untuk gambar...");
+      const zip = new JSZip();
+      for (const img of doneImages) {
+        const blob = dataURLtoBlob(img.upscaledDataUrl!);
+        zip.file(`${img.name.replace(/\.[^.]+$/, "")}_upscaled_${resLabel.toLowerCase()}.jpg`, blob);
+      }
+      const zipBlob = await zip.generateAsync({ type: "blob" });
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(zipBlob);
+      a.download = `upscaled_images_${resLabel.toLowerCase()}_${Date.now()}.zip`;
+      a.click();
     }
-    const zipBlob = await zip.generateAsync({ type: "blob" });
-    const a = document.createElement("a");
-    a.href = URL.createObjectURL(zipBlob);
-    a.download = `upscaled_${resLabel.toLowerCase()}_${Date.now()}.zip`;
-    a.click();
-    setProgress("✅ ZIP berhasil diunduh!");
+
+    for (const vid of doneVideos) {
+      handleDownloadSingle(vid);
+      await new Promise(r => setTimeout(r, 500));
+    }
+    
+    setProgress("✅ Semua file berhasil diunduh!");
   };
 
   // ── Modal navigation ────────────────────────────────────────────────────────
 
-  const successImages = images.filter((i) => i.status === "success" && i.upscaledDataUrl);
+  const successImages = images.filter((i) => i.status === "success" && ((i.type === 'image' && i.upscaledDataUrl) || (i.type === 'video' && i.previewUpscaledDataUrl)));
   const hasSuccess = successImages.length > 0;
   const modalImg = modalIndex !== null ? (successImages[modalIndex] ?? null) : null;
 
-  const openModal = (img: ImageFile) => {
+  const openModal = (img: MediaFile) => {
     const idx = successImages.findIndex((s) => s.id === img.id);
     if (idx !== -1) setModalIndex(idx);
   };
@@ -594,17 +773,15 @@ export default function ImageUpscaler() {
   return (
     <div className="uploader">
 
-      {/* ── Hero ── */}
       <div className="uploader__hero">
-        <h2>🔍 AI Photo Upscaler</h2>
+        <h2>🔍 AI Photo & Video Upscaler</h2>
         <p>
-          Upscale foto ke resolusi <strong>{resLabel}</strong> dengan{" "}
+          Upscale foto & video ke resolusi <strong>{resLabel}</strong> dengan{" "}
           <strong>{profile.label}</strong>. Denoise, sharpening, dan color
           grading dioptimalkan secara otomatis.
         </p>
       </div>
 
-      {/* ── Control Panel: Resolution + Engine ── */}
       <div
         style={{
           display: "grid",
@@ -617,7 +794,6 @@ export default function ImageUpscaler() {
           marginBottom: "24px",
         }}
       >
-        {/* Resolution picker */}
         <div>
           <label
             style={{
@@ -682,7 +858,6 @@ export default function ImageUpscaler() {
           </div>
         </div>
 
-        {/* Engine picker */}
         <div>
           <label
             style={{
@@ -723,7 +898,6 @@ export default function ImageUpscaler() {
                     gap: "12px",
                   }}
                 >
-                  {/* Radio dot */}
                   <div
                     style={{
                       width: "14px",
@@ -782,7 +956,6 @@ export default function ImageUpscaler() {
         </div>
       </div>
 
-      {/* ── Dropzone ── */}
       <section
         className={`dropzone ${dragOver ? "dropzone--active" : ""}`}
         onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
@@ -793,7 +966,7 @@ export default function ImageUpscaler() {
         <input
           ref={inputRef}
           type="file"
-          accept="image/*"
+          accept="image/*,video/mp4,video/webm,video/quicktime,video/x-msvideo,video/x-matroska,video/ogg,video/*"
           multiple
           hidden
           onChange={(e) => {
@@ -803,14 +976,13 @@ export default function ImageUpscaler() {
           disabled={loading}
         />
         <div className="dropzone__icon">🔍</div>
-        <p className="dropzone__title">Seret &amp; lepas foto di sini</p>
+        <p className="dropzone__title">Seret &amp; lepas foto atau video di sini</p>
         <p className="dropzone__subtitle">atau klik untuk memilih file</p>
         <p className="dropzone__hint">
-          JPG · PNG · WEBP · Banyak file sekaligus
+          JPG · PNG · WEBP · MP4 · WebM · MOV · AVI · MKV · GIF · Banyak file
         </p>
       </section>
 
-      {/* ── Status bar ── */}
       {progress && !error && (
         <p className="status status--info" style={{ marginTop: "16px" }}>
           {progress}
@@ -822,10 +994,8 @@ export default function ImageUpscaler() {
         </p>
       )}
 
-      {/* ── Image list ── */}
       {images.length > 0 && (
         <section style={{ marginTop: "24px" }}>
-          {/* Section header */}
           <div
             style={{
               display: "flex",
@@ -844,7 +1014,7 @@ export default function ImageUpscaler() {
                 gap: "8px",
               }}
             >
-              Gambar{" "}
+              File{" "}
               <span className="badge">{images.length}</span>
               {hasSuccess && (
                 <span
@@ -874,7 +1044,7 @@ export default function ImageUpscaler() {
                     cursor: "pointer",
                   }}
                 >
-                  📦 Download ZIP
+                  📦 Download Semua
                 </button>
               )}
               <button
@@ -888,7 +1058,6 @@ export default function ImageUpscaler() {
             </div>
           </div>
 
-          {/* Cards */}
           <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
             {images.map((img) => (
               <div
@@ -907,7 +1076,6 @@ export default function ImageUpscaler() {
                   transition: "border-color 0.2s",
                 }}
               >
-                {/* ── File row ── */}
                 <div
                   style={{
                     display: "flex",
@@ -916,20 +1084,40 @@ export default function ImageUpscaler() {
                     padding: "12px 16px",
                   }}
                 >
-                  {/* Thumbnail */}
                   <div style={{ position: "relative", flexShrink: 0 }}>
-                    <img
-                      src={img.preview}
-                      alt={img.name}
-                      style={{
-                        width: "54px",
-                        height: "54px",
-                        objectFit: "cover",
-                        borderRadius: "6px",
-                        border: "1px solid var(--border)",
-                        display: "block",
-                      }}
-                    />
+                    {img.type === 'video' ? (
+                      <VideoThumbnail file={img.file} />
+                    ) : (
+                      <img
+                        src={img.preview}
+                        alt={img.name}
+                        style={{
+                          width: "54px",
+                          height: "54px",
+                          objectFit: "cover",
+                          borderRadius: "6px",
+                          border: "1px solid var(--border)",
+                          display: "block",
+                        }}
+                      />
+                    )}
+                    {img.type === 'video' && (
+                      <div
+                        style={{
+                          position: "absolute",
+                          top: 4,
+                          left: 4,
+                          background: "rgba(0,0,0,0.7)",
+                          color: "white",
+                          fontSize: "8px",
+                          padding: "2px 4px",
+                          borderRadius: "4px",
+                          fontWeight: "bold",
+                        }}
+                      >
+                        📹 Video
+                      </div>
+                    )}
                     {img.status === "processing" && (
                       <div
                         style={{
@@ -977,7 +1165,6 @@ export default function ImageUpscaler() {
                     )}
                   </div>
 
-                  {/* File info */}
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div
                       style={{
@@ -998,9 +1185,15 @@ export default function ImageUpscaler() {
                       }}
                     >
                       {img.width}×{img.height}px · {formatSize(img.size)}
-                      {img.targetWidth && img.targetHeight && (
+                      {img.type === 'video' && ` · ${Math.round(img.duration)}s · ${img.frameCount} frames`}
+                      {img.type === 'image' && img.targetWidth && img.targetHeight && (
                         <span style={{ color: "#ec4899", marginLeft: "8px" }}>
                           → {img.targetWidth}×{img.targetHeight}px ({resLabel})
+                        </span>
+                      )}
+                      {img.type === 'video' && img.frameCount > 300 && (
+                        <span style={{ color: "#ef4444", marginLeft: "8px" }}>
+                          (Dibatasi max 300 frame)
                         </span>
                       )}
                     </div>
@@ -1013,12 +1206,11 @@ export default function ImageUpscaler() {
                           fontWeight: "600",
                         }}
                       >
-                        ⚙ {img.processingStep}
+                        ⚙ {img.processingStep} {img.type === 'video' && img.processedFrames !== undefined && img.totalFrames !== undefined ? ` (Frame ${img.processedFrames} / ${img.totalFrames})` : ''}
                       </div>
                     )}
                   </div>
 
-                  {/* Actions */}
                   <div
                     style={{
                       flexShrink: 0,
@@ -1112,8 +1304,10 @@ export default function ImageUpscaler() {
                   </div>
                 </div>
 
-                {/* ── Inline slider comparison ── */}
-                {img.status === "success" && img.upscaledDataUrl && (
+                {img.status === "success" && (
+                  (img.type === 'image' && img.upscaledDataUrl) ||
+                  (img.type === 'video' && img.previewOriginalDataUrl && img.previewUpscaledDataUrl)
+                ) && (
                   <div
                     style={{ borderTop: "1px solid var(--border)", padding: "12px 16px" }}
                   >
@@ -1131,8 +1325,8 @@ export default function ImageUpscaler() {
                       {resLabel} Upscaled →
                     </div>
                     <SliderCompare
-                      original={img.preview}
-                      upscaled={img.upscaledDataUrl}
+                      original={img.type === 'image' ? img.preview : img.previewOriginalDataUrl!}
+                      upscaled={img.type === 'image' ? img.upscaledDataUrl! : img.previewUpscaledDataUrl!}
                       label={`${resLabel} UPSCALED`}
                     />
                   </div>
@@ -1141,7 +1335,6 @@ export default function ImageUpscaler() {
             ))}
           </div>
 
-          {/* ── Run button ── */}
           <div style={{ marginTop: "20px" }}>
             <button
               type="button"
@@ -1165,8 +1358,10 @@ export default function ImageUpscaler() {
         </section>
       )}
 
-      {/* ── Full-screen comparison modal ── */}
-      {modalImg && modalImg.upscaledDataUrl && (
+      {modalImg && (
+        (modalImg.type === 'image' && modalImg.upscaledDataUrl) ||
+        (modalImg.type === 'video' && modalImg.previewUpscaledDataUrl)
+      ) && (
         <div
           style={{
             position: "fixed",
@@ -1194,7 +1389,6 @@ export default function ImageUpscaler() {
             }}
             onClick={(e) => e.stopPropagation()}
           >
-            {/* Modal header */}
             <div
               style={{
                 display: "flex",
@@ -1210,16 +1404,20 @@ export default function ImageUpscaler() {
                   Before / After — {modalImg.name}
                 </h3>
                 <span style={{ fontSize: "11px", color: "var(--text-muted)" }}>
-                  {modalImg.width}×{modalImg.height} →{" "}
-                  <strong style={{ color: "#ec4899" }}>
-                    {modalImg.targetWidth}×{modalImg.targetHeight}px
-                  </strong>{" "}
+                  {modalImg.width}×{modalImg.height}
+                  {modalImg.type === 'image' && modalImg.targetWidth && modalImg.targetHeight && (
+                    <>
+                      {" "}→{" "}
+                      <strong style={{ color: "#ec4899" }}>
+                        {modalImg.targetWidth}×{modalImg.targetHeight}px
+                      </strong>
+                    </>
+                  )}{" "}
                   · {profile.label}
                 </span>
               </div>
 
               <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                {/* Navigation */}
                 {successImages.length > 1 && (
                   <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
                     <button
@@ -1310,7 +1508,6 @@ export default function ImageUpscaler() {
               </div>
             </div>
 
-            {/* Modal body */}
             <div
               style={{
                 overflowY: "auto",
@@ -1321,12 +1518,11 @@ export default function ImageUpscaler() {
               }}
             >
               <SliderCompare
-                original={modalImg.preview}
-                upscaled={modalImg.upscaledDataUrl!}
+                original={modalImg.type === 'image' ? modalImg.preview : modalImg.previewOriginalDataUrl!}
+                upscaled={modalImg.type === 'image' ? modalImg.upscaledDataUrl! : modalImg.previewUpscaledDataUrl!}
                 label={`${resLabel} UPSCALED`}
               />
 
-              {/* Info row */}
               <div
                 style={{
                   display: "flex",
@@ -1347,12 +1543,14 @@ export default function ImageUpscaler() {
                       {modalImg.width}×{modalImg.height}px
                     </strong>
                   </span>
-                  <span>
-                    <span style={{ color: "var(--text-muted)" }}>Sesudah: </span>
-                    <strong style={{ color: "#ec4899" }}>
-                      {modalImg.targetWidth}×{modalImg.targetHeight}px ({resLabel})
-                    </strong>
-                  </span>
+                  {modalImg.type === 'image' && modalImg.targetWidth && modalImg.targetHeight && (
+                    <span>
+                      <span style={{ color: "var(--text-muted)" }}>Sesudah: </span>
+                      <strong style={{ color: "#ec4899" }}>
+                        {modalImg.targetWidth}×{modalImg.targetHeight}px ({resLabel})
+                      </strong>
+                    </span>
+                  )}
                   <span>
                     <span style={{ color: "var(--text-muted)" }}>Engine: </span>
                     <strong>{profile.label}</strong>
@@ -1373,7 +1571,7 @@ export default function ImageUpscaler() {
                     flexShrink: 0,
                   }}
                 >
-                  ⬇ Unduh Gambar Ini
+                  ⬇ Unduh File Ini
                 </button>
               </div>
 
