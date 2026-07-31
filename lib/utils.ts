@@ -125,12 +125,20 @@ export function extractVideoFrame(file: File): Promise<string> {
     video.src = url;
     video.crossOrigin = "anonymous";
 
-    video.onloadeddata = () => {
-      const seekTime = Math.min(1.0, video.duration / 2 || 0.1);
-      video.currentTime = seekTime;
+    let timeoutId: ReturnType<typeof setTimeout> | null = setTimeout(() => {
+      cleanup();
+      reject(new Error(`Timeout saat ekstraksi frame video: ${file.name}`));
+    }, 12000);
+
+    const cleanup = () => {
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+        timeoutId = null;
+      }
+      URL.revokeObjectURL(url);
     };
 
-    video.onseeked = () => {
+    const processFrame = () => {
       try {
         const canvas = document.createElement("canvas");
         const maxWidth = 1200;
@@ -147,23 +155,40 @@ export function extractVideoFrame(file: File): Promise<string> {
 
         const ctx = canvas.getContext("2d");
         if (!ctx) {
-          URL.revokeObjectURL(url);
+          cleanup();
           reject(new Error("Canvas context tidak tersedia"));
           return;
         }
         ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
         const dataUrl = canvas.toDataURL("image/jpeg", 0.82);
-        URL.revokeObjectURL(url);
+        cleanup();
         resolve(dataUrl);
       } catch (err) {
-        URL.revokeObjectURL(url);
+        cleanup();
         reject(err);
       }
     };
 
+    video.onloadedmetadata = () => {
+      const duration = video.duration;
+      const seekTime = Number.isFinite(duration) && duration > 0 ? Math.min(1.0, duration / 2) : 0.1;
+      video.currentTime = seekTime;
+    };
+
+    video.onseeked = () => {
+      processFrame();
+    };
+
+    // Fallback if seeked does not trigger or video is ready immediately
+    video.onloadeddata = () => {
+      if (video.readyState >= 2 && video.currentTime === 0) {
+        video.currentTime = 0.1;
+      }
+    };
+
     video.onerror = () => {
-      URL.revokeObjectURL(url);
-      reject(new Error(`Gagal memproses video`));
+      cleanup();
+      reject(new Error(`Gagal memproses video: ${file.name}`));
     };
   });
 }

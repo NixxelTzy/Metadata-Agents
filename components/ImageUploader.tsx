@@ -35,7 +35,7 @@ export default function ImageUploader({ onTokensUpdated }: Props = {}) {
   const [stabilized, setStabilized] = useState(true);
   const [complianceGuard, setComplianceGuard] = useState(true);
   const [platform, setPlatform] = useState<"adobe_stock" | "shutterstock">("adobe_stock");
-  const [csvExtension, setCsvExtension] = useState<"original" | "jpg" | "eps" | "ai">("original");
+  const [csvExtension, setCsvExtension] = useState<"original" | "jpg" | "mp4" | "mov" | "eps" | "ai">("original");
   const inputRef = useRef<HTMLInputElement>(null);
 
   const addFiles = useCallback(
@@ -524,6 +524,8 @@ export default function ImageUploader({ onTokensUpdated }: Props = {}) {
                 >
                   <option value="original">Asli (Original)</option>
                   <option value="jpg">Force .jpg</option>
+                  <option value="mp4">Force .mp4 (Video)</option>
+                  <option value="mov">Force .mov (Video)</option>
                   <option value="eps">Force .eps</option>
                   <option value="ai">Force .ai</option>
                 </select>

@@ -9,10 +9,11 @@ import { getGroqApiKeys } from "@/lib/config";
 const GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions";
 
 const CHAT_MODEL   = "llama-3.3-70b-versatile";
-const VISION_MODEL = "meta-llama/llama-4-scout-17b-16e-instruct";
+const VISION_MODEL = "llama-3.2-11b-vision-instruct";
+const VISION_FALLBACK_MODEL = "llama-3.2-90b-vision-instruct";
 
 export interface GroqMessage {
-  role: "user" | "assistant" | "system";
+  role: "system" | "user" | "assistant";
   content:
     | string
     | Array<
@@ -114,25 +115,32 @@ export async function callGroq(
   }
 
   const { temperature = 0.3, max_tokens = 8192, vision = false } = opts;
-  const model = vision ? VISION_MODEL : CHAT_MODEL;
+  const modelsToTry = vision
+    ? [VISION_MODEL, VISION_FALLBACK_MODEL]
+    : [CHAT_MODEL, "llama-3.1-8b-instant"];
 
   let lastError: Error | null = null;
 
-  for (let i = 0; i < apiKeys.length; i++) {
-    try {
-      const result = await callGroqKey(apiKeys[i]!, model, messages, temperature, max_tokens);
-      return result;
-    } catch (err: any) {
-      if (err.message === "429") {
-        lastError = new Error("Rate limit Groq tercapai (429) pada semua key. Tunggu 30 detik dan coba lagi.");
-        if (i < apiKeys.length - 1) {
-          console.log(`[Groq] Key ${i + 1} exhausted. Rotating to key ${i + 2}...`);
-          // Brief pause before trying next key
-          await sleep(1500);
-          continue;
+  for (const model of modelsToTry) {
+    for (let i = 0; i < apiKeys.length; i++) {
+      try {
+        const result = await callGroqKey(apiKeys[i]!, model, messages, temperature, max_tokens);
+        return result;
+      } catch (err: any) {
+        if (err.message === "429") {
+          lastError = new Error("Rate limit Groq tercapai (429) pada semua key. Tunggu 30 detik dan coba lagi.");
+          if (i < apiKeys.length - 1) {
+            console.log(`[Groq] Key ${i + 1} exhausted. Rotating to key ${i + 2}...`);
+            await sleep(1500);
+            continue;
+          }
+        } else if (err.message?.includes("404") || err.message?.includes("does not exist")) {
+          lastError = err;
+          console.warn(`[Groq] Model ${model} tidak ditemukan/404. Mencoba model fallback berikutnya...`);
+          break; // Try next model in modelsToTry
+        } else {
+          throw err;
         }
-      } else {
-        throw err;
       }
     }
   }
