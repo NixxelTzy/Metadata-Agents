@@ -51,6 +51,20 @@ async function callGroqKey(
   max_tokens: number,
   maxAttempts = 3
 ): Promise<GroqResult> {
+  const isVisionModel = model.includes("vision") || model.includes("scout");
+  const payloadMessages = isVisionModel
+    ? messages
+    : messages.map((m) => {
+        if (typeof m.content === "string") return m;
+        const textParts = m.content
+          .filter((item) => item.type === "text")
+          .map((item) => (item as { type: "text"; text: string }).text);
+        return {
+          role: m.role,
+          content: textParts.join("\n") || "Analyze the provided item.",
+        };
+      });
+
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     const response = await fetch(GROQ_API_URL, {
       method: "POST",
@@ -58,7 +72,7 @@ async function callGroqKey(
         "Content-Type": "application/json",
         "Authorization": `Bearer ${apiKey}`,
       },
-      body: JSON.stringify({ model, messages, temperature, max_tokens, stream: false }),
+      body: JSON.stringify({ model, messages: payloadMessages, temperature, max_tokens, stream: false }),
     });
 
     if (!response.ok) {
@@ -72,13 +86,12 @@ async function callGroqKey(
       if (response.status === 413) throw new Error("Request terlalu besar (413). Kurangi ukuran gambar.");
       if (response.status === 429) {
         if (attempt < maxAttempts) {
-          // Exponential backoff: 2s, 4s, 8s
           const backoffMs = Math.pow(2, attempt) * 1000;
           console.log(`[Groq] 429 rate limit. Waiting ${backoffMs}ms before retry ${attempt + 1}/${maxAttempts}...`);
           await sleep(backoffMs);
           continue;
         }
-        throw new Error("429"); // Signal to caller to try next key
+        throw new Error("429");
       }
       throw new Error(errorMsg);
     }
@@ -116,7 +129,7 @@ export async function callGroq(
 
   const { temperature = 0.3, max_tokens = 8192, vision = false } = opts;
   const modelsToTry = vision
-    ? [VISION_MODEL, VISION_FALLBACK_MODEL]
+    ? [CHAT_MODEL, VISION_MODEL, VISION_FALLBACK_MODEL]
     : [CHAT_MODEL, "llama-3.1-8b-instant"];
 
   let lastError: Error | null = null;
@@ -137,7 +150,7 @@ export async function callGroq(
         } else if (err.message?.includes("404") || err.message?.includes("does not exist")) {
           lastError = err;
           console.warn(`[Groq] Model ${model} tidak ditemukan/404. Mencoba model fallback berikutnya...`);
-          break; // Try next model in modelsToTry
+          break;
         } else {
           throw err;
         }
