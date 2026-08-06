@@ -129,7 +129,7 @@ export async function callGroq(
 
   const { temperature = 0.3, max_tokens = 8192, vision = false } = opts;
   const modelsToTry = vision
-    ? [CHAT_MODEL, VISION_MODEL, VISION_FALLBACK_MODEL]
+    ? [VISION_MODEL, VISION_FALLBACK_MODEL]
     : [CHAT_MODEL, "llama-3.1-8b-instant"];
 
   let lastError: Error | null = null;
