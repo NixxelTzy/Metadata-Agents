@@ -1136,6 +1136,81 @@ export default function AdminAccountChecker() {
                           </div>
                         ) : (
                           <div style={{ display: "flex", gap: "6px", justifyContent: "flex-end", flexWrap: "wrap" }}>
+                            {/* Unblock Quick Action */}
+                            <button
+                              type="button"
+                              onClick={async () => {
+                                setActionLoading(`ctrl-${u.email}`);
+                                try {
+                                  const res = await fetch("/api/admin/user-control", {
+                                    method: "POST",
+                                    headers: { "Content-Type": "application/json" },
+                                    body: JSON.stringify({
+                                      targetUserId: u.id,
+                                      targetEmail: u.email,
+                                      targetUsername: u.username,
+                                      action: "unblock",
+                                    }),
+                                  });
+                                  const d = await res.json() as { ok?: boolean; actionResult?: string };
+                                  if (d.ok) alert(d.actionResult ?? "Unblocked");
+                                  else alert("Gagal unblock");
+                                } catch { alert("Error"); }
+                                finally { setActionLoading(null); fetchUsers(); }
+                              }}
+                              disabled={actionLoading === `ctrl-${u.email}`}
+                              title="Unblock akun ini di Redis & kirim email konfirmasi"
+                              style={{
+                                padding: "5px 10px",
+                                background: "rgba(74,222,128,0.12)",
+                                border: "1px solid rgba(74,222,128,0.3)",
+                                borderRadius: "5px",
+                                color: "#4ade80",
+                                cursor: "pointer",
+                                fontSize: "11px",
+                                fontWeight: "700",
+                              }}
+                            >
+                              🔓 Unblock
+                            </button>
+
+                            {/* Token Boost Quick Action */}
+                            <button
+                              type="button"
+                              onClick={async () => {
+                                setActionLoading(`ctrl-${u.email}`);
+                                try {
+                                  const res = await fetch("/api/admin/user-control", {
+                                    method: "POST",
+                                    headers: { "Content-Type": "application/json" },
+                                    body: JSON.stringify({
+                                      targetUserId: u.id,
+                                      targetEmail: u.email,
+                                      targetUsername: u.username,
+                                      action: "boost_tokens",
+                                    }),
+                                  });
+                                  const d = await res.json() as { ok?: boolean; actionResult?: string };
+                                  if (d.ok) alert(d.actionResult ?? "Token boosted");
+                                } catch { alert("Error"); }
+                                finally { setActionLoading(null); }
+                              }}
+                              disabled={actionLoading === `ctrl-${u.email}`}
+                              title="Berikan token boost & kirim notifikasi"
+                              style={{
+                                padding: "5px 10px",
+                                background: "rgba(251,191,36,0.12)",
+                                border: "1px solid rgba(251,191,36,0.3)",
+                                borderRadius: "5px",
+                                color: "#fbbf24",
+                                cursor: "pointer",
+                                fontSize: "11px",
+                                fontWeight: "700",
+                              }}
+                            >
+                              ⚡ Boost
+                            </button>
+
                             {/* Timeline Button */}
                             <button
                               type="button"

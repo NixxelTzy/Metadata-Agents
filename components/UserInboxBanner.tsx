@@ -63,9 +63,19 @@ export default function UserInboxBanner() {
       if (!res.ok) return;
       const data = await res.json() as { messages: AdminMessage[] };
       const msgs = data.messages ?? [];
-      if (msgs.length === 0) return;
 
+      // Update message list (even if empty — allows clearing stale state)
       setMessages(msgs);
+
+      if (msgs.length === 0) {
+        // No pending messages → auto-resolve block/refresh if previously active
+        setBlockActive(false);
+        setBlockMsg(null);
+        setRefreshPrompt(null);
+        setVisible(false);
+        return;
+      }
+
       setCurrentIdx(0);
       setVisible(true);
 
@@ -75,8 +85,13 @@ export default function UserInboxBanner() {
       if (block) {
         setBlockMsg(block);
         setBlockActive(true);
-      } else if (refresh) {
-        setRefreshPrompt(refresh);
+      } else {
+        // Block cleared — lift block state
+        setBlockActive(false);
+        setBlockMsg(null);
+        if (refresh) {
+          setRefreshPrompt(refresh);
+        }
       }
     } catch { /* silent */ }
   }, []);

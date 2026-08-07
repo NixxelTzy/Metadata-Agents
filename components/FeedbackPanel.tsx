@@ -171,6 +171,26 @@ export default function FeedbackPanel() {
                       </span>
                     </div>
                     <div className="fb-history__item-body">{item.message}</div>
+                    <div style={{
+                      marginTop: "10px",
+                      padding: "10px 12px",
+                      background: "rgba(37,99,235,0.08)",
+                      border: "1px solid rgba(37,99,235,0.2)",
+                      borderRadius: "8px",
+                      fontSize: "12px",
+                      color: "var(--text)",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "8px",
+                    }}>
+                      <span style={{ fontSize: "14px" }}>🤖</span>
+                      <div>
+                        <strong style={{ color: "#60a5fa" }}>Groq AI Auto-Responder:</strong>{" "}
+                        <span style={{ color: "var(--text-muted)" }}>
+                          Diproses & dikirim otomatis ke email Anda via Gmail SMTP + In-App Banner.
+                        </span>
+                      </div>
+                    </div>
                   </div>
                 ))}
               </div>
