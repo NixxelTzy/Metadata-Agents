@@ -62,6 +62,22 @@ export async function POST(request: NextRequest) {
 
     await createReport(report);
 
+    // ── Autonomous AI Engine: Multi-Channel Auto-Reply (In-App + Email) ──
+    void (async () => {
+      try {
+        const { processAutonomousAiSupport } = await import("@/lib/ai-agent");
+        await processAutonomousAiSupport({
+          userId: payload.userId,
+          username: payload.username,
+          email: payload.email,
+          category: type,
+          userMessage: message.trim(),
+        });
+      } catch (err) {
+        console.error("Autonomous AI feedback auto-reply error:", err);
+      }
+    })();
+
     return NextResponse.json({ message: "Laporan berhasil dikirim", report });
   } catch (error) {
     console.error("Failed to submit feedback:", error);

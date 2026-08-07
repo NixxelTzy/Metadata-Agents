@@ -24,7 +24,38 @@ export default function UserInboxBanner() {
   const [blockMsg, setBlockMsg] = useState<AdminMessage | null>(null);
   const [refreshPrompt, setRefreshPrompt] = useState<AdminMessage | null>(null);
   const [visible, setVisible] = useState(false);
+  const [appealText, setAppealText] = useState("");
+  const [appealing, setAppealing] = useState(false);
+  const [appealRes, setAppealRes] = useState<string | null>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const handleAiUnblockAppeal = async () => {
+    if (!appealText.trim()) return;
+    setAppealing(true);
+    setAppealRes(null);
+    try {
+      const res = await fetch("/api/user/unblock-appeal", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ appealMessage: appealText.trim() }),
+      });
+      const data = await res.json() as { ok?: boolean; aiReplyText?: string; unblocked?: boolean };
+      if (data.ok && data.unblocked) {
+        setAppealRes("🟢 Banding disetujui AI! Memuat ulang...");
+        setTimeout(() => {
+          setBlockActive(false);
+          setBlockMsg(null);
+          window.location.reload();
+        }, 1500);
+      } else {
+        setAppealRes("🤖 " + (data.aiReplyText || "Banding diproses AI"));
+      }
+    } catch {
+      setAppealRes("Gagal memproses banding AI");
+    } finally {
+      setAppealing(false);
+    }
+  };
 
   const poll = useCallback(async () => {
     try {
@@ -38,15 +69,14 @@ export default function UserInboxBanner() {
       setCurrentIdx(0);
       setVisible(true);
 
-      // Check for special types
-      const blockMsg = msgs.find((m) => m.type === "block");
-      const refreshMsg = msgs.find((m) => m.type === "refresh");
+      const block = msgs.find((m) => m.type === "block");
+      const refresh = msgs.find((m) => m.type === "refresh");
 
-      if (blockMsg) {
-        setBlockMsg(blockMsg);
+      if (block) {
+        setBlockMsg(block);
         setBlockActive(true);
-      } else if (refreshMsg) {
-        setRefreshPrompt(refreshMsg);
+      } else if (refresh) {
+        setRefreshPrompt(refresh);
       }
     } catch { /* silent */ }
   }, []);
@@ -98,7 +128,7 @@ export default function UserInboxBanner() {
   const pendingMessages = messages.filter((m) => !dismissed.includes(m.id) && m.type === "message");
   const currentMsg = pendingMessages[currentIdx] ?? null;
 
-  // ── Block Overlay ─────────────────────────────────────────────────────────
+  // ── Block Overlay (Centered Modal - Black/Red/Blue) ─────────────────────────
 
   if (blockActive && blockMsg) {
     return (
@@ -107,408 +137,496 @@ export default function UserInboxBanner() {
           position: "fixed",
           inset: 0,
           zIndex: 99999,
-          background: "rgba(0,0,0,0.96)",
+          background: "rgba(15, 23, 42, 0.85)",
           backdropFilter: "blur(16px)",
+          WebkitBackdropFilter: "blur(16px)",
           display: "flex",
-          flexDirection: "column",
           alignItems: "center",
           justifyContent: "center",
-          padding: "24px",
-          fontFamily: "inherit",
+          padding: "20px",
+          fontFamily: "'Inter', system-ui, -apple-system, sans-serif",
         }}
       >
         <style>{`
-          @keyframes blockPulse {
-            0%,100% { transform: scale(1); }
-            50% { transform: scale(1.03); }
-          }
-          @keyframes blockFadeIn {
-            from { opacity:0; transform:translateY(24px) scale(0.96); }
-            to { opacity:1; transform:translateY(0) scale(1); }
+          @keyframes blockModalIn {
+            from { opacity: 0; transform: scale(0.92) translateY(16px); }
+            to { opacity: 1; transform: scale(1) translateY(0); }
           }
         `}</style>
 
         <div
           style={{
-            maxWidth: "480px",
+            maxWidth: "500px",
             width: "100%",
-            background: "linear-gradient(135deg, rgba(239,68,68,0.08), rgba(15,15,26,0.98))",
-            border: "1.5px solid rgba(239,68,68,0.4)",
+            background: "#ffffff",
             borderRadius: "20px",
-            padding: "40px 36px",
-            textAlign: "center",
-            animation: "blockFadeIn 0.4s ease",
-            boxShadow: "0 0 60px rgba(239,68,68,0.2), 0 30px 80px rgba(0,0,0,0.8)",
+            overflow: "hidden",
+            boxShadow: "0 25px 60px -15px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(239, 68, 68, 0.2)",
+            animation: "blockModalIn 0.35s cubic-bezier(0.16, 1, 0.3, 1)",
           }}
         >
+          {/* Header - Dark Slate / Black */}
           <div
             style={{
-              width: "72px",
-              height: "72px",
-              borderRadius: "50%",
-              background: "rgba(239,68,68,0.15)",
-              border: "2px solid rgba(239,68,68,0.5)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              fontSize: "32px",
-              margin: "0 auto 20px",
-              animation: "blockPulse 3s ease-in-out infinite",
+              background: "#0f172a",
+              padding: "28px 32px",
+              textAlign: "center",
+              position: "relative",
             }}
           >
-            🚫
+            <div
+              style={{
+                width: "64px",
+                height: "64px",
+                borderRadius: "50%",
+                background: "rgba(239, 68, 68, 0.15)",
+                border: "2px solid #ef4444",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                fontSize: "28px",
+                margin: "0 auto 14px",
+              }}
+            >
+              🚫
+            </div>
+            <h2 style={{ margin: 0, fontSize: "20px", fontWeight: "800", color: "#ffffff", letterSpacing: "-0.01em" }}>
+              {blockMsg.title}
+            </h2>
+            <div style={{ fontSize: "12px", color: "#94a3b8", marginTop: "4px" }}>
+              Sistem Keamanan & Batasan Akses Akun
+            </div>
           </div>
 
-          <h2 style={{ margin: "0 0 12px", fontSize: "22px", fontWeight: "900", color: "#f87171", letterSpacing: "-0.01em" }}>
-            {blockMsg.title}
-          </h2>
+          {/* Content - White & Slate */}
+          <div style={{ padding: "28px 32px" }}>
+            <p style={{ margin: "0 0 18px", fontSize: "14px", color: "#334155", lineHeight: 1.6 }}>
+              {blockMsg.body}
+            </p>
 
-          <p style={{ margin: "0 0 16px", fontSize: "15px", color: "rgba(255,255,255,0.75)", lineHeight: 1.6 }}>
-            {blockMsg.body}
-          </p>
+            {blockMsg.reason && (
+              <div
+                style={{
+                  background: "#fef2f2",
+                  borderLeft: "4px solid #ef4444",
+                  padding: "14px 16px",
+                  borderRadius: "8px",
+                  marginBottom: "20px",
+                }}
+              >
+                <div style={{ fontSize: "11px", fontWeight: "800", color: "#dc2626", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "3px" }}>
+                  Alasan Pemblokiran
+                </div>
+                <div style={{ fontSize: "13px", color: "#991b1b", fontWeight: "500", lineHeight: 1.5 }}>
+                  {blockMsg.reason}
+                </div>
+              </div>
+            )}
 
-          {blockMsg.reason && (
             <div style={{
-              background: "rgba(239,68,68,0.1)",
-              border: "1px solid rgba(239,68,68,0.3)",
-              borderRadius: "10px",
-              padding: "12px 16px",
+              background: "linear-gradient(135deg, rgba(37,99,235,0.06), rgba(124,58,237,0.04))",
+              border: "1px solid rgba(37,99,235,0.2)",
+              borderRadius: "12px",
+              padding: "16px",
               marginBottom: "20px",
             }}>
-              <div style={{ fontSize: "11px", fontWeight: "800", color: "#f87171", textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: "4px" }}>
-                Alasan Pemblokiran
+              <div style={{ fontSize: "12px", fontWeight: "700", color: "#1e3a8a", marginBottom: "8px", display: "flex", alignItems: "center", gap: "6px" }}>
+                <span>🤖</span> Ajukan Banding & Unblock Otomatis oleh AI
               </div>
-              <div style={{ fontSize: "13px", color: "rgba(255,255,255,0.8)" }}>
-                {blockMsg.reason}
-              </div>
+              <input
+                type="text"
+                placeholder="Tulis alasan/penjelasan banding Anda..."
+                value={appealText}
+                onChange={(e) => setAppealText(e.target.value)}
+                style={{
+                  width: "100%",
+                  padding: "10px 12px",
+                  borderRadius: "8px",
+                  border: "1px solid #cbd5e1",
+                  fontSize: "13px",
+                  color: "#0f172a",
+                  marginBottom: "10px",
+                  boxSizing: "border-box",
+                }}
+              />
+              <button
+                onClick={handleAiUnblockAppeal}
+                disabled={appealing || !appealText.trim()}
+                style={{
+                  width: "100%",
+                  padding: "10px",
+                  borderRadius: "8px",
+                  border: "none",
+                  background: appealing || !appealText.trim() ? "#cbd5e1" : "linear-gradient(135deg, #2563eb, #7c3aed)",
+                  color: "#ffffff",
+                  fontWeight: "700",
+                  fontSize: "13px",
+                  cursor: appealing || !appealText.trim() ? "not-allowed" : "pointer",
+                  transition: "all 0.2s",
+                }}
+              >
+                {appealing ? "⏳ AI Sedang Mengevaluasi Banding..." : "⚡ Evaluasi & Unblock Akun dengan AI"}
+              </button>
+              {appealRes && (
+                <div style={{ marginTop: "10px", fontSize: "12px", color: "#2563eb", fontWeight: "600", lineHeight: 1.5 }}>
+                  {appealRes}
+                </div>
+              )}
             </div>
-          )}
 
-          <div style={{ fontSize: "12px", color: "rgba(255,255,255,0.4)", marginBottom: "24px" }}>
-            Hubungi admin untuk membuka blokir ini.
+            <button
+              onClick={() => window.location.reload()}
+              style={{
+                width: "100%",
+                padding: "14px",
+                borderRadius: "10px",
+                border: "none",
+                background: "linear-gradient(135deg, #1e293b, #0f172a)",
+                color: "#ffffff",
+                fontWeight: "700",
+                fontSize: "14px",
+                cursor: "pointer",
+                boxShadow: "0 4px 14px rgba(15, 23, 42, 0.3)",
+                transition: "all 0.2s",
+              }}
+            >
+              🔄 Muat Ulang Halaman
+            </button>
           </div>
-
-          <button
-            onClick={() => window.location.reload()}
-            style={{
-              width: "100%",
-              padding: "14px",
-              borderRadius: "10px",
-              border: "none",
-              background: "linear-gradient(135deg, #dc2626, #991b1b)",
-              color: "white",
-              fontWeight: "800",
-              fontSize: "14px",
-              cursor: "pointer",
-              letterSpacing: "0.03em",
-            }}
-          >
-            🔄 Coba Muat Ulang
-          </button>
         </div>
       </div>
     );
   }
 
-  // ── Refresh Prompt (floating card) ────────────────────────────────────────
+  // ── Refresh Request (Centered Modal - White, Blue, Black Theme) ─────────────
 
   if (refreshPrompt && !dismissed.includes(refreshPrompt.id)) {
     return (
-      <>
+      <div
+        style={{
+          position: "fixed",
+          inset: 0,
+          zIndex: 99998,
+          background: "rgba(15, 23, 42, 0.75)",
+          backdropFilter: "blur(12px)",
+          WebkitBackdropFilter: "blur(12px)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          padding: "20px",
+          fontFamily: "'Inter', system-ui, -apple-system, sans-serif",
+        }}
+      >
         <style>{`
-          @keyframes slideDown {
-            from { opacity:0; transform:translateY(-20px); }
-            to { opacity:1; transform:translateY(0); }
-          }
-          @keyframes shimmer {
-            0% { background-position: -200% center; }
-            100% { background-position: 200% center; }
+          @keyframes refreshModalIn {
+            from { opacity: 0; transform: scale(0.92) translateY(12px); }
+            to { opacity: 1; transform: scale(1) translateY(0); }
           }
         `}</style>
+
         <div
           style={{
-            position: "fixed",
-            top: "16px",
-            left: "50%",
-            transform: "translateX(-50%)",
-            zIndex: 9999,
-            width: "min(520px, calc(100vw - 32px))",
-            background: "linear-gradient(135deg, rgba(5,150,105,0.95), rgba(6,95,70,0.98))",
-            backdropFilter: "blur(20px)",
-            border: "1.5px solid rgba(74,222,128,0.5)",
-            borderRadius: "16px",
-            padding: "0",
-            animation: "slideDown 0.4s cubic-bezier(0.34,1.56,0.64,1)",
-            boxShadow: "0 8px 40px rgba(0,0,0,0.5), 0 0 30px rgba(74,222,128,0.2)",
+            maxWidth: "460px",
+            width: "100%",
+            background: "#ffffff",
+            borderRadius: "20px",
             overflow: "hidden",
+            boxShadow: "0 25px 60px -15px rgba(37, 99, 235, 0.3), 0 0 0 1px rgba(37, 99, 235, 0.2)",
+            animation: "refreshModalIn 0.3s cubic-bezier(0.16, 1, 0.3, 1)",
           }}
         >
-          {/* Shimmer strip */}
-          <div style={{
-            height: "3px",
-            background: "linear-gradient(90deg, transparent, #4ade80, transparent)",
-            backgroundSize: "200% 100%",
-            animation: "shimmer 2s linear infinite",
-          }} />
-
-          <div style={{ padding: "20px 22px" }}>
-            <div style={{ display: "flex", gap: "14px", alignItems: "flex-start" }}>
-              <div style={{
-                width: "42px",
-                height: "42px",
+          {/* Header - Royal Blue & Black */}
+          <div
+            style={{
+              background: "linear-gradient(135deg, #0f172a, #1e3a8a)",
+              padding: "24px 28px",
+              display: "flex",
+              alignItems: "center",
+              gap: "14px",
+            }}
+          >
+            <div
+              style={{
+                width: "48px",
+                height: "48px",
                 borderRadius: "12px",
-                background: "rgba(255,255,255,0.15)",
+                background: "#2563eb",
+                color: "#ffffff",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
-                fontSize: "20px",
+                fontSize: "22px",
                 flexShrink: 0,
-              }}>
-                🔄
-              </div>
-              <div style={{ flex: 1 }}>
-                <div style={{ fontWeight: "800", fontSize: "15px", color: "white", marginBottom: "4px" }}>
-                  {refreshPrompt.title}
-                </div>
-                <div style={{ fontSize: "13px", color: "rgba(255,255,255,0.8)", lineHeight: 1.5 }}>
-                  {refreshPrompt.body}
-                </div>
+                boxShadow: "0 4px 12px rgba(37, 99, 235, 0.4)",
+              }}
+            >
+              🔄
+            </div>
+            <div>
+              <h3 style={{ margin: 0, fontSize: "17px", fontWeight: "800", color: "#ffffff" }}>
+                {refreshPrompt.title}
+              </h3>
+              <div style={{ fontSize: "12px", color: "#93c5fd", marginTop: "2px" }}>
+                Pembaruan Sistem Tersedia
               </div>
             </div>
+          </div>
 
-            <div style={{ display: "flex", gap: "10px", marginTop: "16px" }}>
+          {/* Body */}
+          <div style={{ padding: "24px 28px" }}>
+            <p style={{ margin: "0 0 20px", fontSize: "14px", color: "#334155", lineHeight: 1.6 }}>
+              {refreshPrompt.body}
+            </p>
+
+            <div style={{ display: "flex", gap: "10px" }}>
               <button
                 onClick={handleReload}
                 style={{
                   flex: 1,
-                  padding: "11px",
-                  borderRadius: "9px",
+                  padding: "12px",
+                  borderRadius: "10px",
                   border: "none",
-                  background: "rgba(255,255,255,0.2)",
-                  color: "white",
-                  fontWeight: "800",
+                  background: "linear-gradient(135deg, #2563eb, #1d4ed8)",
+                  color: "#ffffff",
+                  fontWeight: "700",
                   fontSize: "13px",
                   cursor: "pointer",
-                  backdropFilter: "blur(4px)",
-                  transition: "background 0.2s",
+                  boxShadow: "0 4px 14px rgba(37, 99, 235, 0.35)",
+                  transition: "all 0.2s",
                 }}
-                onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(255,255,255,0.3)")}
-                onMouseLeave={(e) => (e.currentTarget.style.background = "rgba(255,255,255,0.2)")}
               >
-                🔄 Muat Ulang Sekarang
+                🔄 Buka Ulang Sekarang
               </button>
               <button
                 onClick={() => { void markRead([refreshPrompt.id]); setRefreshPrompt(null); }}
                 style={{
-                  padding: "11px 18px",
-                  borderRadius: "9px",
-                  border: "1.5px solid rgba(255,255,255,0.25)",
-                  background: "transparent",
-                  color: "rgba(255,255,255,0.7)",
+                  padding: "12px 18px",
+                  borderRadius: "10px",
+                  border: "1px solid #cbd5e1",
+                  background: "#f8fafc",
+                  color: "#475569",
                   fontWeight: "600",
                   fontSize: "13px",
                   cursor: "pointer",
                   transition: "all 0.2s",
                 }}
-                onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(255,255,255,0.1)")}
-                onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
               >
                 Nanti
               </button>
             </div>
           </div>
         </div>
-      </>
+      </div>
     );
   }
 
-  // ── Normal Message Notification ───────────────────────────────────────────
+  // ── Normal Message (Centered Screen Modal - White, Royal Blue, Black Theme) ─
 
   if (!visible || !currentMsg) return null;
 
   const isMulti = pendingMessages.length > 1;
 
   return (
-    <>
+    <div
+      style={{
+        position: "fixed",
+        inset: 0,
+        zIndex: 99997,
+        background: "rgba(15, 23, 42, 0.7)",
+        backdropFilter: "blur(12px)",
+        WebkitBackdropFilter: "blur(12px)",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: "20px",
+        fontFamily: "'Inter', system-ui, -apple-system, sans-serif",
+      }}
+    >
       <style>{`
-        @keyframes notifIn {
-          from { opacity:0; transform:translateY(24px) scale(0.95); }
-          to { opacity:1; transform:translateY(0) scale(1); }
+        @keyframes centerModalIn {
+          from { opacity: 0; transform: scale(0.9) translateY(16px); }
+          to { opacity: 1; transform: scale(1) translateY(0); }
         }
-        @keyframes gradShift {
-          0%,100% { background-position: 0% 50%; }
-          50% { background-position: 100% 50%; }
-        }
-        .notif-dismiss:hover { background: rgba(255,255,255,0.12) !important; }
-        .notif-close:hover { background: rgba(255,255,255,0.12) !important; }
+        .btn-blue-hover:hover { background: linear-gradient(135deg, #1d4ed8, #1e40af) !important; }
+        .btn-light-hover:hover { background: #e2e8f0 !important; }
       `}</style>
 
       <div
         style={{
-          position: "fixed",
-          bottom: "24px",
-          right: "24px",
-          zIndex: 9998,
-          width: "min(380px, calc(100vw - 32px))",
-          animation: "notifIn 0.4s cubic-bezier(0.34,1.56,0.64,1)",
+          maxWidth: "480px",
+          width: "100%",
+          background: "#ffffff",
+          borderRadius: "20px",
+          overflow: "hidden",
+          boxShadow: "0 25px 60px -15px rgba(15, 23, 42, 0.4), 0 0 0 1px rgba(37, 99, 235, 0.15)",
+          animation: "centerModalIn 0.35s cubic-bezier(0.16, 1, 0.3, 1)",
         }}
       >
+        {/* Header - Deep Slate Black + Royal Blue Accent */}
         <div
           style={{
-            background: "linear-gradient(135deg, rgba(124,58,237,0.95), rgba(79,70,229,0.98))",
-            backdropFilter: "blur(24px)",
-            border: "1.5px solid rgba(167,139,250,0.5)",
-            borderRadius: "16px",
-            overflow: "hidden",
-            boxShadow: "0 12px 48px rgba(0,0,0,0.5), 0 0 30px rgba(124,58,237,0.3)",
+            background: "linear-gradient(135deg, #0f172a, #1e293b)",
+            padding: "24px 28px",
+            position: "relative",
+            borderBottom: "3px solid #2563eb",
           }}
         >
-          {/* Gradient top strip */}
-          <div style={{
-            height: "3px",
-            background: "linear-gradient(90deg, #7c3aed, #ec4899, #7c3aed)",
-            backgroundSize: "200% 100%",
-            animation: "gradShift 3s ease infinite",
-          }} />
-
-          <div style={{ padding: "18px 20px" }}>
-            {/* Header */}
-            <div style={{ display: "flex", alignItems: "flex-start", gap: "12px", marginBottom: "10px" }}>
-              <div style={{
-                width: "38px",
-                height: "38px",
-                borderRadius: "10px",
-                background: "rgba(255,255,255,0.15)",
+          <div style={{ display: "flex", alignItems: "center", gap: "14px" }}>
+            <div
+              style={{
+                width: "44px",
+                height: "44px",
+                borderRadius: "12px",
+                background: "#2563eb",
+                color: "#ffffff",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
-                fontSize: "18px",
+                fontSize: "20px",
                 flexShrink: 0,
-              }}>
-                📨
-              </div>
-              <div style={{ flex: 1 }}>
-                <div style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "2px" }}>
-                  <span style={{ fontSize: "10px", fontWeight: "800", color: "rgba(255,255,255,0.6)", textTransform: "uppercase", letterSpacing: "0.07em" }}>
-                    Pesan dari Admin
+                boxShadow: "0 4px 14px rgba(37, 99, 235, 0.4)",
+              }}
+            >
+              💬
+            </div>
+
+            <div style={{ flex: 1 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "3px" }}>
+                <span style={{ fontSize: "11px", fontWeight: "800", color: "#60a5fa", textTransform: "uppercase", letterSpacing: "0.06em" }}>
+                  Notifikasi Admin
+                </span>
+                {isMulti && (
+                  <span style={{
+                    fontSize: "10px",
+                    fontWeight: "800",
+                    background: "#2563eb",
+                    color: "#ffffff",
+                    padding: "1px 7px",
+                    borderRadius: "10px",
+                  }}>
+                    {currentIdx + 1}/{pendingMessages.length}
                   </span>
-                  {isMulti && (
-                    <span style={{
-                      fontSize: "9px",
-                      fontWeight: "800",
-                      background: "rgba(255,255,255,0.2)",
-                      padding: "1px 6px",
-                      borderRadius: "8px",
-                      color: "white",
-                    }}>
-                      {currentIdx + 1}/{pendingMessages.length}
-                    </span>
-                  )}
-                </div>
-                <div style={{ fontWeight: "800", fontSize: "14px", color: "white", lineHeight: 1.3 }}>
-                  {currentMsg.title}
-                </div>
+                )}
               </div>
+              <h3 style={{ margin: 0, fontSize: "17px", fontWeight: "800", color: "#ffffff", lineHeight: 1.3 }}>
+                {currentMsg.title}
+              </h3>
+            </div>
+
+            <button
+              onClick={() => handleDismiss(currentMsg)}
+              style={{
+                width: "32px",
+                height: "32px",
+                borderRadius: "8px",
+                border: "none",
+                background: "rgba(255, 255, 255, 0.1)",
+                color: "#94a3b8",
+                cursor: "pointer",
+                fontSize: "14px",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                flexShrink: 0,
+                transition: "all 0.2s",
+              }}
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+
+        {/* Content Body - Clean White */}
+        <div style={{ padding: "28px" }}>
+          <div
+            style={{
+              fontSize: "14px",
+              color: "#334155",
+              lineHeight: 1.7,
+              marginBottom: "24px",
+              whiteSpace: "pre-wrap",
+              background: "#f8fafc",
+              padding: "18px 20px",
+              borderRadius: "12px",
+              border: "1px solid #e2e8f0",
+            }}
+          >
+            {currentMsg.body}
+          </div>
+
+          {/* Action Buttons - Blue & Black */}
+          <div style={{ display: "flex", gap: "10px", flexWrap: "wrap", alignItems: "center" }}>
+            <button
+              className="btn-blue-hover"
+              onClick={() => handleDismiss(currentMsg)}
+              style={{
+                flex: 1,
+                padding: "12px 20px",
+                borderRadius: "10px",
+                border: "none",
+                background: "linear-gradient(135deg, #2563eb, #1d4ed8)",
+                color: "#ffffff",
+                fontWeight: "700",
+                fontSize: "13px",
+                cursor: "pointer",
+                boxShadow: "0 4px 14px rgba(37, 99, 235, 0.35)",
+                transition: "all 0.2s",
+              }}
+            >
+              ✓ Mengerti
+            </button>
+
+            {isMulti && currentIdx < pendingMessages.length - 1 && (
               <button
-                className="notif-close"
-                onClick={() => handleDismiss(currentMsg)}
+                className="btn-light-hover"
+                onClick={() => { handleDismiss(currentMsg); setCurrentIdx((p) => p + 1); }}
                 style={{
-                  width: "28px",
-                  height: "28px",
-                  borderRadius: "7px",
-                  border: "none",
-                  background: "rgba(255,255,255,0.08)",
-                  color: "rgba(255,255,255,0.7)",
+                  padding: "12px 18px",
+                  borderRadius: "10px",
+                  border: "1px solid #cbd5e1",
+                  background: "#f1f5f9",
+                  color: "#0f172a",
+                  fontWeight: "600",
+                  fontSize: "13px",
                   cursor: "pointer",
-                  fontSize: "14px",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  flexShrink: 0,
-                  transition: "background 0.2s",
+                  transition: "all 0.2s",
                 }}
               >
-                ✕
+                Berikutnya →
               </button>
-            </div>
+            )}
 
-            {/* Body */}
-            <div style={{
-              fontSize: "13px",
-              color: "rgba(255,255,255,0.82)",
-              lineHeight: 1.6,
-              marginBottom: "14px",
-              paddingLeft: "50px",
-            }}>
-              {currentMsg.body}
-            </div>
-
-            {/* Actions */}
-            <div style={{ display: "flex", gap: "8px", paddingLeft: "50px", flexWrap: "wrap" }}>
-              {isMulti && currentIdx < pendingMessages.length - 1 && (
-                <button
-                  className="notif-dismiss"
-                  onClick={() => { handleDismiss(currentMsg); setCurrentIdx((p) => p + 1); }}
-                  style={{
-                    padding: "8px 14px",
-                    borderRadius: "8px",
-                    border: "1.5px solid rgba(255,255,255,0.25)",
-                    background: "transparent",
-                    color: "white",
-                    fontWeight: "600",
-                    fontSize: "12px",
-                    cursor: "pointer",
-                    transition: "background 0.2s",
-                  }}
-                >
-                  Berikutnya →
-                </button>
-              )}
+            {isMulti && (
               <button
-                className="notif-dismiss"
-                onClick={() => handleDismiss(currentMsg)}
+                onClick={handleDismissAll}
                 style={{
-                  padding: "8px 16px",
-                  borderRadius: "8px",
+                  padding: "12px 14px",
+                  borderRadius: "10px",
                   border: "none",
-                  background: "rgba(255,255,255,0.15)",
-                  color: "white",
-                  fontWeight: "700",
+                  background: "transparent",
+                  color: "#64748b",
+                  fontWeight: "600",
                   fontSize: "12px",
                   cursor: "pointer",
-                  transition: "background 0.2s",
                 }}
               >
-                ✓ Mengerti
+                Tutup Semua
               </button>
-              {isMulti && (
-                <button
-                  className="notif-dismiss"
-                  onClick={handleDismissAll}
-                  style={{
-                    padding: "8px 14px",
-                    borderRadius: "8px",
-                    border: "1.5px solid rgba(255,255,255,0.15)",
-                    background: "transparent",
-                    color: "rgba(255,255,255,0.5)",
-                    fontWeight: "600",
-                    fontSize: "11px",
-                    cursor: "pointer",
-                    transition: "background 0.2s",
-                  }}
-                >
-                  Tutup Semua
-                </button>
-              )}
-            </div>
+            )}
+          </div>
 
-            {/* Timestamp */}
-            <div style={{ fontSize: "10px", color: "rgba(255,255,255,0.35)", marginTop: "10px", paddingLeft: "50px" }}>
-              {new Date(currentMsg.sentAt).toLocaleString("id-ID", { timeZone: "Asia/Jakarta", hour: "2-digit", minute: "2-digit", day: "2-digit", month: "short" })} WIB
-            </div>
+          {/* Footer timestamp */}
+          <div style={{ fontSize: "11px", color: "#94a3b8", marginTop: "14px", textAlign: "right" }}>
+            {new Date(currentMsg.sentAt).toLocaleString("id-ID", {
+              timeZone: "Asia/Jakarta",
+              hour: "2-digit",
+              minute: "2-digit",
+              day: "2-digit",
+              month: "short",
+            })} WIB
           </div>
         </div>
       </div>
-    </>
+    </div>
   );
 }

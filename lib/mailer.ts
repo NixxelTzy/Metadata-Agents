@@ -156,3 +156,57 @@ export async function sendActivityNotification(payload: ActivityNotifPayload): P
     console.error("[Mailer] Gagal kirim activity notification:", err);
   }
 }
+
+export interface AiEmailReplyPayload {
+  toEmail: string;
+  toUsername: string;
+  subject: string;
+  aiMessage: string;
+  replyType: "general" | "block_notice" | "support_reply";
+}
+
+/** Send AI-generated response directly to user's email */
+export async function sendAiEmailReply(payload: AiEmailReplyPayload): Promise<boolean> {
+  const transporter = createTransporter();
+  if (!transporter) return false;
+
+  const typeConfig = {
+    general: { title: "🤖 AI Support Response", color: "#2563eb", bg: "linear-gradient(135deg,#1e3a8a,#2563eb)" },
+    block_notice: { title: "🚫 Pemberitahuan Status Akun", color: "#dc2626", bg: "linear-gradient(135deg,#7f1d1d,#dc2626)" },
+    support_reply: { title: "💬 Balasan Laporan / Usulan", color: "#0284c7", bg: "linear-gradient(135deg,#075985,#0284c7)" },
+  }[payload.replyType];
+
+  const html = `
+    <div style="font-family:'Segoe UI',Arial,sans-serif;max-width:600px;margin:0 auto;background:#0f172a;color:#f8fafc;border-radius:16px;overflow:hidden;border:1px solid #334155;box-shadow:0 20px 40px rgba(0,0,0,0.5)">
+      <div style="background:${typeConfig.bg};padding:28px 32px">
+        <h2 style="margin:0;font-size:22px;color:#ffffff;font-weight:800">${typeConfig.title}</h2>
+        <p style="margin:6px 0 0;color:rgba(255,255,255,0.85);font-size:13px">Respon Otomatis Sistem · NixelStudio AI Assistant</p>
+      </div>
+      <div style="padding:32px">
+        <div style="font-size:14px;color:#94a3b8;margin-bottom:16px">Halo <strong style="color:#ffffff">${payload.toUsername}</strong>,</div>
+        <div style="background:#1e293b;border-left:4px solid ${typeConfig.color};padding:20px;border-radius:8px;font-size:14px;line-height:1.7;color:#e2e8f0;white-space:pre-wrap;margin-bottom:24px">
+${payload.aiMessage}
+        </div>
+        <div style="font-size:12px;color:#64748b;line-height:1.5">
+          Pesan ini dibuat dan dikirim secara otomatis oleh <strong>Groq AI System</strong> atas nama Tim NixelStudio Admin. Jika ada pertanyaan lebih lanjut, silakan balas email ini atau gunakan menu Lapor & Usulan di aplikasi.
+        </div>
+      </div>
+      <div style="padding:16px 32px;background:#020617;font-size:12px;color:#475569;border-top:1px solid #1e293b;text-align:center">
+        © 2026 NixelStudio · Advanced AI System Powered by Groq & Llama 3.3 70B
+      </div>
+    </div>
+  `;
+
+  try {
+    await transporter.sendMail({
+      from: `"NixelStudio AI Assistant" <${getGmailConfig().user}>`,
+      to: payload.toEmail,
+      subject: payload.subject,
+      html,
+    });
+    return true;
+  } catch (err) {
+    console.error("[Mailer] Gagal kirim AI email reply:", err);
+    return false;
+  }
+}

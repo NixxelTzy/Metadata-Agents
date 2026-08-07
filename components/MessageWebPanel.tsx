@@ -68,11 +68,52 @@ function ComposePanelForm({
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
   const [reason, setReason] = useState("");
+  const [sendEmailAlso, setSendEmailAlso] = useState(true);
   const [sending, setSending] = useState(false);
+  const [generatingAi, setGeneratingAi] = useState(false);
   const [result, setResult] = useState<{ ok: boolean; msg: string } | null>(null);
 
   const selectedUser = users.find((u) => u.id === target);
   const meta = TYPE_META[msgType];
+
+  const handleAiDraft = async () => {
+    setGeneratingAi(true);
+    try {
+      const targetName = target === "all" ? "Semua Pengguna" : (selectedUser?.username ?? "User");
+      const targetEmail = target === "all" ? "admin@nixelstudio.com" : (selectedUser?.email ?? "user@example.com");
+
+      const res = await fetch("/api/admin/ai-reply", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          toEmail: targetEmail,
+          toUsername: targetName,
+          actionType: msgType === "block" ? "block_reason" : "draft_message",
+          customPrompt: msgType === "block"
+            ? "Pemberitahuan audit keamanan dan kepatuhan sistem"
+            : "Panduan pembaruan sistem dan info fitur baru",
+        }),
+      });
+      const data = await res.json() as { ok?: boolean; generatedText?: string };
+      if (data.ok && data.generatedText) {
+        if (msgType === "block") {
+          setTitle("🚫 Pemblokiran Akun Sementara");
+          setReason("Kepatuhan Aturan Keamanan & Batasan Sistem");
+          setBody(data.generatedText);
+        } else if (msgType === "refresh") {
+          setTitle("⚠️ Pembaruan Sistem — Mohon Muat Ulang Web");
+          setBody(data.generatedText);
+        } else {
+          setTitle("📢 Pesan Informasi dari Admin AI Assistant");
+          setBody(data.generatedText);
+        }
+      }
+    } catch {
+      alert("Gagal membuat draf AI");
+    } finally {
+      setGeneratingAi(false);
+    }
+  };
 
   const handleSend = async () => {
     if (!title.trim() || !body.trim()) {
@@ -88,6 +129,7 @@ function ComposePanelForm({
     setResult(null);
 
     try {
+      // 1. Send via MessageWeb API (In-App)
       const res = await fetch("/api/admin/messageweb", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -101,9 +143,26 @@ function ComposePanelForm({
           targetUsername: target === "all" ? "all" : (selectedUser?.username ?? "all"),
         }),
       });
+
+      // 2. Also send Email if option enabled
+      if (sendEmailAlso && target !== "all" && selectedUser?.email) {
+        await fetch("/api/admin/ai-reply", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            toEmail: selectedUser.email,
+            toUsername: selectedUser.username,
+            targetUserId: selectedUser.id,
+            actionType: msgType === "block" ? "block_reason" : "reply_user",
+            userMessage: body.trim(),
+            customPrompt: title.trim(),
+          }),
+        }).catch(() => {});
+      }
+
       const data = await res.json() as { ok?: boolean; error?: string };
       if (data.ok) {
-        setResult({ ok: true, msg: "✅ Pesan berhasil dikirim!" });
+        setResult({ ok: true, msg: `✅ Pesan berhasil dikirim! ${sendEmailAlso && target !== "all" ? "(In-App + Email)" : ""}` });
         setTitle("");
         setBody("");
         setReason("");
@@ -251,6 +310,45 @@ function ComposePanelForm({
         </div>
       </div>
 
+      {/* AI Assistance Button Bar */}
+      <div style={{
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "space-between",
+        background: "linear-gradient(135deg, rgba(37,99,235,0.1), rgba(124,58,237,0.08))",
+        border: "1px solid rgba(37,99,235,0.25)",
+        borderRadius: "10px",
+        padding: "10px 14px",
+      }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+          <span style={{ fontSize: "16px" }}>🤖</span>
+          <span style={{ fontSize: "12px", color: "var(--text)", fontWeight: "600" }}>
+            Asisten Groq AI Auto-Draft
+          </span>
+        </div>
+        <button
+          type="button"
+          onClick={handleAiDraft}
+          disabled={generatingAi}
+          style={{
+            padding: "6px 14px",
+            borderRadius: "7px",
+            border: "none",
+            background: "linear-gradient(135deg, #2563eb, #7c3aed)",
+            color: "white",
+            fontSize: "12px",
+            fontWeight: "700",
+            cursor: generatingAi ? "not-allowed" : "pointer",
+            transition: "all 0.2s",
+            display: "flex",
+            alignItems: "center",
+            gap: "6px",
+          }}
+        >
+          {generatingAi ? "⏳ Membuat Draf AI..." : "✨ Buat Teks dengan AI"}
+        </button>
+      </div>
+
       {/* Title */}
       <div>
         <label style={labelStyle}>Judul Pesan</label>
@@ -305,6 +403,30 @@ function ComposePanelForm({
           </div>
         </div>
       )}
+
+      {/* Email Dispatch Checkbox */}
+      <label style={{
+        display: "flex",
+        alignItems: "center",
+        gap: "10px",
+        background: "var(--bg-secondary)",
+        border: "1px solid var(--border)",
+        padding: "12px 14px",
+        borderRadius: "8px",
+        cursor: "pointer",
+        fontSize: "13px",
+        color: "var(--text)",
+      }}>
+        <input
+          type="checkbox"
+          checked={sendEmailAlso}
+          onChange={(e) => setSendEmailAlso(e.target.checked)}
+          style={{ width: "16px", height: "16px", accentColor: "#2563eb", cursor: "pointer" }}
+        />
+        <span>
+          📧 Kirim juga pesan ini ke email pengirim secara otomatis melalui <strong>Gmail SMTP / AI Mailer</strong>
+        </span>
+      </label>
 
       {/* Result */}
       {result && (
