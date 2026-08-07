@@ -3,6 +3,8 @@ import { MAX_IMAGES } from "@/lib/utils";
 import { callGroq, type GroqMessage } from "@/lib/groq";
 import { inspect, getClientIp, recordIpError } from "@/lib/security/core";
 import { validateAndSanitize } from "@/lib/stock-compliance";
+import { verifyToken } from "@/lib/auth";
+import { appendActivityEvent } from "@/lib/db";
 
 export const runtime = "nodejs"; // Required for Redis (security core)
 export const maxDuration = 60; // Vercel Hobby max = 60s
@@ -353,6 +355,24 @@ export async function POST(request: NextRequest) {
       }
       if (stabilized && i < images.length - 1) await sleep(DELAY_BETWEEN_IMAGES_MS);
     }
+
+    // ── Log activity for authenticated user ──
+    try {
+      const authCookieVal = request.cookies.get("auth_token")?.value;
+      if (authCookieVal) {
+        const tokenPayload = verifyToken(authCookieVal);
+        if (tokenPayload) {
+          const successCount = results.filter((r) => !r.error).length;
+          void appendActivityEvent(
+            tokenPayload.userId,
+            tokenPayload.email,
+            tokenPayload.username,
+            "metadata_upload",
+            `Generate metadata untuk ${images.length} foto · ${successCount} berhasil · Platform: ${platform.replace("_", " ")}`
+          );
+        }
+      }
+    } catch { /* non-critical */ }
 
     return NextResponse.json({ results, stabilized, totalUsage: {
       promptTokens: results.reduce((s, r) => s + (r.usage?.promptTokens || 0), 0),

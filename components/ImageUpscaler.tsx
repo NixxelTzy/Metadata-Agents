@@ -521,9 +521,29 @@ function SliderCompare({
 
 // ─── Main Component ────────────────────────────────────────────────────────────
 
+// ─── Resolution Presets ───────────────────────────────────────────────────────
+
+interface ResolutionPreset {
+  label: string;
+  width: number;
+  height: number;
+  badge: string;
+  desc: string;
+}
+
+const RESOLUTION_PRESETS: ResolutionPreset[] = [
+  { label: "2000×2000", width: 2000, height: 2000, badge: "2K SQ",   desc: "Square · Stock standard" },
+  { label: "2048×2048", width: 2048, height: 2048, badge: "2K+",     desc: "Adobe Stock minimum" },
+  { label: "2048×3072", width: 2048, height: 3072, badge: "3:2 P",   desc: "Portrait · 2:3 ratio" },
+  { label: "3072×2048", width: 3072, height: 2048, badge: "3:2 L",   desc: "Landscape · 3:2 ratio" },
+  { label: "4096×4096", width: 4096, height: 4096, badge: "4K SQ",   desc: "High-res square" },
+  { label: "6144×4096", width: 6144, height: 4096, badge: "6K",      desc: "Ultra-wide · 3:2" },
+  { label: "8192×8192", width: 8192, height: 8192, badge: "8K SQ",   desc: "Max quality · pro" },
+];
+
 export default function ImageUpscaler() {
   const [images, setImages] = useState<MediaFile[]>([]);
-  const [targetSize, setTargetSize] = useState<3000 | 4000 | 8000>(4000);
+  const [selectedPreset, setSelectedPreset] = useState<ResolutionPreset>(RESOLUTION_PRESETS[3]!);
   const [engine, setEngine] = useState<UpscaleEngine>("ai_super_res");
   const [loading, setLoading] = useState(false);
   const [progress, setProgress] = useState("");
@@ -533,7 +553,7 @@ export default function ImageUpscaler() {
 
   const inputRef = useRef<HTMLInputElement>(null);
   const profile = ENGINE_PROFILES[engine];
-  const resLabel = targetSize === 3000 ? "3K" : targetSize === 4000 ? "4K" : "8K";
+  const resLabel = selectedPreset.label;
 
   // ── File ingestion ──────────────────────────────────────────────────────────
 
@@ -622,15 +642,10 @@ export default function ImageUpscaler() {
         if (media.type === 'image') {
           const imgEl = await loadImage(media.preview);
           const { naturalWidth: srcW, naturalHeight: srcH } = imgEl;
-          const maxEdge = Math.max(srcW, srcH);
 
-          let targetW = srcW;
-          let targetH = srcH;
-          if (maxEdge < targetSize) {
-            const scale = targetSize / maxEdge;
-            targetW = Math.round(srcW * scale);
-            targetH = Math.round(srcH * scale);
-          }
+          // Use exact preset dimensions — only upscale, never downscale
+          const targetW = Math.max(srcW, selectedPreset.width);
+          const targetH = Math.max(srcH, selectedPreset.height);
 
           setProgress(`(${i + 1}/${images.length}) Memproses: ${media.name}`);
 
@@ -661,7 +676,7 @@ export default function ImageUpscaler() {
           setProgress(`(${i + 1}/${images.length}) Memproses Video: ${media.name}`);
           const { zipUrl, upscaledFrame0, originalFrame0 } = await processVideoFile(
             media,
-            targetSize,
+            Math.max(selectedPreset.width, selectedPreset.height),
             engine,
             (step, processed, total) => {
               setImages((p) =>
@@ -704,12 +719,12 @@ export default function ImageUpscaler() {
     if (media.type === 'image' && media.upscaledDataUrl) {
       const a = document.createElement("a");
       a.href = media.upscaledDataUrl;
-      a.download = `${media.name.replace(/\.[^.]+$/, "")}_upscaled_${resLabel.toLowerCase()}.jpg`;
+      a.download = `${media.name.replace(/\.[^.]+$/, "")}_upscaled_${selectedPreset.label.replace('×', 'x')}.jpg`;
       a.click();
     } else if (media.type === 'video' && media.outputZipUrl) {
       const a = document.createElement("a");
       a.href = media.outputZipUrl;
-      a.download = `${media.name.replace(/\.[^.]+$/, "")}_upscaled_${resLabel.toLowerCase()}_${Date.now()}.zip`;
+      a.download = `${media.name.replace(/\.[^.]+$/, "")}_upscaled_${selectedPreset.label.replace('×', 'x')}_${Date.now()}.zip`;
       a.click();
     }
   };
@@ -725,12 +740,12 @@ export default function ImageUpscaler() {
       const zip = new JSZip();
       for (const img of doneImages) {
         const blob = dataURLtoBlob(img.upscaledDataUrl!);
-        zip.file(`${img.name.replace(/\.[^.]+$/, "")}_upscaled_${resLabel.toLowerCase()}.jpg`, blob);
+        zip.file(`${img.name.replace(/\.[^.]+$/, "")}_upscaled_${selectedPreset.label.replace('×', 'x')}.jpg`, blob);
       }
       const zipBlob = await zip.generateAsync({ type: "blob" });
       const a = document.createElement("a");
       a.href = URL.createObjectURL(zipBlob);
-      a.download = `upscaled_images_${resLabel.toLowerCase()}_${Date.now()}.zip`;
+      a.download = `upscaled_images_${selectedPreset.label.replace('×', 'x')}_${Date.now()}.zip`;
       a.click();
     }
 
@@ -776,16 +791,16 @@ export default function ImageUpscaler() {
       <div className="uploader__hero">
         <h2>🔍 AI Photo & Video Upscaler</h2>
         <p>
-          Upscale foto & video ke resolusi <strong>{resLabel}</strong> dengan{" "}
-          <strong>{profile.label}</strong>. Denoise, sharpening, dan color
-          grading dioptimalkan secara otomatis.
+          Upscale foto & video ke resolusi tepat <strong>{selectedPreset.label}px</strong>{" "}
+          ({selectedPreset.desc}) menggunakan <strong>{profile.label}</strong>.{" "}
+          Denoise, sharpening, dan color grading dioptimalkan secara otomatis.
         </p>
       </div>
 
       <div
         style={{
           display: "grid",
-          gridTemplateColumns: "200px 1fr",
+          gridTemplateColumns: "1fr 1fr",
           gap: "20px",
           background: "var(--surface)",
           border: "1px solid var(--border)",
@@ -806,52 +821,44 @@ export default function ImageUpscaler() {
               marginBottom: "10px",
             }}
           >
-            Target Resolution
+            Target Resolution (Fixed Pixel)
           </label>
-          <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
-            {([3000, 4000, 8000] as const).map((sz) => {
-              const active = targetSize === sz;
-              const lbl = sz === 3000 ? "3K" : sz === 4000 ? "4K" : "8K";
-              const sub =
-                sz === 3000
-                  ? "≈3000px sisi terpanjang"
-                  : sz === 4000
-                  ? "≈4000px sisi terpanjang"
-                  : "≈8000px sisi terpanjang";
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "6px" }}>
+            {RESOLUTION_PRESETS.map((preset) => {
+              const active = selectedPreset.label === preset.label;
               return (
                 <button
-                  key={sz}
+                  key={preset.label}
                   type="button"
-                  onClick={() => setTargetSize(sz)}
+                  onClick={() => setSelectedPreset(preset)}
                   disabled={loading}
                   style={{
                     padding: "10px 12px",
                     borderRadius: "8px",
                     border: `1px solid ${active ? "#ec4899" : "var(--border)"}`,
-                    background: active
-                      ? "rgba(236,72,153,0.12)"
-                      : "var(--bg-secondary)",
+                    background: active ? "rgba(236,72,153,0.12)" : "var(--bg-secondary)",
                     cursor: loading ? "not-allowed" : "pointer",
                     textAlign: "left",
                     transition: "all 0.15s",
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "10px",
                   }}
                 >
-                  <span
-                    style={{
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "4px" }}>
+                    <span style={{ fontWeight: "800", fontSize: "13px", color: active ? "#ec4899" : "var(--text)", fontFamily: "monospace" }}>
+                      {preset.label}
+                    </span>
+                    <span style={{
+                      fontSize: "9px",
                       fontWeight: "800",
-                      fontSize: "18px",
-                      color: active ? "#ec4899" : "var(--text)",
-                      minWidth: "28px",
-                    }}
-                  >
-                    {lbl}
-                  </span>
-                  <span style={{ fontSize: "10px", color: "var(--text-muted)" }}>
-                    {sub}
-                  </span>
+                      color: active ? "#ec4899" : "var(--text-muted)",
+                      background: active ? "rgba(236,72,153,0.18)" : "rgba(255,255,255,0.06)",
+                      padding: "1px 5px",
+                      borderRadius: "4px",
+                      letterSpacing: "0.05em",
+                    }}>
+                      {preset.badge}
+                    </span>
+                  </div>
+                  <div style={{ fontSize: "10px", color: "var(--text-muted)" }}>{preset.desc}</div>
                 </button>
               );
             })}

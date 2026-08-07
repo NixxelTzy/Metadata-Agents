@@ -115,6 +115,66 @@ export interface UserActivity {
   currentFeature: string; // e.g. "metadata", "upscale", "motion"
 }
 
+// ── Activity Event Log (Granular) ─────────────────────────────────────────────
+
+export interface ActivityEvent {
+  id: string;          // unique event id
+  userId: string;
+  email: string;
+  username: string;
+  action: string;      // e.g. "metadata_upload", "upscale", "login"
+  detail: string;      // human-readable detail, e.g. "Upload 24 foto di Metadata"
+  timestamp: string;   // ISO date string
+}
+
+/** Append a new activity event to user's event log (max 200 events per user, 90-day TTL) */
+export async function appendActivityEvent(
+  userId: string,
+  email: string,
+  username: string,
+  action: string,
+  detail: string
+): Promise<void> {
+  const event: ActivityEvent = {
+    id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    userId,
+    email,
+    username,
+    action,
+    detail,
+    timestamp: new Date().toISOString(),
+  };
+  const key = `actlog:user:${userId}`;
+  await redis.lpush(key, JSON.stringify(event));
+  await redis.ltrim(key, 0, 199);    // keep max 200 events
+  await redis.expire(key, 86400 * 90); // 90 days TTL
+}
+
+/** Get activity events for a specific user (newest first) */
+export async function getUserActivityEvents(userId: string, limit = 100): Promise<ActivityEvent[]> {
+  const raw = await redis.lrange(`actlog:user:${userId}`, 0, limit - 1);
+  return raw.map((r) => (typeof r === "string" ? JSON.parse(r) : r) as ActivityEvent);
+}
+
+/** Get ALL activity events across all users, sorted newest-first */
+export async function getAllActivityEvents(limit = 500): Promise<ActivityEvent[]> {
+  const keys = await redis.keys("actlog:user:*");
+  if (!keys || keys.length === 0) return [];
+  const allRaw = await Promise.all(
+    keys.map((k) => redis.lrange(k, 0, 99))
+  );
+  const events: ActivityEvent[] = [];
+  for (const rawList of allRaw) {
+    for (const r of rawList) {
+      try {
+        events.push(typeof r === "string" ? JSON.parse(r) : (r as ActivityEvent));
+      } catch { /* skip bad records */ }
+    }
+  }
+  events.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+  return events.slice(0, limit);
+}
+
 export async function updateUserActivity(
   userId: string,
   email: string,

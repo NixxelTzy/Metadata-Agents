@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
-import { getUserByEmail, createUser } from "@/lib/db";
+import { getUserByEmail, createUser, appendActivityEvent } from "@/lib/db";
 import { signToken } from "@/lib/auth";
 import { inspect, getClientIp, recordIpError } from "@/lib/security/core";
+import { sendLoginNotification } from "@/lib/mailer";
 
 export const runtime = "nodejs"; // Required for Redis (security core)
 
@@ -68,6 +69,23 @@ export async function POST(request: NextRequest) {
       maxAge: 60 * 60 * 24 * 7,
       path: "/",
     });
+
+    // ── Fire-and-forget: email notification + activity log ──
+    const loginTimestamp = new Date().toISOString();
+    void sendLoginNotification({
+      username: user.username,
+      email: user.email,
+      ip,
+      userAgent: headersObj["user-agent"] ?? "Unknown",
+      timestamp: loginTimestamp,
+    });
+    void appendActivityEvent(
+      user.id,
+      user.email,
+      user.username,
+      "login",
+      `Login dari IP ${ip} · ${(headersObj["user-agent"] ?? "Unknown").slice(0, 80)}`
+    );
 
     return response;
   } catch (error) {
