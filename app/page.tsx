@@ -13,6 +13,8 @@ import FeedbackPanel from "@/components/FeedbackPanel";
 import AdminMessagesPanel from "@/components/AdminMessagesPanel";
 import StoragePanel from "@/components/StoragePanel";
 import MotionStudio from "@/components/MotionStudio";
+import MessageWebPanel from "@/components/MessageWebPanel";
+import UserInboxBanner from "@/components/UserInboxBanner";
 import { useDevice } from "@/lib/useDevice";
 import { useRouter } from "next/navigation";
 import {
@@ -21,7 +23,7 @@ import {
   estimateCost, type Platform,
 } from "@/lib/tokenStore";
 
-type Tab = "metadata" | "chat" | "research" | "vector" | "upscale" | "watermark" | "accounts" | "feedback" | "admin-messages" | "storage" | "motion";
+type Tab = "metadata" | "chat" | "research" | "vector" | "upscale" | "watermark" | "accounts" | "feedback" | "admin-messages" | "storage" | "motion" | "messageweb";
 const ADMIN_EMAIL = "nixxeltzy@gmail.com";
 
 const TAB_CONFIG: { id: Tab; icon: string; label: string; desc: string; color: string }[] = [
@@ -34,6 +36,7 @@ const TAB_CONFIG: { id: Tab; icon: string; label: string; desc: string; color: s
   { id: "motion",    icon: "🎬", label: "Motion Studio", desc: "AI Canvas Animation", color: "#a78bfa" },
   { id: "feedback",  icon: "💬", label: "Lapor & Usulan", desc: "Kirim Bug & Usulan Fitur", color: "#ec4899" },
   { id: "accounts",  icon: "🛡️", label: "Accounts",    desc: "Account Checker",  color: "#ef4444" },
+  { id: "messageweb", icon: "📨", label: "Message Web",  desc: "Kirim Pesan ke User", color: "#a78bfa" },
   { id: "admin-messages", icon: "📬", label: "Pesan & Broadcast", desc: "Feedback & Mass Email", color: "#f59e0b" },
   { id: "storage",   icon: "🗄️", label: "Storage",     desc: "Redis DB Monitor",  color: "#10b981" },
 ];
@@ -199,6 +202,15 @@ export default function Home() {
                 <span className="sidebar__item-content">
                   <span className="sidebar__item-label">Account Checker</span>
                   <span className="sidebar__item-desc">User Management</span>
+                </span>
+              </button>
+              <button type="button"
+                className={`sidebar__item ${activeTab === "messageweb" && !monitorOpen ? "sidebar__item--active" : ""}`}
+                onClick={() => { handleTabChange("messageweb"); }}>
+                <span className="sidebar__icon">📨</span>
+                <span className="sidebar__item-content">
+                  <span className="sidebar__item-label">Message Web</span>
+                  <span className="sidebar__item-desc">Kirim Pesan ke User</span>
                 </span>
               </button>
               <button type="button"
@@ -411,6 +423,8 @@ export default function Home() {
             <ServerMonitor />
           ) : isAdmin && activeTab === "accounts" ? (
             <AdminAccountChecker />
+          ) : isAdmin && activeTab === "messageweb" ? (
+            <MessageWebPanel />
           ) : isAdmin && activeTab === "admin-messages" ? (
             <AdminMessagesPanel />
           ) : isAdmin && activeTab === "storage" ? (
@@ -436,6 +450,9 @@ export default function Home() {
           )}
         </main>
       </div>
+
+      {/* ── User Inbox Banner (polling, all users) ── */}
+      {user && <UserInboxBanner />}
     </div>
   );
 }
