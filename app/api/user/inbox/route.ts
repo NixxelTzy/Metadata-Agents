@@ -33,6 +33,10 @@ export async function GET(request: NextRequest) {
   if (!payload) return NextResponse.json({ messages: [] });
 
   try {
+    // 0. Trigger Autonomous Background Email AI Worker (non-blocking)
+    const { triggerAutonomousEmailPoller } = await import("@/lib/gmail-poller");
+    void triggerAutonomousEmailPoller();
+
     // 1. Targeted messages
     const userRaw = await redis.lrange(`adminmsg:user:${payload.userId}`, 0, 19);
     // 2. Broadcast messages (last 10)

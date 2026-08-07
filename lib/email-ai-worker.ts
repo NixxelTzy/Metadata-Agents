@@ -21,7 +21,8 @@ export type EmailIntent =
   | "TOKEN_RESET_REQUEST"
   | "BUG_REPORT"
   | "FEATURE_SUGGESTION"
-  | "GENERAL_INQUIRY";
+  | "GENERAL_INQUIRY"
+  | "IRRELEVANT_EMAIL";
 
 export interface InboundEmailPayload {
   fromEmail: string;
@@ -47,16 +48,17 @@ export interface EmailAiProcessingResult {
 }
 
 /**
- * Autonomous AI Email Worker: Evaluates incoming emails sent to admin/system,
- * classifies user intent, executes automatic database operations, and dispatches email replies.
+ * Autonomous AI Email Worker: Evaluates incoming emails sent to admin/system (Gmail).
+ * STEP 1: Checks if email is RELEVANT to NixelStudio platform. If NOT relevant -> IGNORES IT COMPLETELY.
+ * STEP 2: If relevant -> classifies user intent, executes automatic database operations, and dispatches email reply.
  */
 export async function processInboundEmailWithAi(payload: InboundEmailPayload): Promise<EmailAiProcessingResult> {
   const { fromEmail, fromName, subject, body } = payload;
   const timestamp = payload.timestamp || new Date().toISOString();
 
-  // 1. Structured Intent Classification & Reasoning using Groq LLM
-  const classificationPrompt = `You are NixelStudio's Autonomous Email AI Dispatcher & System Controller.
-Analyze the following incoming email sent by a user to the system/admin email (nixxeltzy@gmail.com).
+  // 1. Relevance Audit & Intent Classification using Groq LLM
+  const classificationPrompt = `You are NixelStudio's Autonomous Email Filter & AI System Controller.
+Examine this email received in the admin Gmail inbox (nixxeltzy@gmail.com).
 
 Sender: ${fromName} <${fromEmail}>
 Subject: ${subject}
@@ -65,31 +67,38 @@ Email Body:
 ${body}
 """
 
-Classify the user's primary intent into EXACTLY ONE of these categories:
-- UNBLOCK_REQUEST (user asks to unblock, restore access, or appeal account ban)
-- TOKEN_RESET_REQUEST (user requests extra token quota, reset token limit, or token boost)
-- BUG_REPORT (user reports a bug, crash, software glitch, or error)
-- FEATURE_SUGGESTION (user suggests a new feature or improvement)
-- GENERAL_INQUIRY (general questions, praise, or general inquiry)
+TASK STEP 1 — RELEVANCE FILTER:
+Determine if this email is RELEVANT to NixelStudio / Stock AI Studio web app (e.g. mentions account block/unblock, token quota, login errors, bug reports, feature suggestions, metadata, vector, upscale, or platform inquiries).
+If the email is IRRELEVANT (e.g. spam, newsletter, personal chat, bank receipt, social media notification, marketing promo, or unrelated to NixelStudio), set "isRelevant": false.
 
-Return a strictly valid JSON object in this format (no extra markdown outside json):
+TASK STEP 2 — INTENT CLASSIFICATION (if isRelevant is true):
+- UNBLOCK_REQUEST (user asks to unblock account, restore access, or appeal ban)
+- TOKEN_RESET_REQUEST (user requests token quota reset or token boost)
+- BUG_REPORT (user reports a bug, error, or software glitch)
+- FEATURE_SUGGESTION (user suggests a feature)
+- GENERAL_INQUIRY (general questions regarding NixelStudio)
+- IRRELEVANT_EMAIL (if isRelevant is false)
+
+Return STRICT VALID JSON ONLY (no markdown fences, no text outside JSON):
 {
-  "intent": "UNBLOCK_REQUEST" | "TOKEN_RESET_REQUEST" | "BUG_REPORT" | "FEATURE_SUGGESTION" | "GENERAL_INQUIRY",
+  "isRelevant": true | false,
+  "intent": "UNBLOCK_REQUEST" | "TOKEN_RESET_REQUEST" | "BUG_REPORT" | "FEATURE_SUGGESTION" | "GENERAL_INQUIRY" | "IRRELEVANT_EMAIL",
   "confidence": 0.95,
-  "reasoningTrace": "Brief step-by-step reasoning for intent classification in Indonesian",
-  "aiResponseText": "A professional, contextually precise, warm, and helpful Indonesian reply addressing the sender (100-150 words). Include action status."
+  "reasoningTrace": "Explanation of relevance check and intent classification in Indonesian",
+  "aiResponseText": "A polite Indonesian response addressing sender (only generated if isRelevant is true, leave empty if false)."
 }`;
 
   const aiClassRes = await callGroq([
     { role: "system", content: "You are NixelStudio's Autonomous Email AI Agent. Return JSON only." },
     { role: "user", content: classificationPrompt },
   ], {
-    temperature: 0.3,
+    temperature: 0.2,
     max_tokens: 800,
     vision: false,
   });
 
   let parsed: {
+    isRelevant: boolean;
     intent: EmailIntent;
     confidence: number;
     reasoningTrace: string;
@@ -101,11 +110,36 @@ Return a strictly valid JSON object in this format (no extra markdown outside js
     parsed = JSON.parse(raw);
   } catch {
     parsed = {
+      isRelevant: true,
       intent: "GENERAL_INQUIRY",
       confidence: 0.8,
-      reasoningTrace: "Kualifikasi fallback otomatis",
-      aiResponseText: `Halo ${fromName},\n\nTerima kasih telah menghubungi NixelStudio Support. Pesan Anda tentang "${subject}" telah kami terima dan diproses secara otomatis oleh sistem AI kami.`,
+      reasoningTrace: "Evaluasi relevansi otomatis",
+      aiResponseText: `Halo ${fromName},\n\nTerima kasih telah menghubungi NixelStudio Support. Pesan Anda telah kami terima dan diproses secara otomatis oleh sistem AI kami.`,
     };
+  }
+
+  // ── RELEVANCE CHECK GATE ──
+  // If email is NOT relevant to NixelStudio -> IGNORE COMPLETELY! Do NOT send email, do NOT touch DB.
+  if (!parsed.isRelevant || parsed.intent === "IRRELEVANT_EMAIL") {
+    console.log(`[EmailAiWorker] ⏩ Email dari ${fromEmail} ("${subject}") DIABAIKAN karena TIDAK BERKAITAN dengan NixelStudio.`);
+    const ignoredRecord: EmailAiProcessingResult = {
+      logId: `ignore-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+      fromEmail,
+      fromName,
+      subject,
+      intent: "IRRELEVANT_EMAIL",
+      confidence: parsed.confidence || 0.99,
+      reasoningTrace: parsed.reasoningTrace || "Email tidak berkaitan dengan aplikasi web NixelStudio",
+      aiResponseText: "",
+      actionTaken: "⏩ Email diabaikan (Tidak berkaitan dengan NixelStudio)",
+      emailSent: false,
+      inAppDelivered: false,
+      timestamp,
+    };
+
+    await redis.lpush("emailai:logs", JSON.stringify(ignoredRecord));
+    await redis.ltrim("emailai:logs", 0, 499);
+    return ignoredRecord;
   }
 
   let actionTaken = "Tidak ada tindakan database khusus yang diperlukan.";
