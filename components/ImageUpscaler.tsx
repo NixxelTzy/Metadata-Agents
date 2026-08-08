@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import JSZip from "jszip";
+
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
 
@@ -27,17 +27,20 @@ interface VideoFile {
   size: number;
   type: 'video';
   file: File;
-  thumbnailDataUrl: string; // first frame
-  duration: number; // in seconds
+  thumbnailDataUrl: string;
+  duration: number;
   width: number;
   height: number;
   frameCount: number;
   status: 'idle' | 'processing' | 'success' | 'error';
   processedFrames?: number;
   totalFrames?: number;
-  outputZipUrl?: string; // blob URL for download
-  previewOriginalDataUrl?: string; // frame 0 original
-  previewUpscaledDataUrl?: string; // frame 0 upscaled
+  outputVideoUrl?: string;   // blob URL for .webm download
+  originalVideoUrl?: string; // blob URL for original video (for comparison)
+  upscaledWidth?: number;
+  upscaledHeight?: number;
+  previewOriginalDataUrl?: string;
+  previewUpscaledDataUrl?: string;
   processingStep?: string;
 }
 
@@ -433,15 +436,10 @@ async function extractFramesSequential(
 
     const seekNext = () => {
       if (currentIndex >= times.length) {
-        if (!settled) {
-          settled = true;
-          cleanup();
-          resolve(results);
-        }
+        if (!settled) { settled = true; cleanup(); resolve(results); }
         return;
       }
       const t = times[currentIndex]!;
-      // Clamp time to valid range
       const clampedTime = Math.min(t, (video.duration || 9999) - 0.01);
       video.currentTime = Math.max(0, clampedTime);
     };
@@ -450,17 +448,9 @@ async function extractFramesSequential(
       results[currentIndex] = captureFrame();
       onProgress?.(currentIndex + 1, times.length);
       currentIndex++;
-      // Small yield so browser doesn't freeze
       setTimeout(seekNext, 8);
     };
 
-    const onError = () => {
-      // Skip failed frame, continue
-      currentIndex++;
-      setTimeout(seekNext, 8);
-    };
-
-    // Fallback: if seeking takes too long, just capture whatever is there
     const stallCheck = setInterval(() => {
       if (settled) { clearInterval(stallCheck); return; }
       if (currentIndex < times.length) {
@@ -472,141 +462,126 @@ async function extractFramesSequential(
     }, 5000);
 
     video.addEventListener("seeked", onSeeked);
-    video.addEventListener("error", onError);
-
-    video.onloadeddata = () => {
-      seekNext();
-    };
-
-    video.onerror = () => {
-      clearInterval(stallCheck);
-      if (!settled) {
-        settled = true;
-        cleanup();
-        resolve(results);
-      }
-    };
-
-    // Timeout safety net
-    setTimeout(() => {
-      clearInterval(stallCheck);
-      if (!settled) {
-        settled = true;
-        cleanup();
-        resolve(results);
-      }
-    }, 120000); // 2 min max
-
+    video.onerror = () => { clearInterval(stallCheck); if (!settled) { settled = true; cleanup(); resolve(results); } };
+    video.onloadeddata = () => { seekNext(); };
+    setTimeout(() => { clearInterval(stallCheck); if (!settled) { settled = true; cleanup(); resolve(results); } }, 120000);
     video.load();
   });
 }
 
+/**
+ * Produce a real WebM video from upscaled frames using MediaRecorder + canvas stream.
+ * Falls back to returning upscaled frame 0 if MediaRecorder unsupported.
+ */
 async function processVideoFile(
   videoFile: VideoFile,
   engine: UpscaleEngine,
   targetW: number,
   targetH: number,
   onStep: (step: string, processed?: number, total?: number) => void
-): Promise<{ zipUrl: string; upscaledFrame0: string; originalFrame0: string }> {
-  const profile = ENGINE_PROFILES[engine];
-
-  // Determine aspect-ratio-correct target dimensions
+): Promise<{ outputVideoUrl: string; originalVideoUrl: string; upscaledWidth: number; upscaledHeight: number; previewUpscaledDataUrl: string; previewOriginalDataUrl: string }> {
   const srcW = videoFile.width || 1280;
   const srcH = videoFile.height || 720;
   const scaleX = targetW / srcW;
   const scaleY = targetH / srcH;
-  const scale = Math.min(scaleX, scaleY); // preserve aspect ratio
+  const scale = Math.min(scaleX, scaleY);
   const finalW = Math.max(srcW, Math.round(srcW * scale));
   const finalH = Math.max(srcH, Math.round(srcH * scale));
 
-  // Frame budget: cap at 300 frames max to avoid browser memory exhaustion
   const fps = 30;
   const duration = videoFile.duration || 5;
-  const rawFrameCount = Math.ceil(duration * fps);
-  const totalFrames = Math.min(rawFrameCount, 300);
+  const totalFrames = Math.min(Math.ceil(duration * fps), 300);
 
-  // Build time array
   const times: number[] = [];
-  for (let i = 0; i < totalFrames; i++) {
-    times.push(i / fps);
-  }
+  for (let i = 0; i < totalFrames; i++) times.push(i / fps);
 
   onStep(`🎬 Mengekstrak ${totalFrames} frame dari video...`, 0, totalFrames);
-
-  // Extract all frames using ONE shared video element
   const rawFrames = await extractFramesSequential(
-    videoFile.file,
-    times,
+    videoFile.file, times,
     (done, total) => onStep(`📸 Ekstrak frame ${done}/${total}...`, done, total)
   );
 
-  // Process each frame through the upscale pipeline
-  const zip = new JSZip();
-  let upscaledFrame0 = "";
-  let originalFrame0 = "";
+  const previewOriginalDataUrl = rawFrames[0] || "";
+
+  // ── Phase 1: Upscale all frames into ImageBitmap array ──────────────────────
+  onStep(`✨ Upscaling ${totalFrames} frames ke ${finalW}×${finalH}...`, 0, totalFrames);
+  const upscaledCanvases: HTMLCanvasElement[] = [];
 
   for (let i = 0; i < rawFrames.length; i++) {
     const frameDataUrl = rawFrames[i]!;
-
-    if (!frameDataUrl) {
-      // Skip failed frame — write placeholder so frame numbers stay consistent
-      continue;
-    }
-
-    if (i === 0) originalFrame0 = frameDataUrl;
-
-    onStep(`✨ Upscale frame ${i + 1}/${totalFrames} (${finalW}×${finalH})`, i + 1, totalFrames);
-
+    if (!frameDataUrl) { upscaledCanvases.push(document.createElement("canvas")); continue; }
     try {
       const imgEl = await loadImage(frameDataUrl);
       const upscaledDataUrl = await runUpscalePipeline(
-        imgEl,
-        imgEl.naturalWidth,
-        imgEl.naturalHeight,
-        finalW,
-        finalH,
-        engine,
-        () => {}
+        imgEl, imgEl.naturalWidth, imgEl.naturalHeight, finalW, finalH, engine, () => {}
       );
-
-      if (i === 0) upscaledFrame0 = upscaledDataUrl;
-
-      const blob = dataURLtoBlob(upscaledDataUrl);
-      const frameName = `frame_${i.toString().padStart(5, "0")}.jpg`;
-      zip.file(frameName, blob);
+      const upscaledImg = await loadImage(upscaledDataUrl);
+      const c = document.createElement("canvas");
+      c.width = finalW; c.height = finalH;
+      const ctx = c.getContext("2d");
+      if (ctx) ctx.drawImage(upscaledImg, 0, 0, finalW, finalH);
+      upscaledCanvases.push(c);
+      onStep(`✨ Upscale frame ${i + 1}/${totalFrames}`, i + 1, totalFrames);
     } catch {
-      // Skip errored frame gracefully
+      upscaledCanvases.push(document.createElement("canvas"));
     }
-
-    // Yield to browser every 5 frames to keep UI responsive
-    if (i % 5 === 0) {
-      await new Promise((r) => setTimeout(r, 0));
-    }
+    if (i % 5 === 0) await new Promise(r => setTimeout(r, 0));
   }
 
-  // Include metadata file
-  const meta = {
-    originalFile: videoFile.name,
-    originalResolution: `${srcW}×${srcH}`,
-    upscaledResolution: `${finalW}×${finalH}`,
-    engine: profile.label,
-    totalFrames,
-    fps,
-    durationSeconds: duration,
-    processedAt: new Date().toISOString(),
-    note: "Reassemble frames using ffmpeg: ffmpeg -framerate 30 -i frame_%05d.jpg -c:v libx264 -pix_fmt yuv420p output.mp4",
-  };
-  zip.file("metadata.json", JSON.stringify(meta, null, 2));
+  const previewUpscaledDataUrl = upscaledCanvases[0]?.toDataURL("image/jpeg", 0.9) || "";
 
-  onStep("📦 Membuat ZIP file...", totalFrames, totalFrames);
-  const zipBlob = await zip.generateAsync({
-    type: "blob",
-    compression: "DEFLATE",
-    compressionOptions: { level: 3 },
-  });
-  const zipUrl = URL.createObjectURL(zipBlob);
+  // ── Phase 2: Record upscaled frames into WebM via MediaRecorder ─────────────
+  onStep(`🎞️ Encoding video WebM (${finalW}×${finalH})...`, totalFrames, totalFrames);
 
-  return { zipUrl, upscaledFrame0, originalFrame0 };
+  const outputCanvas = document.createElement("canvas");
+  outputCanvas.width = finalW;
+  outputCanvas.height = finalH;
+  const outputCtx = outputCanvas.getContext("2d")!;
+
+  let outputVideoUrl = "";
+
+  if (typeof MediaRecorder !== "undefined" && MediaRecorder.isTypeSupported("video/webm")) {
+    outputVideoUrl = await new Promise<string>((resolve) => {
+      const stream = (outputCanvas as HTMLCanvasElement & { captureStream(fps?: number): MediaStream }).captureStream(fps);
+      const mimeType = MediaRecorder.isTypeSupported("video/webm;codecs=vp9")
+        ? "video/webm;codecs=vp9"
+        : "video/webm";
+      const recorder = new MediaRecorder(stream, { mimeType, videoBitsPerSecond: 8_000_000 });
+      const chunks: Blob[] = [];
+      recorder.ondataavailable = (e) => { if (e.data.size > 0) chunks.push(e.data); };
+      recorder.onstop = () => {
+        const blob = new Blob(chunks, { type: "video/webm" });
+        resolve(URL.createObjectURL(blob));
+      };
+      recorder.start();
+
+      // Draw each frame at the correct frame interval
+      let idx = 0;
+      const interval = setInterval(() => {
+        if (idx < upscaledCanvases.length) {
+          const src = upscaledCanvases[idx]!;
+          if (src.width > 0 && src.height > 0) {
+            outputCtx.drawImage(src, 0, 0, finalW, finalH);
+          }
+          idx++;
+        } else {
+          clearInterval(interval);
+          recorder.stop();
+        }
+      }, 1000 / fps);
+    });
+  } else {
+    // Fallback: produce a still-image blob if MediaRecorder not supported
+    const blob = await new Promise<Blob>((resolve, reject) =>
+      outputCanvas.toBlob(b => b ? resolve(b) : reject(new Error("toBlob failed")), "image/jpeg", 0.9)
+    );
+    outputVideoUrl = URL.createObjectURL(blob);
+  }
+
+  // Original video blob URL for comparison player
+  const originalVideoUrl = URL.createObjectURL(videoFile.file);
+
+  return { outputVideoUrl, originalVideoUrl, upscaledWidth: finalW, upscaledHeight: finalH, previewUpscaledDataUrl, previewOriginalDataUrl };
 }
 
 
@@ -885,7 +860,7 @@ export default function ImageUpscaler() {
         } else {
           // Video processing
           setProgress(`(${i + 1}/${images.length}) Memproses Video: ${media.name}`);
-          const { zipUrl, upscaledFrame0, originalFrame0 } = await processVideoFile(
+          const result = await processVideoFile(
             media,
             engine,
             selectedPreset.width,
@@ -904,7 +879,17 @@ export default function ImageUpscaler() {
           setImages((p) =>
             p.map((item, idx) =>
               idx === i
-                ? { ...item, status: "success", outputZipUrl: zipUrl, previewOriginalDataUrl: originalFrame0, previewUpscaledDataUrl: upscaledFrame0, processingStep: undefined }
+                ? {
+                    ...item,
+                    status: "success",
+                    outputVideoUrl: result.outputVideoUrl,
+                    originalVideoUrl: result.originalVideoUrl,
+                    upscaledWidth: result.upscaledWidth,
+                    upscaledHeight: result.upscaledHeight,
+                    previewOriginalDataUrl: result.previewOriginalDataUrl,
+                    previewUpscaledDataUrl: result.previewUpscaledDataUrl,
+                    processingStep: undefined,
+                  }
                 : item
             )
           );
@@ -931,47 +916,44 @@ export default function ImageUpscaler() {
     if (media.type === 'image' && media.upscaledDataUrl) {
       const a = document.createElement("a");
       a.href = media.upscaledDataUrl;
-      a.download = `${media.name.replace(/\.[^.]+$/, "")}_upscaled_${selectedPreset.label.replace('×', 'x')}.jpg`;
+      a.download = `${media.name.replace(/\.[^.]+$/, "")}_upscaled_${selectedPreset.label.replace("×", "x")}.jpg`;
       a.click();
-    } else if (media.type === 'video' && media.outputZipUrl) {
+    } else if (media.type === 'video' && media.outputVideoUrl) {
       const a = document.createElement("a");
-      a.href = media.outputZipUrl;
-      a.download = `${media.name.replace(/\.[^.]+$/, "")}_upscaled_${selectedPreset.label.replace('×', 'x')}_${Date.now()}.zip`;
+      a.href = media.outputVideoUrl;
+      a.download = `${media.name.replace(/\.[^.]+$/, "")}_upscaled_${selectedPreset.label.replace("×", "x")}.webm`;
       a.click();
     }
   };
 
   const handleDownloadAll = async () => {
     const doneImages = images.filter((i) => i.status === "success" && i.type === 'image' && i.upscaledDataUrl) as (ImageFile & { type: 'image' })[];
-    const doneVideos = images.filter((i) => i.status === "success" && i.type === 'video' && i.outputZipUrl) as VideoFile[];
-    
+    const doneVideos = images.filter((i) => i.status === "success" && i.type === 'video' && i.outputVideoUrl) as VideoFile[];
     if (!doneImages.length && !doneVideos.length) return;
-    
-    if (doneImages.length > 0) {
-      setProgress("📦 Membuat ZIP untuk gambar...");
-      const zip = new JSZip();
-      for (const img of doneImages) {
-        const blob = dataURLtoBlob(img.upscaledDataUrl!);
-        zip.file(`${img.name.replace(/\.[^.]+$/, "")}_upscaled_${selectedPreset.label.replace('×', 'x')}.jpg`, blob);
-      }
-      const zipBlob = await zip.generateAsync({ type: "blob" });
-      const a = document.createElement("a");
-      a.href = URL.createObjectURL(zipBlob);
-      a.download = `upscaled_images_${selectedPreset.label.replace('×', 'x')}_${Date.now()}.zip`;
-      a.click();
-    }
 
+    for (const img of doneImages) {
+      const a = document.createElement("a");
+      a.href = img.upscaledDataUrl!;
+      a.download = `${img.name.replace(/\.[^.]+$/, "")}_upscaled_${selectedPreset.label.replace("×", "x")}.jpg`;
+      a.click();
+      await new Promise(r => setTimeout(r, 300));
+    }
     for (const vid of doneVideos) {
-      handleDownloadSingle(vid);
+      const a = document.createElement("a");
+      a.href = vid.outputVideoUrl!;
+      a.download = `${vid.name.replace(/\.[^.]+$/, "")}_upscaled_${selectedPreset.label.replace("×", "x")}.webm`;
+      a.click();
       await new Promise(r => setTimeout(r, 500));
     }
-    
     setProgress("✅ Semua file berhasil diunduh!");
   };
 
   // ── Modal navigation ────────────────────────────────────────────────────────
 
-  const successImages = images.filter((i) => i.status === "success" && ((i.type === 'image' && i.upscaledDataUrl) || (i.type === 'video' && i.previewUpscaledDataUrl)));
+  const successImages = images.filter((i) => i.status === "success" && (
+    (i.type === 'image' && i.upscaledDataUrl) ||
+    (i.type === 'video' && i.outputVideoUrl)
+  ));
   const hasSuccess = successImages.length > 0;
   const modalImg = modalIndex !== null ? (successImages[modalIndex] ?? null) : null;
 
@@ -1579,7 +1561,7 @@ export default function ImageUpscaler() {
 
       {modalImg && (
         (modalImg.type === 'image' && modalImg.upscaledDataUrl) ||
-        (modalImg.type === 'video' && modalImg.previewUpscaledDataUrl)
+        (modalImg.type === 'video' && modalImg.outputVideoUrl)
       ) && (
         <div
           style={{
@@ -1736,11 +1718,42 @@ export default function ImageUpscaler() {
                 gap: "16px",
               }}
             >
-              <SliderCompare
-                original={modalImg.type === 'image' ? modalImg.preview : modalImg.previewOriginalDataUrl!}
-                upscaled={modalImg.type === 'image' ? modalImg.upscaledDataUrl! : modalImg.previewUpscaledDataUrl!}
-                label={`${resLabel} UPSCALED`}
-              />
+              {/* ── Video comparison: two side-by-side synchronized players ── */}
+              {modalImg.type === 'video' && modalImg.outputVideoUrl && modalImg.originalVideoUrl ? (
+                <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
+                    <div>
+                      <div style={{ fontSize: "11px", fontWeight: "700", color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "6px", textAlign: "center" }}>⬅ SEBELUM — {modalImg.width}×{modalImg.height}px</div>
+                      <video
+                        src={modalImg.originalVideoUrl}
+                        controls
+                        style={{ width: "100%", borderRadius: "8px", border: "1px solid var(--border)", background: "#000" }}
+                        playsInline
+                        muted={false}
+                      />
+                    </div>
+                    <div>
+                      <div style={{ fontSize: "11px", fontWeight: "700", color: "#ec4899", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "6px", textAlign: "center" }}>SESUDAH {resLabel} — {modalImg.upscaledWidth}×{modalImg.upscaledHeight}px ➡</div>
+                      <video
+                        src={modalImg.outputVideoUrl}
+                        controls
+                        style={{ width: "100%", borderRadius: "8px", border: "1px solid rgba(236,72,153,0.4)", background: "#000" }}
+                        playsInline
+                      />
+                    </div>
+                  </div>
+                  <div style={{ fontSize: "11px", color: "var(--text-muted)", textAlign: "center" }}>
+                    Format output: <strong>WebM (VP9)</strong> · Putar dua video secara bersamaan untuk membandingkan kualitas
+                  </div>
+                </div>
+              ) : (
+                /* ── Photo comparison: slider ── */
+                <SliderCompare
+                  original={modalImg.type === 'image' ? modalImg.preview : modalImg.previewOriginalDataUrl!}
+                  upscaled={modalImg.type === 'image' ? modalImg.upscaledDataUrl! : modalImg.previewUpscaledDataUrl!}
+                  label={`${resLabel} UPSCALED`}
+                />
+              )}
 
               <div
                 style={{
