@@ -34,6 +34,39 @@ const TYPE_META: Record<MsgType, { icon: string; color: string; label: string; d
   block:   { icon: "🚫", color: "#f87171", label: "Blokir Sementara", desc: "Blokir akses hingga pengguna reload dengan alasan" },
 };
 
+// ─── Debug Types ──────────────────────────────────────────────────────────────
+
+interface DebugKeyInfo {
+  key: string;
+  exists: boolean;
+  count: number;
+  items: unknown[];
+}
+
+interface DebugResolvedMsg {
+  id: string;
+  type: string;
+  title: string;
+  targetUserId: string;
+  targetEmail: string;
+  targetUsername: string;
+  sentAt: string;
+  matchReason: string;
+  skippedBySeen: boolean;
+}
+
+interface DebugResult {
+  userId: string;
+  email: string;
+  username: string;
+  seenIds: string[];
+  userKeys: DebugKeyInfo[];
+  broadcastKey: DebugKeyInfo;
+  sentlogKey: DebugKeyInfo;
+  resolvedMessages: DebugResolvedMsg[];
+  errors: string[];
+}
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function relTime(iso: string) {
@@ -52,6 +85,249 @@ function fmtDate(iso: string) {
     day: "2-digit", month: "short", year: "numeric",
     hour: "2-digit", minute: "2-digit",
   });
+}
+
+// ─── Debug Panel ─────────────────────────────────────────────────────────────
+
+function DebugPanel({ users }: { users: AccountUser[] }) {
+  const [selectedId, setSelectedId] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [result, setResult] = useState<DebugResult | null>(null);
+  const [error, setError] = useState("");
+  const [expandedKey, setExpandedKey] = useState<string | null>(null);
+
+  const selectedUser = users.find((u) => String(u.id) === selectedId);
+
+  const runDiag = async () => {
+    if (!selectedId && !selectedUser) return;
+    setLoading(true);
+    setError("");
+    setResult(null);
+    try {
+      const params = new URLSearchParams();
+      if (selectedUser?.id) params.set("userId", selectedUser.id);
+      if (selectedUser?.email) params.set("email", selectedUser.email);
+      if (selectedUser?.username) params.set("username", selectedUser.username);
+      const res = await fetch(`/api/admin/inbox-debug?${params.toString()}`);
+      const data = await res.json() as DebugResult & { error?: string };
+      if (!res.ok) { setError(data.error ?? "Gagal mengambil data debug"); return; }
+      setResult(data);
+    } catch (e) {
+      setError("Koneksi gagal: " + String(e));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const chip = (label: string, color: string, bg: string) => (
+    <span style={{ fontSize: "10px", fontWeight: "700", padding: "2px 8px", borderRadius: "6px", background: bg, color, letterSpacing: "0.04em" }}>
+      {label}
+    </span>
+  );
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
+
+      {/* User Selector */}
+      <div style={{ background: "var(--bg-secondary)", border: "1px solid var(--border)", borderRadius: "12px", padding: "18px" }}>
+        <div style={{ fontSize: "11px", fontWeight: "700", textTransform: "uppercase", letterSpacing: "0.07em", color: "var(--text-muted)", marginBottom: "10px" }}>
+          🔍 Pilih Akun untuk Diagnosa Inbox
+        </div>
+        <div style={{ display: "flex", gap: "10px", flexWrap: "wrap", marginBottom: "12px" }}>
+          {users.filter((u) => u.role !== "admin").map((u) => {
+            const sel = String(selectedId) === String(u.id);
+            return (
+              <button
+                key={u.id}
+                onClick={() => setSelectedId(u.id)}
+                style={{
+                  padding: "7px 13px",
+                  borderRadius: "8px",
+                  border: `2px solid ${sel ? "#a78bfa" : "var(--border)"}`,
+                  background: sel ? "rgba(167,139,250,0.15)" : "var(--surface)",
+                  color: sel ? "#a78bfa" : "var(--text)",
+                  cursor: "pointer",
+                  fontSize: "12px",
+                  fontWeight: "600",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "6px",
+                  transition: "all 0.15s",
+                }}
+              >
+                <span style={{ width: "7px", height: "7px", borderRadius: "50%", background: u.isOnline ? "#4ade80" : "#475569", flexShrink: 0 }} />
+                {u.username}
+                <span style={{ fontSize: "10px", color: "var(--text-muted)" }}>{u.email}</span>
+              </button>
+            );
+          })}
+        </div>
+        {selectedUser && (
+          <div style={{ fontSize: "12px", color: "var(--text-muted)", marginBottom: "10px" }}>
+            Target: <strong style={{ color: "var(--text)" }}>{selectedUser.username}</strong> &nbsp;·&nbsp;
+            ID: <code style={{ fontSize: "11px", background: "var(--bg-secondary)", padding: "1px 5px", borderRadius: "4px" }}>{selectedUser.id}</code> &nbsp;·&nbsp;
+            Email: <code style={{ fontSize: "11px", background: "var(--bg-secondary)", padding: "1px 5px", borderRadius: "4px" }}>{selectedUser.email}</code>
+          </div>
+        )}
+        <button
+          onClick={runDiag}
+          disabled={!selectedId || loading}
+          style={{
+            padding: "10px 20px",
+            borderRadius: "8px",
+            border: "none",
+            background: !selectedId || loading ? "var(--bg-secondary)" : "linear-gradient(135deg, #7c3aed, #a78bfa)",
+            color: !selectedId || loading ? "var(--text-muted)" : "#fff",
+            fontWeight: "700",
+            fontSize: "13px",
+            cursor: !selectedId || loading ? "not-allowed" : "pointer",
+            transition: "all 0.2s",
+          }}
+        >
+          {loading ? "⏳ Sedang Diagnosa..." : "🔍 Jalankan Diagnosa Redis"}
+        </button>
+      </div>
+
+      {error && (
+        <div style={{ background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.3)", borderRadius: "10px", padding: "14px 16px", fontSize: "13px", color: "#f87171" }}>
+          ❌ {error}
+        </div>
+      )}
+
+      {result && (
+        <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
+
+          {/* Errors from server */}
+          {result.errors.length > 0 && (
+            <div style={{ background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.25)", borderRadius: "10px", padding: "14px 16px" }}>
+              <div style={{ fontSize: "11px", fontWeight: "800", color: "#f87171", textTransform: "uppercase", marginBottom: "8px" }}>⚠️ Error dari Server</div>
+              {result.errors.map((e, i) => (
+                <div key={i} style={{ fontSize: "12px", color: "#fca5a5", fontFamily: "monospace", marginBottom: "4px" }}>• {e}</div>
+              ))}
+            </div>
+          )}
+
+          {/* Seen Set */}
+          <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "10px", padding: "14px 16px" }}>
+            <div style={{ fontSize: "11px", fontWeight: "800", color: "var(--text-muted)", textTransform: "uppercase", marginBottom: "8px" }}>
+              🕵️ Seen Set (Redis) — {result.seenIds.length} ID Tersimpan
+            </div>
+            {result.seenIds.length === 0 ? (
+              <span style={{ fontSize: "12px", color: "#4ade80" }}>✅ Kosong — belum ada pesan yang di-mark seen</span>
+            ) : (
+              <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
+                {result.seenIds.map((id) => (
+                  <code key={id} style={{ fontSize: "10px", background: "rgba(239,68,68,0.1)", color: "#f87171", padding: "2px 7px", borderRadius: "5px" }}>
+                    {id}
+                  </code>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* User Keys */}
+          {result.userKeys.map((k) => (
+            <div key={k.key} style={{ background: "var(--surface)", border: `1px solid ${k.exists ? "rgba(74,222,128,0.25)" : "rgba(239,68,68,0.2)"}`, borderRadius: "10px", overflow: "hidden" }}>
+              <div
+                onClick={() => setExpandedKey(expandedKey === k.key ? null : k.key)}
+                style={{ padding: "12px 16px", display: "flex", alignItems: "center", gap: "10px", cursor: "pointer", userSelect: "none" }}
+              >
+                <span style={{ fontSize: "16px" }}>{k.exists ? "✅" : "❌"}</span>
+                <code style={{ fontSize: "12px", color: "var(--text)", flex: 1 }}>{k.key}</code>
+                {chip(`${k.count} item`, k.exists ? "#4ade80" : "#f87171", k.exists ? "rgba(74,222,128,0.1)" : "rgba(239,68,68,0.1)")}
+                <span style={{ fontSize: "12px", color: "var(--text-muted)" }}>{expandedKey === k.key ? "▲" : "▼"}</span>
+              </div>
+              {expandedKey === k.key && (
+                <div style={{ borderTop: "1px solid var(--border)", padding: "12px 16px", maxHeight: "300px", overflowY: "auto" }}>
+                  {k.count === 0 ? (
+                    <div style={{ fontSize: "12px", color: "var(--text-muted)" }}>Key ini kosong atau tidak ada di Redis.</div>
+                  ) : (
+                    (k.items as Array<{ id?: string; type?: string; title?: string; sentAt?: string }>).map((item, i) => (
+                      <div key={i} style={{ fontSize: "11px", fontFamily: "monospace", background: "var(--bg-secondary)", borderRadius: "6px", padding: "8px 10px", marginBottom: "6px", color: "var(--text-muted)", wordBreak: "break-all" }}>
+                        {JSON.stringify(item, null, 2)}
+                      </div>
+                    ))
+                  )}
+                </div>
+              )}
+            </div>
+          ))}
+
+          {/* Broadcast + Sentlog summary */}
+          {[result.broadcastKey, result.sentlogKey].map((k) => (
+            <div key={k.key} style={{ background: "var(--surface)", border: `1px solid ${k.exists ? "rgba(96,165,250,0.25)" : "rgba(239,68,68,0.15)"}`, borderRadius: "10px", overflow: "hidden" }}>
+              <div
+                onClick={() => setExpandedKey(expandedKey === k.key ? null : k.key)}
+                style={{ padding: "12px 16px", display: "flex", alignItems: "center", gap: "10px", cursor: "pointer", userSelect: "none" }}
+              >
+                <span style={{ fontSize: "16px" }}>{k.exists ? "📦" : "📭"}</span>
+                <code style={{ fontSize: "12px", color: "var(--text)", flex: 1 }}>{k.key}</code>
+                {chip(`${k.count} item`, "#60a5fa", "rgba(96,165,250,0.1)")}
+                <span style={{ fontSize: "12px", color: "var(--text-muted)" }}>{expandedKey === k.key ? "▲" : "▼"}</span>
+              </div>
+              {expandedKey === k.key && (
+                <div style={{ borderTop: "1px solid var(--border)", padding: "12px 16px", maxHeight: "300px", overflowY: "auto" }}>
+                  {k.count === 0 ? (
+                    <div style={{ fontSize: "12px", color: "var(--text-muted)" }}>Tidak ada data.</div>
+                  ) : (
+                    (k.items as Array<{ id?: string; type?: string; title?: string; targetUserId?: string; sentAt?: string }>).map((item, i) => (
+                      <div key={i} style={{ fontSize: "11px", fontFamily: "monospace", background: "var(--bg-secondary)", borderRadius: "6px", padding: "8px 10px", marginBottom: "6px", color: "var(--text-muted)", wordBreak: "break-all" }}>
+                        {JSON.stringify(item, null, 2)}
+                      </div>
+                    ))
+                  )}
+                </div>
+              )}
+            </div>
+          ))}
+
+          {/* Resolved Messages — real-time status for target user */}
+          <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "10px", overflow: "hidden" }}>
+            <div style={{ padding: "14px 16px", borderBottom: "1px solid var(--border)", background: "linear-gradient(135deg, rgba(124,58,237,0.08), rgba(96,165,250,0.05))" }}>
+              <div style={{ fontWeight: "800", fontSize: "13px", color: "var(--text)" }}>📥 Status Pesan Aktif di Akun Pengguna ({result.resolvedMessages.length})</div>
+              <div style={{ fontSize: "11px", color: "var(--text-muted)", marginTop: "2px" }}>Status langsung dari database Redis untuk akun terpilih</div>
+            </div>
+            <div style={{ padding: "12px 16px" }}>
+              {result.resolvedMessages.length === 0 ? (
+                <div style={{ textAlign: "center", padding: "20px", color: "var(--text-muted)", fontSize: "13px" }}>
+                  ⚠️ Tidak ada pesan aktif untuk akun ini.
+                </div>
+              ) : (
+                result.resolvedMessages.map((msg) => (
+                  <div
+                    key={msg.id}
+                    style={{
+                      padding: "12px 14px",
+                      marginBottom: "8px",
+                      borderRadius: "8px",
+                      border: `1px solid ${msg.skippedBySeen ? "rgba(239,68,68,0.25)" : "rgba(74,222,128,0.25)"}`,
+                      background: msg.skippedBySeen ? "rgba(239,68,68,0.04)" : "rgba(74,222,128,0.04)",
+                    }}
+                  >
+                    <div style={{ display: "flex", gap: "8px", alignItems: "center", marginBottom: "5px", flexWrap: "wrap" }}>
+                      {chip(msg.type.toUpperCase(), "#a78bfa", "rgba(167,139,250,0.12)")}
+                      {msg.skippedBySeen
+                        ? chip("TERBACA / DISMISS", "#f87171", "rgba(239,68,68,0.12)")
+                        : chip("✅ TAMPIL DI LAYAR", "#4ade80", "rgba(74,222,128,0.12)")
+                      }
+                      {chip(msg.matchReason, "#60a5fa", "rgba(96,165,250,0.1)")}
+                    </div>
+                    <div style={{ fontSize: "13px", fontWeight: "700", color: "var(--text)", marginBottom: "3px" }}>{msg.title}</div>
+                    <div style={{ fontSize: "10px", color: "var(--text-muted)", fontFamily: "monospace" }}>
+                      ID: {msg.id} &nbsp;·&nbsp; {new Date(msg.sentAt).toLocaleString("id-ID")}
+                    </div>
+                    <div style={{ fontSize: "10px", color: "var(--text-muted)", marginTop: "3px" }}>
+                      Target → userId: <code>{msg.targetUserId}</code> &nbsp;| email: <code>{msg.targetEmail}</code> &nbsp;| username: <code>{msg.targetUsername}</code>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
 }
 
 // ─── Compose Panel ────────────────────────────────────────────────────────────
@@ -608,7 +884,7 @@ const inputStyle: React.CSSProperties = {
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 export default function MessageWebPanel() {
-  const [activeView, setActiveView] = useState<"compose" | "log">("compose");
+  const [activeView, setActiveView] = useState<"compose" | "log" | "debug">("compose");
   const [users, setUsers] = useState<AccountUser[]>([]);
   const [sentMessages, setSentMessages] = useState<SentMessage[]>([]);
   const [loadingLog, setLoadingLog] = useState(false);
@@ -758,6 +1034,7 @@ export default function MessageWebPanel() {
         {([
           { id: "compose", icon: "✏️", label: "Tulis Pesan" },
           { id: "log", icon: "📋", label: `Riwayat (${sentMessages.length})` },
+          { id: "debug", icon: "🔍", label: "Debug Log" },
         ] as const).map((tab) => {
           const active = activeView === tab.id;
           return (
@@ -813,12 +1090,14 @@ export default function MessageWebPanel() {
         }}>
           <div>
             <div style={{ fontWeight: "800", fontSize: "16px", color: "var(--text)" }}>
-              {activeView === "compose" ? "✏️ Tulis & Kirim Pesan" : "📋 Riwayat Pesan Terkirim"}
+              {activeView === "compose" ? "✏️ Tulis & Kirim Pesan" : activeView === "log" ? "📋 Riwayat Pesan Terkirim" : "🔍 Debug Log — Status & Diagnosa Real-Time"}
             </div>
             <div style={{ fontSize: "12px", color: "var(--text-muted)", marginTop: "3px" }}>
               {activeView === "compose"
                 ? "Pilih tipe, target, dan isi pesan untuk dikirim ke pengguna"
-                : "Semua pesan yang pernah dikirim admin · diurutkan terbaru"}
+                : activeView === "log"
+                ? "Semua pesan yang pernah dikirim admin · diurutkan terbaru"
+                : "Periksa Redis key, status terbaca, log error, dan status aktif per akun"}
             </div>
           </div>
           {activeView === "log" && (
@@ -842,9 +1121,11 @@ export default function MessageWebPanel() {
         </div>
 
         {/* Card Body */}
-        <div style={{ padding: activeView === "compose" ? "24px" : "0" }}>
+        <div style={{ padding: activeView !== "log" ? "24px" : "0" }}>
           {activeView === "compose" ? (
             <ComposePanelForm users={users} onSent={fetchLog} />
+          ) : activeView === "debug" ? (
+            <DebugPanel users={users} />
           ) : loadingLog ? (
             <div style={{ textAlign: "center", padding: "60px", color: "var(--text-muted)" }}>
               <span className="spinner" style={{ marginBottom: "12px" }} />
