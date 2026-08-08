@@ -26,33 +26,29 @@ export interface AdminMessage {
  * Called every 10s by the client-side polling hook.
  */
 export async function GET(request: NextRequest) {
-  const t = request.cookies.get("auth_token")?.value;
-  if (!t) return NextResponse.json({ messages: [] });
-
-  const payload = verifyToken(t);
-  if (!payload) return NextResponse.json({ messages: [] });
-
   try {
     // 0. Trigger Autonomous Background Email AI Worker (non-blocking)
     const { triggerAutonomousEmailPoller } = await import("@/lib/gmail-poller");
     void triggerAutonomousEmailPoller();
 
-    const userKeys = [
-      `adminmsg:user:${payload.userId}`,
-      `adminmsg:user:${payload.email.toLowerCase()}`,
-    ];
-    if (payload.username) {
-      userKeys.push(`adminmsg:user:${payload.username.toLowerCase()}`);
+    const t = request.cookies.get("auth_token")?.value;
+    const payload = t ? verifyToken(t) : null;
+
+    const userKeys: string[] = ["adminmsg:broadcast", "adminmsg:sentlog"];
+
+    if (payload) {
+      if (payload.userId) userKeys.push(`adminmsg:user:${payload.userId}`);
+      if (payload.email) userKeys.push(`adminmsg:user:${payload.email.toLowerCase()}`);
+      if (payload.username) userKeys.push(`adminmsg:user:${payload.username.toLowerCase()}`);
     }
 
-    const rawLists = await Promise.all([
-      ...userKeys.map((k) => redis.lrange(k, 0, 19)),
-      redis.lrange("adminmsg:broadcast", 0, 9),
-    ]);
+    const rawLists = await Promise.all(
+      userKeys.map((k) => redis.lrange(k, 0, 49).catch(() => []))
+    );
 
-    // Read-receipt key — stores message IDs already seen/dismissed by this user
-    const seenKey = `adminmsg:seen:${payload.userId}`;
-    const seenRaw = await redis.smembers(seenKey);
+    // Read-receipt key
+    const seenKey = payload ? `adminmsg:seen:${payload.userId}` : null;
+    const seenRaw = seenKey ? await redis.smembers(seenKey).catch(() => []) : [];
     const seen = new Set(seenRaw as string[]);
 
     const msgMap = new Map<string, AdminMessage>();
@@ -61,6 +57,8 @@ export async function GET(request: NextRequest) {
       for (const r of list) {
         try {
           const msg: AdminMessage = typeof r === "string" ? JSON.parse(r) : r;
+          if (!msg || !msg.id || !msg.type || !msg.title) continue;
+
           const isAiMessage =
             msg.id.startsWith("ai-") ||
             msg.id.startsWith("email-ai-") ||
@@ -70,22 +68,22 @@ export async function GET(request: NextRequest) {
 
           if (isAiMessage) continue;
 
-          // Check if message is for ALL or specifically targeted to this user
-          const isTargetedToMe =
-            msg.targetUserId === "all" ||
-            msg.targetEmail === "all" ||
+          // Target check: Broadcast to everyone or specifically targeted to this user
+          const isBroadcast = msg.targetUserId === "all" || msg.targetEmail === "all" || msg.targetUsername === "all";
+          const isForMe = payload ? (
             String(msg.targetUserId) === String(payload.userId) ||
             msg.targetEmail?.toLowerCase() === payload.email.toLowerCase() ||
-            (payload.username && msg.targetUsername?.toLowerCase() === payload.username.toLowerCase());
+            (payload.username && msg.targetUsername?.toLowerCase() === payload.username.toLowerCase())
+          ) : false;
 
-          if (!isTargetedToMe) continue;
+          if (!isBroadcast && !isForMe) continue;
 
           // For standard messages, skip if dismissed by user.
           // For block and refresh messages, DO NOT skip even if in seen set.
           if (msg.type === "message" && seen.has(msg.id)) continue;
 
           msgMap.set(msg.id, msg);
-        } catch { /* skip */ }
+        } catch { /* skip corrupted item */ }
       }
     }
 
