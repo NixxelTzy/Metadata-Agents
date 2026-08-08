@@ -517,66 +517,135 @@ export default function UserInboxBanner() {
         </div>
       )}
 
-      {/* ── Block Overlay (Highest Priority) ─────────────────────────────────── */}
+      {/* ── Block Overlay (Highest Priority) — LANDSCAPE 2-COLUMN ─────────── */}
       {blockMsg && (
         <div
           className="inbox-modal"
           style={{
             position: "fixed", inset: 0, zIndex: 999999,
-            background: "rgba(2, 4, 18, 0.92)",
-            backdropFilter: "blur(24px)", WebkitBackdropFilter: "blur(24px)",
-            display: "flex", alignItems: "center", justifyContent: "center", padding: "20px",
+            background: "rgba(2, 4, 18, 0.94)",
+            backdropFilter: "blur(28px)", WebkitBackdropFilter: "blur(28px)",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            padding: "20px",
           }}
         >
-          {/* Ambient background orbs */}
-          <div style={{ position: "absolute", top: "15%", left: "20%", width: "400px", height: "400px", borderRadius: "50%", background: "radial-gradient(circle, rgba(239,68,68,0.15) 0%, transparent 70%)", pointerEvents: "none" }} />
-          <div style={{ position: "absolute", bottom: "15%", right: "20%", width: "300px", height: "300px", borderRadius: "50%", background: "radial-gradient(circle, rgba(220,38,38,0.1) 0%, transparent 70%)", pointerEvents: "none" }} />
+          {/* Ambient orbs */}
+          <div style={{ position: "absolute", top: "10%", left: "10%", width: "500px", height: "500px", borderRadius: "50%", background: "radial-gradient(circle, rgba(239,68,68,0.12) 0%, transparent 65%)", pointerEvents: "none" }} />
+          <div style={{ position: "absolute", bottom: "10%", right: "10%", width: "380px", height: "380px", borderRadius: "50%", background: "radial-gradient(circle, rgba(220,38,38,0.08) 0%, transparent 65%)", pointerEvents: "none" }} />
 
+          {/* ── LANDSCAPE CARD (max-width wide, 2 columns) ── */}
           <div
             style={{
-              maxWidth: "520px", width: "100%", position: "relative",
-              background: "linear-gradient(145deg, rgba(15,10,30,0.98) 0%, rgba(30,10,20,0.98) 100%)",
+              maxWidth: "880px", width: "100%", position: "relative",
+              background: "linear-gradient(145deg, rgba(12,8,28,0.99) 0%, rgba(25,8,18,0.99) 100%)",
               borderRadius: "28px", overflow: "hidden",
-              border: "1px solid rgba(239,68,68,0.25)",
-              boxShadow: "0 0 0 1px rgba(239,68,68,0.1), 0 40px 80px -20px rgba(0,0,0,0.8), 0 0 60px rgba(239,68,68,0.12)",
+              border: "1px solid rgba(239,68,68,0.22)",
+              boxShadow: "0 0 0 1px rgba(239,68,68,0.08), 0 40px 100px -20px rgba(0,0,0,0.9), 0 0 80px rgba(239,68,68,0.1)",
               animation: "centerModalIn 0.4s cubic-bezier(0.16, 1, 0.3, 1)",
+              display: "grid",
+              gridTemplateColumns: "260px 1fr",
             }}
           >
-            {/* Top Danger Stripe */}
-            <div style={{ height: "4px", background: "linear-gradient(90deg, #dc2626, #ef4444, #f87171, #ef4444, #dc2626)", backgroundSize: "200% auto", animation: "shimmer 3s linear infinite" }} />
+            {/* Top Danger Stripe — spans both cols */}
+            <div style={{
+              gridColumn: "1 / -1",
+              height: "4px",
+              background: "linear-gradient(90deg, #dc2626, #ef4444, #f87171, #ef4444, #dc2626)",
+              backgroundSize: "200% auto",
+              animation: "shimmer 3s linear infinite",
+            }} />
 
-            {/* Header */}
-            <div style={{ padding: "36px 36px 28px", textAlign: "center", position: "relative" }}>
-              {/* Icon */}
+            {/* ── LEFT COLUMN: Red sidebar panel ── */}
+            <div style={{
+              background: "linear-gradient(160deg, rgba(40,8,18,0.95) 0%, rgba(20,5,12,0.98) 100%)",
+              borderRight: "1px solid rgba(239,68,68,0.18)",
+              padding: "36px 28px",
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: "20px",
+              position: "relative",
+              overflow: "hidden",
+            }}>
+              {/* Glow orb behind icon */}
               <div style={{
-                width: "80px", height: "80px", borderRadius: "50%",
-                background: "linear-gradient(135deg, rgba(239,68,68,0.2), rgba(220,38,38,0.1))",
-                border: "2px solid rgba(239,68,68,0.5)",
+                position: "absolute", top: "50%", left: "50%",
+                transform: "translate(-50%, -50%)",
+                width: "220px", height: "220px", borderRadius: "50%",
+                background: "radial-gradient(circle, rgba(239,68,68,0.22) 0%, transparent 70%)",
+                pointerEvents: "none",
+              }} />
+
+              {/* Block icon */}
+              <div style={{
+                width: "90px", height: "90px", borderRadius: "50%",
+                background: "linear-gradient(135deg, rgba(239,68,68,0.25), rgba(185,28,28,0.15))",
+                border: "2px solid rgba(239,68,68,0.55)",
                 display: "flex", alignItems: "center", justifyContent: "center",
-                fontSize: "36px", margin: "0 auto 20px",
+                fontSize: "42px", position: "relative", zIndex: 1,
                 animation: "pulse-glow 2.5s ease-in-out infinite, float 4s ease-in-out infinite",
               }}>
                 🚫
               </div>
-              <div style={{ fontSize: "10px", fontWeight: "700", letterSpacing: "0.15em", textTransform: "uppercase", color: "#f87171", marginBottom: "10px" }}>
-                ⚠️ Akun Diblokir
+
+              {/* Status badge */}
+              <div style={{ textAlign: "center", position: "relative", zIndex: 1 }}>
+                <div style={{
+                  display: "inline-block",
+                  fontSize: "9px", fontWeight: "800", letterSpacing: "0.15em",
+                  textTransform: "uppercase", color: "#f87171",
+                  background: "rgba(239,68,68,0.12)",
+                  border: "1px solid rgba(239,68,68,0.3)",
+                  padding: "5px 14px", borderRadius: "20px",
+                  marginBottom: "12px",
+                }}>
+                  ⚠️ Akun Diblokir
+                </div>
+                <div style={{ fontSize: "11px", color: "rgba(255,255,255,0.35)", lineHeight: 1.5 }}>
+                  Sistem Keamanan<br />& Batasan Akses
+                </div>
               </div>
-              <h2 style={{ margin: 0, fontSize: "22px", fontWeight: "900", color: "#ffffff", letterSpacing: "-0.02em", lineHeight: 1.3 }}>
-                {blockMsg.title}
-              </h2>
-              <div style={{ fontSize: "12px", color: "rgba(255,255,255,0.4)", marginTop: "6px" }}>
-                Sistem Keamanan & Batasan Akses Akun
+
+              {/* Timestamp */}
+              <div style={{
+                position: "relative", zIndex: 1,
+                fontSize: "10px", color: "rgba(239,68,68,0.55)",
+                textAlign: "center", fontWeight: "600",
+              }}>
+                📅 {new Date(blockMsg.sentAt ?? Date.now()).toLocaleString("id-ID", {
+                  day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit"
+                })}
               </div>
             </div>
 
-            {/* Body */}
-            <div style={{ padding: "0 36px 28px" }}>
+            {/* ── RIGHT COLUMN: Content ── */}
+            <div style={{
+              padding: "32px 32px 28px",
+              overflowY: "auto",
+              maxHeight: "90vh",
+              display: "flex",
+              flexDirection: "column",
+              gap: "0",
+            }}>
+              {/* Title row */}
+              <h2 style={{
+                margin: "0 0 6px 0", fontSize: "20px", fontWeight: "900",
+                color: "#ffffff", letterSpacing: "-0.02em", lineHeight: 1.3,
+              }}>
+                {blockMsg.title}
+              </h2>
+              <div style={{ fontSize: "11px", color: "rgba(255,255,255,0.35)", marginBottom: "20px" }}>
+                NixelStudio · Pemberitahuan Resmi
+              </div>
+
               {/* Message body */}
               <div style={{
                 background: "rgba(255,255,255,0.04)",
                 border: "1px solid rgba(255,255,255,0.08)",
-                borderRadius: "16px", padding: "20px", marginBottom: "18px",
-                fontSize: "14px", color: "rgba(255,255,255,0.75)", lineHeight: 1.75,
+                borderRadius: "14px", padding: "18px",
+                fontSize: "13px", color: "rgba(255,255,255,0.72)", lineHeight: 1.8,
+                marginBottom: "16px",
               }}>
                 {blockMsg.body}
               </div>
@@ -584,28 +653,29 @@ export default function UserInboxBanner() {
               {/* Block reason */}
               {blockMsg.reason && (
                 <div style={{
-                  background: "linear-gradient(135deg, rgba(239,68,68,0.12), rgba(220,38,38,0.06))",
-                  border: "1px solid rgba(239,68,68,0.3)",
-                  borderRadius: "14px", padding: "16px 18px", marginBottom: "20px",
-                  display: "flex", gap: "12px", alignItems: "flex-start",
+                  background: "linear-gradient(135deg, rgba(239,68,68,0.1), rgba(185,28,28,0.06))",
+                  border: "1px solid rgba(239,68,68,0.28)",
+                  borderRadius: "12px", padding: "14px 16px",
+                  display: "flex", gap: "10px", alignItems: "flex-start",
+                  marginBottom: "16px",
                 }}>
-                  <div style={{ fontSize: "22px", flexShrink: 0, marginTop: "2px" }}>⚠️</div>
+                  <div style={{ fontSize: "18px", flexShrink: 0, marginTop: "1px" }}>⚠️</div>
                   <div>
-                    <div style={{ fontSize: "10px", fontWeight: "800", color: "#f87171", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: "5px" }}>Alasan Pemblokiran</div>
-                    <div style={{ fontSize: "14px", color: "#fca5a5", fontWeight: "600", lineHeight: 1.5 }}>{blockMsg.reason}</div>
+                    <div style={{ fontSize: "9px", fontWeight: "800", color: "#f87171", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: "4px" }}>Alasan Pemblokiran</div>
+                    <div style={{ fontSize: "13px", color: "#fca5a5", fontWeight: "600", lineHeight: 1.5 }}>{blockMsg.reason}</div>
                   </div>
                 </div>
               )}
 
               {/* Appeal section */}
               <div style={{
-                background: "linear-gradient(135deg, rgba(99,102,241,0.1), rgba(139,92,246,0.06))",
-                border: "1px solid rgba(99,102,241,0.25)",
-                borderRadius: "16px", padding: "20px", marginBottom: "16px",
+                background: "linear-gradient(135deg, rgba(99,102,241,0.1), rgba(139,92,246,0.05))",
+                border: "1px solid rgba(99,102,241,0.22)",
+                borderRadius: "14px", padding: "18px",
+                marginBottom: "14px",
               }}>
-                <div style={{ fontSize: "12px", fontWeight: "700", color: "#a5b4fc", marginBottom: "12px", display: "flex", alignItems: "center", gap: "8px" }}>
-                  <span style={{ fontSize: "16px" }}>🤖</span>
-                  Ajukan Banding & Unblock Otomatis oleh AI
+                <div style={{ fontSize: "12px", fontWeight: "700", color: "#a5b4fc", marginBottom: "10px", display: "flex", alignItems: "center", gap: "7px" }}>
+                  <span>🤖</span> Ajukan Banding & Unblock Otomatis oleh AI
                 </div>
                 <textarea
                   placeholder="Tulis alasan/penjelasan banding Anda dengan jelas..."
@@ -614,12 +684,11 @@ export default function UserInboxBanner() {
                   rows={3}
                   className="inbox-appeal-input"
                   style={{
-                    width: "100%", padding: "12px 14px", borderRadius: "10px",
+                    width: "100%", padding: "10px 12px", borderRadius: "9px",
                     border: "1px solid rgba(99,102,241,0.3)",
                     background: "rgba(15,10,40,0.6)",
-                    fontSize: "13px", color: "#e2e8f0", marginBottom: "12px",
-                    boxSizing: "border-box", resize: "none",
-                    lineHeight: 1.6,
+                    fontSize: "13px", color: "#e2e8f0", marginBottom: "10px",
+                    boxSizing: "border-box", resize: "none", lineHeight: 1.6,
                   }}
                 />
                 <button
@@ -627,85 +696,73 @@ export default function UserInboxBanner() {
                   onClick={handleAiUnblockAppeal}
                   disabled={appealing || !appealText.trim()}
                   style={{
-                    width: "100%", padding: "12px", borderRadius: "10px", border: "none",
+                    width: "100%", padding: "11px", borderRadius: "9px", border: "none",
                     background: appealing || !appealText.trim()
-                      ? "rgba(255,255,255,0.08)"
+                      ? "rgba(255,255,255,0.07)"
                       : "linear-gradient(135deg, #6366f1, #8b5cf6)",
                     color: appealing || !appealText.trim() ? "rgba(255,255,255,0.3)" : "#ffffff",
                     fontWeight: "700", fontSize: "13px",
                     cursor: appealing || !appealText.trim() ? "not-allowed" : "pointer",
                     transition: "all 0.2s",
-                    boxShadow: appealing || !appealText.trim() ? "none" : "0 6px 20px rgba(99,102,241,0.35)",
+                    boxShadow: appealing || !appealText.trim() ? "none" : "0 4px 16px rgba(99,102,241,0.3)",
                   }}
                 >
                   {appealing ? "⏳ AI Sedang Mengevaluasi Banding..." : "⚡ Kirim Banding ke AI"}
                 </button>
                 {appealRes && (
-                  <div style={{ marginTop: "12px", fontSize: "13px", color: "#a5b4fc", fontWeight: "600", padding: "10px 14px", background: "rgba(99,102,241,0.1)", borderRadius: "8px", lineHeight: 1.5 }}>
+                  <div style={{ marginTop: "10px", fontSize: "12px", color: "#a5b4fc", fontWeight: "600", padding: "10px 12px", background: "rgba(99,102,241,0.1)", borderRadius: "8px", lineHeight: 1.5 }}>
                     {appealRes}
                   </div>
                 )}
               </div>
 
-              {/* ── Admin-Only: Force Unblock Button ───────────────────── */}
+              {/* ── Admin-Only: Force Unblock Button ── */}
               {authUser?.email === "nixxeltzy@gmail.com" && (
                 <div style={{
-                  marginBottom: "12px",
-                  background: "linear-gradient(135deg, rgba(234,179,8,0.12), rgba(202,138,4,0.06))",
-                  border: "1px solid rgba(234,179,8,0.3)",
-                  borderRadius: "16px",
-                  padding: "18px 20px",
+                  background: "linear-gradient(135deg, rgba(234,179,8,0.1), rgba(202,138,4,0.05))",
+                  border: "1px solid rgba(234,179,8,0.28)",
+                  borderRadius: "14px", padding: "16px 18px",
+                  marginBottom: "14px",
                 }}>
-                  {/* Admin badge */}
-                  <div style={{
-                    display: "flex", alignItems: "center", gap: "8px",
-                    marginBottom: "12px",
-                  }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "10px" }}>
                     <div style={{
                       padding: "3px 10px", borderRadius: "20px",
-                      background: "rgba(234,179,8,0.2)", border: "1px solid rgba(234,179,8,0.4)",
-                      fontSize: "10px", fontWeight: "800", color: "#fde047",
+                      background: "rgba(234,179,8,0.18)", border: "1px solid rgba(234,179,8,0.38)",
+                      fontSize: "9px", fontWeight: "800", color: "#fde047",
                       letterSpacing: "0.08em", textTransform: "uppercase",
                     }}>
                       🛡️ Mode Admin
                     </div>
-                    <span style={{ fontSize: "11px", color: "rgba(253,224,71,0.6)" }}>
-                      Hanya terlihat oleh kamu
-                    </span>
+                    <span style={{ fontSize: "10px", color: "rgba(253,224,71,0.55)" }}>Hanya terlihat oleh kamu</span>
                   </div>
-
-                  <div style={{ fontSize: "12px", color: "rgba(253,224,71,0.75)", marginBottom: "14px", lineHeight: 1.5 }}>
-                    Kamu sedang dalam mode blokir uji coba. Klik tombol di bawah untuk langsung melepas blokir dan memulihkan akses.
+                  <div style={{ fontSize: "11px", color: "rgba(253,224,71,0.7)", marginBottom: "12px", lineHeight: 1.5 }}>
+                    Kamu sedang dalam mode blokir uji coba. Klik tombol di bawah untuk langsung melepas blokir.
                   </div>
-
                   <button
                     className="inbox-action-btn"
                     onClick={() => void handleAdminUnblock(blockMsg?.targetUserId === "all" ? authUser.userId : (blockMsg?.targetUserId ?? authUser.userId))}
                     disabled={unblocking}
                     style={{
-                      width: "100%", padding: "13px", borderRadius: "12px", border: "none",
-                      background: unblocking
-                        ? "rgba(255,255,255,0.08)"
-                        : "linear-gradient(135deg, #eab308, #ca8a04)",
+                      width: "100%", padding: "12px", borderRadius: "10px", border: "none",
+                      background: unblocking ? "rgba(255,255,255,0.07)" : "linear-gradient(135deg, #eab308, #ca8a04)",
                       color: unblocking ? "rgba(255,255,255,0.3)" : "#000000",
                       fontWeight: "800", fontSize: "13px",
                       cursor: unblocking ? "not-allowed" : "pointer",
                       transition: "all 0.2s",
-                      boxShadow: unblocking ? "none" : "0 6px 20px rgba(234,179,8,0.4)",
+                      boxShadow: unblocking ? "none" : "0 4px 16px rgba(234,179,8,0.35)",
                       display: "flex", alignItems: "center", justifyContent: "center", gap: "8px",
                     }}
                   >
                     {unblocking ? "⏳ Melepas blokir..." : "🔓 Lepas Blokir Sekarang"}
                   </button>
-
                   {unblockResult && (
                     <div style={{
-                      marginTop: "12px", fontSize: "13px", fontWeight: "600",
+                      marginTop: "10px", fontSize: "12px", fontWeight: "600",
                       color: unblockResult.ok ? "#4ade80" : "#f87171",
-                      padding: "10px 14px",
-                      background: unblockResult.ok ? "rgba(74,222,128,0.08)" : "rgba(248,113,113,0.08)",
+                      padding: "10px 12px",
+                      background: unblockResult.ok ? "rgba(74,222,128,0.07)" : "rgba(248,113,113,0.07)",
                       border: `1px solid ${unblockResult.ok ? "rgba(74,222,128,0.2)" : "rgba(248,113,113,0.2)"}`,
-                      borderRadius: "10px", lineHeight: 1.5,
+                      borderRadius: "9px", lineHeight: 1.5,
                     }}>
                       {unblockResult.msg}
                     </div>
@@ -718,8 +775,9 @@ export default function UserInboxBanner() {
                 className="inbox-action-btn"
                 onClick={() => window.location.reload()}
                 style={{
-                  width: "100%", padding: "14px", borderRadius: "12px", border: "1px solid rgba(255,255,255,0.1)",
-                  background: "rgba(255,255,255,0.06)", color: "rgba(255,255,255,0.6)",
+                  width: "100%", padding: "13px", borderRadius: "11px",
+                  border: "1px solid rgba(255,255,255,0.09)",
+                  background: "rgba(255,255,255,0.05)", color: "rgba(255,255,255,0.55)",
                   fontWeight: "600", fontSize: "13px", cursor: "pointer", transition: "all 0.2s",
                 }}
               >
@@ -728,7 +786,7 @@ export default function UserInboxBanner() {
             </div>
 
             {/* Bottom stripe */}
-            <div style={{ height: "3px", background: "linear-gradient(90deg, transparent, rgba(239,68,68,0.4), transparent)" }} />
+            <div style={{ gridColumn: "1 / -1", height: "3px", background: "linear-gradient(90deg, transparent, rgba(239,68,68,0.4), transparent)" }} />
           </div>
         </div>
       )}
