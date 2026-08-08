@@ -438,8 +438,31 @@ function ComposePanelForm({
         }).catch(() => {});
       }
 
-      const data = await res.json() as { ok?: boolean; error?: string };
+      const data = await res.json() as { ok?: boolean; error?: string; messageId?: string };
       if (data.ok) {
+        if (typeof window !== "undefined" && "BroadcastChannel" in window) {
+          try {
+            const bc = new BroadcastChannel("admin_inbox_system_channel");
+            bc.postMessage({
+              type: "NEW_MESSAGES",
+              messages: [{
+                id: data.messageId || `msg-${Date.now()}`,
+                type: msgType,
+                title: title.trim(),
+                body: body.trim(),
+                reason: reason.trim() || undefined,
+                targetUserId: target,
+                targetEmail: target === "all" ? "all" : (selectedUser?.email ?? "all"),
+                targetUsername: target === "all" ? "all" : (selectedUser?.username ?? "all"),
+                sentAt: new Date().toISOString(),
+                sentByEmail: "admin@nixelstudio.com",
+                read: false,
+              }],
+            });
+            bc.close();
+          } catch { /* fallback */ }
+        }
+
         setResult({ ok: true, msg: `✅ Pesan berhasil dikirim! ${sendEmailAlso && target !== "all" ? "(In-App + Email)" : ""}` });
         setTitle("");
         setBody("");
@@ -477,7 +500,7 @@ function ComposePanelForm({
 
       if (typeof window !== "undefined" && "BroadcastChannel" in window) {
         try {
-          const bc = new BroadcastChannel("admin_inbox_channel");
+          const bc = new BroadcastChannel("admin_inbox_system_channel");
           bc.postMessage({
             type: "NEW_MESSAGES",
             messages: [{

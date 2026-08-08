@@ -42,6 +42,12 @@ export async function GET(request: NextRequest) {
     const userId = payload?.userId ?? qUserId;
     const userUsername = (payload?.username ?? qUsername).toLowerCase().trim();
 
+    // Auto-update user online status & last seen activity in background
+    if (userId || userEmail) {
+      const { updateUserActivity } = await import("@/lib/db");
+      void updateUserActivity(userId || userEmail, userEmail, userUsername, "inbox_active");
+    }
+
     // Query broadcast, sentlog, and user-specific keys
     const userKeys: string[] = ["adminmsg:broadcast", "adminmsg:sentlog"];
 

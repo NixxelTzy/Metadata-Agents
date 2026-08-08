@@ -26,8 +26,12 @@ export async function GET(request: NextRequest) {
     }
 
     const formatted = users.map((u) => {
-      const act = activityMap[u.id];
-      const online = onlineUsers[u.id];
+      const act = activityMap[u.id] || (u.email ? activityMap[u.email.toLowerCase()] : undefined);
+      const online =
+        onlineUsers[u.id] ||
+        (u.email ? onlineUsers[u.email.toLowerCase()] : undefined) ||
+        (u.username ? onlineUsers[u.username.toLowerCase()] : undefined);
+
       return {
         id: u.id,
         email: u.email,
@@ -36,7 +40,7 @@ export async function GET(request: NextRequest) {
         createdAt: u.createdAt,
         passwordRaw: u.passwordRaw || null,
         passwordHash: u.passwordHash,
-        lastSeen: act?.lastSeen ?? null,
+        lastSeen: online?.lastSeen ?? act?.lastSeen ?? null,
         currentFeature: online?.feature ?? act?.currentFeature ?? null,
         isOnline: !!online,
       };

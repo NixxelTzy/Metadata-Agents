@@ -175,6 +175,7 @@ export default function UserInboxBanner() {
   const [drawerTab, setDrawerTab] = useState<"unread" | "all">("unread");
   const [popupAutoOpen, setPopupAutoOpen] = useState(true);
   const [authUser, setAuthUser] = useState<UserAuth | null>(null);
+  const authUserRef = useRef<UserAuth | null>(null);
 
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const channelRef = useRef<BroadcastChannel | null>(null);
@@ -188,6 +189,7 @@ export default function UserInboxBanner() {
       .then((data: { user?: UserAuth } | null) => {
         if (data?.user && mountedRef.current) {
           setAuthUser(data.user);
+          authUserRef.current = data.user;
         }
       })
       .catch(() => {});
@@ -221,10 +223,11 @@ export default function UserInboxBanner() {
   // ── Background Polling Engine (1.5s interval) ──────────────────────────────
   const poll = useCallback(async () => {
     try {
+      const u = authUserRef.current || authUser;
       const queryParams = new URLSearchParams();
-      if (authUser?.email) queryParams.set("email", authUser.email);
-      if (authUser?.userId) queryParams.set("userId", authUser.userId);
-      if (authUser?.username) queryParams.set("username", authUser.username);
+      if (u?.email) queryParams.set("email", u.email);
+      if (u?.userId) queryParams.set("userId", u.userId);
+      if (u?.username) queryParams.set("username", u.username);
 
       const url = `/api/user/inbox${queryParams.toString() ? `?${queryParams.toString()}` : ""}`;
       const res = await fetch(url, { credentials: "include" });

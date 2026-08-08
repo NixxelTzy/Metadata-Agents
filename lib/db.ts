@@ -188,11 +188,15 @@ export async function updateUserActivity(
     currentFeature: feature,
     username,
   };
-  // TTL 86400 = 24 hours (so we can show "last seen X days ago" up to a day, not just 2 min)
-  // We use a SEPARATE key with long TTL for historical last-seen
+  const data = { userId, email, username, feature, lastSeen: activity.lastSeen };
+
   await redis.set(`activity:user:${userId}`, activity, { ex: 86400 * 30 });
-  // ALSO store a short-TTL key for "currently online" detection (2 min = 120 sec)
-  await redis.set(`online:user:${userId}`, { userId, feature, lastSeen: activity.lastSeen }, { ex: 120 });
+  if (email) await redis.set(`activity:user:${email.toLowerCase()}`, activity, { ex: 86400 * 30 });
+
+  // Store online status keys with 120s TTL for id, email, and username
+  await redis.set(`online:user:${userId}`, data, { ex: 120 });
+  if (email) await redis.set(`online:user:${email.toLowerCase()}`, data, { ex: 120 });
+  if (username) await redis.set(`online:user:${username.toLowerCase()}`, data, { ex: 120 });
 }
 
 export async function getUserActivity(userId: string): Promise<UserActivity | null> {
@@ -210,15 +214,15 @@ export async function getAllUserActivities(): Promise<UserActivity[]> {
   return activities.filter((a): a is UserActivity => a !== null);
 }
 
-export async function getAllOnlineUsers(): Promise<Record<string, { feature: string; lastSeen: string }>> {
+export async function getAllOnlineUsers(): Promise<Record<string, { feature: string; lastSeen: string; userId?: string; email?: string; username?: string }>> {
   const keys = await redis.keys('online:user:*');
   if (!keys || keys.length === 0) return {};
-  const result: Record<string, { feature: string; lastSeen: string }> = {};
+  const result: Record<string, { feature: string; lastSeen: string; userId?: string; email?: string; username?: string }> = {};
   await Promise.all(
     keys.map(async (k) => {
-      const userId = k.replace('online:user:', '');
-      const data = await redis.get<{ feature: string; lastSeen: string }>(k);
-      if (data) result[userId] = data;
+      const keyId = k.replace('online:user:', '');
+      const data = await redis.get<{ feature: string; lastSeen: string; userId?: string; email?: string; username?: string }>(k);
+      if (data) result[keyId] = data;
     })
   );
   return result;
