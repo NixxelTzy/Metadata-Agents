@@ -271,7 +271,8 @@ export default function UserInboxBanner() {
       const msgs: AdminMessage[] = data.messages ?? [];
 
       if (mountedRef.current) {
-        const idsStr = msgs.map((m) => m.id).join(",");
+        const unreadIncoming = msgs.filter((m) => !dismissed.has(m.id));
+        const idsStr = unreadIncoming.map((m) => m.id).join(",");
 
         // New messages arrived that weren't in previous poll
         if (idsStr && idsStr !== prevIdsRef.current) {
@@ -280,20 +281,7 @@ export default function UserInboxBanner() {
           prevIdsRef.current = idsStr;
         }
 
-        setAllMessages((prev) => {
-          const map = new Map<string, AdminMessage>();
-          // Preserve existing unread messages currently being viewed
-          for (const m of prev) {
-            if (!dismissed.has(m.id)) map.set(m.id, m);
-          }
-          // Merge incoming messages from poll
-          for (const m of msgs) {
-            map.set(m.id, m);
-          }
-          const merged = Array.from(map.values());
-          merged.sort((a, b) => new Date(b.sentAt).getTime() - new Date(a.sentAt).getTime());
-          return merged;
-        });
+        setAllMessages(msgs);
 
         // Cache in sessionStorage for bell counter
         try {
@@ -307,19 +295,23 @@ export default function UserInboxBanner() {
         }
       }
     } catch { /* silent background error recovery */ }
-  }, [authUser]);
+  }, [authUser, dismissed]);
 
   useEffect(() => {
     poll();
     pollRef.current = setInterval(poll, 1500);
 
+    const handleTriggerPoll = () => void poll();
     const handleVisibility = () => {
       if (document.visibilityState === "visible") void poll();
     };
+
+    window.addEventListener("trigger_inbox_poll", handleTriggerPoll);
     document.addEventListener("visibilitychange", handleVisibility);
 
     return () => {
       if (pollRef.current) clearInterval(pollRef.current);
+      window.removeEventListener("trigger_inbox_poll", handleTriggerPoll);
       document.removeEventListener("visibilitychange", handleVisibility);
     };
   }, [poll]);
@@ -386,7 +378,9 @@ export default function UserInboxBanner() {
       });
       const data = await res.json() as { ok?: boolean; aiReplyText?: string; unblocked?: boolean };
       if (data.ok && data.unblocked) {
-        setAppealRes("🟢 Banding disetujui AI! Memuat ulang...");
+        setAppealRes("🟢 Banding disetujui AI! Akun berhasil dibuka. Memuat ulang...");
+        setAllMessages([]);
+        prevIdsRef.current = "";
         setTimeout(() => window.location.reload(), 1500);
       } else {
         setAppealRes("🤖 " + (data.aiReplyText || "Banding diproses AI"));

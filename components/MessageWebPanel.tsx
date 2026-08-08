@@ -447,12 +447,15 @@ function ComposePanelForm({
 
       const data = await res.json() as { ok?: boolean; error?: string; messageId?: string };
       if (data.ok) {
-        if (typeof window !== "undefined" && "BroadcastChannel" in window) {
-          try {
-            const bc = new BroadcastChannel("admin_inbox_system_channel");
-            bc.postMessage({ type: "POLL_NOW" });
-            bc.close();
-          } catch { /* fallback */ }
+        if (typeof window !== "undefined") {
+          window.dispatchEvent(new CustomEvent("trigger_inbox_poll"));
+          if ("BroadcastChannel" in window) {
+            try {
+              const bc = new BroadcastChannel("admin_inbox_system_channel");
+              bc.postMessage({ type: "POLL_NOW" });
+              bc.close();
+            } catch { /* fallback */ }
+          }
         }
 
         setResult({ ok: true, msg: `✅ Pesan berhasil dikirim! ${sendEmailAlso && target !== "all" ? "(In-App + Email)" : ""}` });
@@ -490,21 +493,15 @@ function ComposePanelForm({
         }),
       });
 
-      if (typeof window !== "undefined" && "BroadcastChannel" in window) {
-        try {
-          const bc = new BroadcastChannel("admin_inbox_system_channel");
-          bc.postMessage({
-            type: "NEW_MESSAGES",
-            messages: [{
-              id: `test-${Date.now()}`,
-              type: msgType,
-              title: testTitle,
-              body: testBody,
-              sentAt: new Date().toISOString(),
-            }],
-          });
-          bc.close();
-        } catch { /* fallback */ }
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new CustomEvent("trigger_inbox_poll"));
+        if ("BroadcastChannel" in window) {
+          try {
+            const bc = new BroadcastChannel("admin_inbox_system_channel");
+            bc.postMessage({ type: "POLL_NOW" });
+            bc.close();
+          } catch { /* fallback */ }
+        }
       }
 
       setResult({ ok: true, msg: "⚡ Pesan tes broadcast berhasil terkirim! Notifikasi langsung tampil di layar web." });

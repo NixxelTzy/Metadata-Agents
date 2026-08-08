@@ -66,11 +66,35 @@ Keep it structured and concise (100–140 words).`;
   const aiReplyText = aiRes.text.trim();
   let unblocked = false;
 
-  // 2. If it's an unblock appeal, autonomously clear block messages from user's inbox
+  // 2. If it's an unblock appeal, autonomously clear block messages from all user keys
   if (category === "appeal") {
-    const key = `adminmsg:user:${userId}`;
-    const items = await redis.lrange(key, 0, -1);
-    const cleaned = items.filter((item) => {
+    const keysToClean = [
+      `adminmsg:user:${userId}`,
+      `adminmsg:user:${email.toLowerCase()}`,
+      `adminmsg:user:${username.toLowerCase()}`,
+    ];
+
+    for (const key of keysToClean) {
+      const items = await redis.lrange(key, 0, -1).catch(() => []);
+      const cleaned = items.filter((item) => {
+        try {
+          const parsed = typeof item === "string" ? JSON.parse(item) : item;
+          return parsed.type !== "block";
+        } catch {
+          return true;
+        }
+      });
+      await redis.del(key);
+      if (cleaned.length > 0) {
+        for (const item of cleaned.reverse()) {
+          await redis.lpush(key, typeof item === "string" ? item : JSON.stringify(item));
+        }
+      }
+    }
+
+    // Clean broadcast key as well
+    const broadcastItems = await redis.lrange("adminmsg:broadcast", 0, -1).catch(() => []);
+    const cleanedBroadcast = broadcastItems.filter((item) => {
       try {
         const parsed = typeof item === "string" ? JSON.parse(item) : item;
         return parsed.type !== "block";
@@ -78,10 +102,13 @@ Keep it structured and concise (100–140 words).`;
         return true;
       }
     });
-    await redis.del(key);
-    for (const item of cleaned.reverse()) {
-      await redis.lpush(key, typeof item === "string" ? item : JSON.stringify(item));
+    await redis.del("adminmsg:broadcast");
+    if (cleanedBroadcast.length > 0) {
+      for (const item of cleanedBroadcast.reverse()) {
+        await redis.rpush("adminmsg:broadcast", typeof item === "string" ? item : JSON.stringify(item));
+      }
     }
+
     unblocked = true;
   }
 
