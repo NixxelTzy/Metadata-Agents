@@ -391,62 +391,219 @@ async function runUpscalePipeline(
   }
 }
 
+/**
+ * Extract multiple frames from a video using a SINGLE shared <video> element
+ * to avoid memory issues from creating hundreds of video objects.
+ */
+async function extractFramesSequential(
+  file: File,
+  times: number[],
+  onProgress?: (done: number, total: number) => void
+): Promise<string[]> {
+  return new Promise((resolve) => {
+    const results: string[] = new Array(times.length).fill("");
+    const video = document.createElement("video");
+    const url = URL.createObjectURL(file);
+    video.src = url;
+    video.muted = true;
+    video.playsInline = true;
+    video.preload = "auto";
+
+    let currentIndex = 0;
+    let settled = false;
+
+    const cleanup = () => {
+      URL.revokeObjectURL(url);
+      video.src = "";
+      video.load();
+    };
+
+    const captureFrame = () => {
+      try {
+        const canvas = document.createElement("canvas");
+        canvas.width = video.videoWidth || 1280;
+        canvas.height = video.videoHeight || 720;
+        const ctx = canvas.getContext("2d");
+        if (ctx) ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        return canvas.toDataURL("image/jpeg", 0.9);
+      } catch {
+        return "";
+      }
+    };
+
+    const seekNext = () => {
+      if (currentIndex >= times.length) {
+        if (!settled) {
+          settled = true;
+          cleanup();
+          resolve(results);
+        }
+        return;
+      }
+      const t = times[currentIndex]!;
+      // Clamp time to valid range
+      const clampedTime = Math.min(t, (video.duration || 9999) - 0.01);
+      video.currentTime = Math.max(0, clampedTime);
+    };
+
+    const onSeeked = () => {
+      results[currentIndex] = captureFrame();
+      onProgress?.(currentIndex + 1, times.length);
+      currentIndex++;
+      // Small yield so browser doesn't freeze
+      setTimeout(seekNext, 8);
+    };
+
+    const onError = () => {
+      // Skip failed frame, continue
+      currentIndex++;
+      setTimeout(seekNext, 8);
+    };
+
+    // Fallback: if seeking takes too long, just capture whatever is there
+    const stallCheck = setInterval(() => {
+      if (settled) { clearInterval(stallCheck); return; }
+      if (currentIndex < times.length) {
+        results[currentIndex] = captureFrame();
+        onProgress?.(currentIndex + 1, times.length);
+        currentIndex++;
+        seekNext();
+      }
+    }, 5000);
+
+    video.addEventListener("seeked", onSeeked);
+    video.addEventListener("error", onError);
+
+    video.onloadeddata = () => {
+      seekNext();
+    };
+
+    video.onerror = () => {
+      clearInterval(stallCheck);
+      if (!settled) {
+        settled = true;
+        cleanup();
+        resolve(results);
+      }
+    };
+
+    // Timeout safety net
+    setTimeout(() => {
+      clearInterval(stallCheck);
+      if (!settled) {
+        settled = true;
+        cleanup();
+        resolve(results);
+      }
+    }, 120000); // 2 min max
+
+    video.load();
+  });
+}
+
 async function processVideoFile(
   videoFile: VideoFile,
-  targetSize: number,
   engine: UpscaleEngine,
+  targetW: number,
+  targetH: number,
   onStep: (step: string, processed?: number, total?: number) => void
 ): Promise<{ zipUrl: string; upscaledFrame0: string; originalFrame0: string }> {
+  const profile = ENGINE_PROFILES[engine];
+
+  // Determine aspect-ratio-correct target dimensions
+  const srcW = videoFile.width || 1280;
+  const srcH = videoFile.height || 720;
+  const scaleX = targetW / srcW;
+  const scaleY = targetH / srcH;
+  const scale = Math.min(scaleX, scaleY); // preserve aspect ratio
+  const finalW = Math.max(srcW, Math.round(srcW * scale));
+  const finalH = Math.max(srcH, Math.round(srcH * scale));
+
+  // Frame budget: cap at 300 frames max to avoid browser memory exhaustion
   const fps = 30;
-  let totalFrames = Math.ceil(videoFile.duration * fps);
-  if (totalFrames > 300) {
-    totalFrames = 300; // max 300 frames
+  const duration = videoFile.duration || 5;
+  const rawFrameCount = Math.ceil(duration * fps);
+  const totalFrames = Math.min(rawFrameCount, 300);
+
+  // Build time array
+  const times: number[] = [];
+  for (let i = 0; i < totalFrames; i++) {
+    times.push(i / fps);
   }
 
+  onStep(`🎬 Mengekstrak ${totalFrames} frame dari video...`, 0, totalFrames);
+
+  // Extract all frames using ONE shared video element
+  const rawFrames = await extractFramesSequential(
+    videoFile.file,
+    times,
+    (done, total) => onStep(`📸 Ekstrak frame ${done}/${total}...`, done, total)
+  );
+
+  // Process each frame through the upscale pipeline
   const zip = new JSZip();
   let upscaledFrame0 = "";
   let originalFrame0 = "";
 
-  for (let i = 0; i < totalFrames; i++) {
-    const time = i / fps;
-    onStep(`Mengekstrak frame ${i + 1}/${totalFrames}`, i, totalFrames);
-    const frameDataUrl = await extractVideoFrame(videoFile.file, time);
-    
-    if (i === 0) originalFrame0 = frameDataUrl;
+  for (let i = 0; i < rawFrames.length; i++) {
+    const frameDataUrl = rawFrames[i]!;
 
-    const imgEl = await loadImage(frameDataUrl);
-    const { naturalWidth: srcW, naturalHeight: srcH } = imgEl;
-    const maxEdge = Math.max(srcW, srcH);
-    let targetW = srcW;
-    let targetH = srcH;
-    if (maxEdge < targetSize) {
-      const scale = targetSize / maxEdge;
-      targetW = Math.round(srcW * scale);
-      targetH = Math.round(srcH * scale);
+    if (!frameDataUrl) {
+      // Skip failed frame — write placeholder so frame numbers stay consistent
+      continue;
     }
 
-    onStep(`Upscale frame ${i + 1}/${totalFrames}`, i, totalFrames);
-    const upscaledDataUrl = await runUpscalePipeline(
-      imgEl,
-      srcW,
-      srcH,
-      targetW,
-      targetH,
-      engine,
-      () => {}
-    );
-    
-    if (i === 0) upscaledFrame0 = upscaledDataUrl;
+    if (i === 0) originalFrame0 = frameDataUrl;
 
-    const blob = dataURLtoBlob(upscaledDataUrl);
-    const frameName = `frame_${i.toString().padStart(4, "0")}.jpg`;
-    zip.file(frameName, blob);
+    onStep(`✨ Upscale frame ${i + 1}/${totalFrames} (${finalW}×${finalH})`, i + 1, totalFrames);
 
-    await new Promise((r) => setTimeout(r, 10));
+    try {
+      const imgEl = await loadImage(frameDataUrl);
+      const upscaledDataUrl = await runUpscalePipeline(
+        imgEl,
+        imgEl.naturalWidth,
+        imgEl.naturalHeight,
+        finalW,
+        finalH,
+        engine,
+        () => {}
+      );
+
+      if (i === 0) upscaledFrame0 = upscaledDataUrl;
+
+      const blob = dataURLtoBlob(upscaledDataUrl);
+      const frameName = `frame_${i.toString().padStart(5, "0")}.jpg`;
+      zip.file(frameName, blob);
+    } catch {
+      // Skip errored frame gracefully
+    }
+
+    // Yield to browser every 5 frames to keep UI responsive
+    if (i % 5 === 0) {
+      await new Promise((r) => setTimeout(r, 0));
+    }
   }
 
-  onStep("Membuat file ZIP...", totalFrames, totalFrames);
-  const zipBlob = await zip.generateAsync({ type: "blob" });
+  // Include metadata file
+  const meta = {
+    originalFile: videoFile.name,
+    originalResolution: `${srcW}×${srcH}`,
+    upscaledResolution: `${finalW}×${finalH}`,
+    engine: profile.label,
+    totalFrames,
+    fps,
+    durationSeconds: duration,
+    processedAt: new Date().toISOString(),
+    note: "Reassemble frames using ffmpeg: ffmpeg -framerate 30 -i frame_%05d.jpg -c:v libx264 -pix_fmt yuv420p output.mp4",
+  };
+  zip.file("metadata.json", JSON.stringify(meta, null, 2));
+
+  onStep("📦 Membuat ZIP file...", totalFrames, totalFrames);
+  const zipBlob = await zip.generateAsync({
+    type: "blob",
+    compression: "DEFLATE",
+    compressionOptions: { level: 3 },
+  });
   const zipUrl = URL.createObjectURL(zipBlob);
 
   return { zipUrl, upscaledFrame0, originalFrame0 };
@@ -730,8 +887,9 @@ export default function ImageUpscaler() {
           setProgress(`(${i + 1}/${images.length}) Memproses Video: ${media.name}`);
           const { zipUrl, upscaledFrame0, originalFrame0 } = await processVideoFile(
             media,
-            Math.max(selectedPreset.width, selectedPreset.height),
             engine,
+            selectedPreset.width,
+            selectedPreset.height,
             (step, processed, total) => {
               setImages((p) =>
                 p.map((item, idx) =>
