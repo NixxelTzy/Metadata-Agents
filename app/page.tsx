@@ -14,6 +14,7 @@ import AdminMessagesPanel from "@/components/AdminMessagesPanel";
 import StoragePanel from "@/components/StoragePanel";
 import MotionStudio from "@/components/MotionStudio";
 import MessageWebPanel from "@/components/MessageWebPanel";
+import ClosingFeaturesPanel, { ClosingEntry } from "@/components/ClosingFeaturesPanel";
 import UserInboxBanner from "@/components/UserInboxBanner";
 import { useDevice } from "@/lib/useDevice";
 import { useRouter } from "next/navigation";
@@ -23,7 +24,7 @@ import {
   estimateCost, type Platform,
 } from "@/lib/tokenStore";
 
-type Tab = "metadata" | "chat" | "research" | "vector" | "upscale" | "watermark" | "accounts" | "feedback" | "admin-messages" | "storage" | "motion" | "messageweb";
+type Tab = "metadata" | "chat" | "research" | "vector" | "upscale" | "watermark" | "accounts" | "feedback" | "admin-messages" | "storage" | "motion" | "messageweb" | "closing";
 const ADMIN_EMAIL = "nixxeltzy@gmail.com";
 
 const TAB_CONFIG: { id: Tab; icon: string; label: string; desc: string; color: string }[] = [
@@ -37,6 +38,7 @@ const TAB_CONFIG: { id: Tab; icon: string; label: string; desc: string; color: s
   { id: "feedback",  icon: "💬", label: "Lapor & Usulan", desc: "Kirim Bug & Usulan Fitur", color: "#ec4899" },
   { id: "accounts",  icon: "🛡️", label: "Accounts",    desc: "Account Checker",  color: "#ef4444" },
   { id: "messageweb", icon: "📨", label: "Message Web",  desc: "Kirim Pesan ke User", color: "#a78bfa" },
+  { id: "closing",   icon: "🔒", label: "Closing Features", desc: "Tutup Fitur Sementara", color: "#ef4444" },
   { id: "admin-messages", icon: "📬", label: "Pesan & Broadcast", desc: "Feedback & Mass Email", color: "#f59e0b" },
   { id: "storage",   icon: "🗄️", label: "Storage",     desc: "Redis DB Monitor",  color: "#10b981" },
 ];
@@ -61,6 +63,22 @@ export default function Home() {
   const device = useDevice();
   const profileRef = useRef<HTMLDivElement>(null);
   const heartbeatRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const [closingMap, setClosingMap] = useState<Record<string, ClosingEntry>>({});
+
+  const fetchClosing = useCallback(() => {
+    fetch("/api/closing-features")
+      .then((r) => r.json())
+      .then((d: { closing?: Record<string, ClosingEntry> }) => {
+        if (d.closing) setClosingMap(d.closing);
+      })
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    fetchClosing();
+    const id = setInterval(fetchClosing, 15000);
+    return () => clearInterval(id);
+  }, [fetchClosing]);
 
   useEffect(() => {
     fetch("/api/auth/me")
@@ -166,7 +184,7 @@ export default function Home() {
         {/* Nav */}
         <div className="sidebar__section-label">Navigation</div>
         <nav className="sidebar__nav">
-          {TAB_CONFIG.filter((t) => t.id !== "accounts" && t.id !== "admin-messages" && t.id !== "storage" && t.id !== "messageweb").map((tab) => (
+          {TAB_CONFIG.filter((t) => t.id !== "accounts" && t.id !== "admin-messages" && t.id !== "storage" && t.id !== "messageweb" && t.id !== "closing").map((tab) => (
             <button key={tab.id} type="button"
               className={`sidebar__item ${activeTab === tab.id && !monitorOpen ? "sidebar__item--active" : ""}`}
               onClick={() => handleTabChange(tab.id)}
@@ -211,6 +229,15 @@ export default function Home() {
                 <span className="sidebar__item-content">
                   <span className="sidebar__item-label">Message Web</span>
                   <span className="sidebar__item-desc">Kirim Pesan ke User</span>
+                </span>
+              </button>
+              <button type="button"
+                className={`sidebar__item ${activeTab === "closing" && !monitorOpen ? "sidebar__item--active" : ""}`}
+                onClick={() => { handleTabChange("closing"); }}>
+                <span className="sidebar__icon">🔒</span>
+                <span className="sidebar__item-content">
+                  <span className="sidebar__item-label">Closing Features</span>
+                  <span className="sidebar__item-desc">Tutup Fitur Sementara</span>
                 </span>
               </button>
               <button type="button"
@@ -419,12 +446,53 @@ export default function Home() {
 
         {/* Content */}
         <main className="workspace__content">
-          {isAdmin && monitorOpen ? (
+          {!isAdmin && closingMap[activeTab]?.closed ? (
+            <div style={{
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              justifyContent: "center",
+              minHeight: "450px",
+              padding: "40px 24px",
+              background: "linear-gradient(135deg, rgba(239,68,68,0.06), rgba(15,23,42,0.8))",
+              border: "1.5px solid rgba(239,68,68,0.3)",
+              borderRadius: "20px",
+              textAlign: "center",
+              margin: "20px 0",
+              boxShadow: "0 20px 50px rgba(0,0,0,0.4)",
+            }}>
+              <div style={{
+                width: "72px",
+                height: "72px",
+                borderRadius: "50%",
+                background: "rgba(239,68,68,0.15)",
+                border: "2px solid #ef4444",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                fontSize: "32px",
+                marginBottom: "20px",
+              }}>
+                🔒
+              </div>
+              <h2 style={{ margin: "0 0 10px", fontSize: "22px", fontWeight: "800", color: "#f87171" }}>
+                Fitur Ditutup Sementara
+              </h2>
+              <p style={{ maxWidth: "520px", fontSize: "14px", color: "var(--text)", lineHeight: 1.7, marginBottom: "20px", background: "var(--surface)", padding: "18px 24px", borderRadius: "12px", border: "1px solid var(--border)" }}>
+                {closingMap[activeTab]?.message || "Fitur ini sedang ditutup sementara untuk pemeliharaan sistem. Silakan coba beberapa saat lagi."}
+              </p>
+              <div style={{ fontSize: "12px", color: "var(--text-muted)" }}>
+                Sistem Pemeliharaan Fitur · NixelStudio Admin Control
+              </div>
+            </div>
+          ) : isAdmin && monitorOpen ? (
             <ServerMonitor />
           ) : isAdmin && activeTab === "accounts" ? (
             <AdminAccountChecker />
           ) : isAdmin && activeTab === "messageweb" ? (
             <MessageWebPanel />
+          ) : isAdmin && activeTab === "closing" ? (
+            <ClosingFeaturesPanel />
           ) : isAdmin && activeTab === "admin-messages" ? (
             <AdminMessagesPanel />
           ) : isAdmin && activeTab === "storage" ? (

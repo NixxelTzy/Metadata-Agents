@@ -51,7 +51,17 @@ export async function GET(request: NextRequest) {
     for (const r of [...userRaw, ...broadRaw]) {
       try {
         const msg: AdminMessage = typeof r === "string" ? JSON.parse(r) : r;
-        if (!seen.has(msg.id)) all.push(msg);
+        // User requested: ONLY show messages sent directly by human admin, NOT AI replies
+        const isAiMessage =
+          msg.id.startsWith("ai-") ||
+          msg.id.startsWith("email-ai-") ||
+          msg.sentByEmail?.includes("ai") ||
+          msg.sentByEmail === "autonomous-ai@nixelstudio.com" ||
+          msg.sentByEmail === "ai-assistant@nixelstudio.com";
+
+        if (!seen.has(msg.id) && !isAiMessage) {
+          all.push(msg);
+        }
       } catch { /* skip */ }
     }
 
