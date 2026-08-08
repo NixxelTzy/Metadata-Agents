@@ -17,12 +17,19 @@ export interface AdminMessage {
   sentByEmail?: string;
 }
 
+interface UserAuth {
+  userId: string;
+  email: string;
+  username: string;
+  role: string;
+}
+
 // ─── Storage Helpers ──────────────────────────────────────────────────────────
 
 function loadDismissed(): Set<string> {
   if (typeof window === "undefined") return new Set();
   try {
-    const raw = localStorage.getItem("adminmsg_dismissed_v6");
+    const raw = sessionStorage.getItem("adminmsg_dismissed_session");
     const arr: string[] = raw ? JSON.parse(raw) : [];
     return new Set(arr);
   } catch {
@@ -32,7 +39,7 @@ function loadDismissed(): Set<string> {
 
 function saveDismissed(set: Set<string>) {
   try {
-    localStorage.setItem("adminmsg_dismissed_v6", JSON.stringify(Array.from(set)));
+    sessionStorage.setItem("adminmsg_dismissed_session", JSON.stringify(Array.from(set)));
   } catch {}
 }
 
@@ -47,6 +54,7 @@ function playNotificationSound() {
     if (ctx.state === "suspended") void ctx.resume();
     const now = ctx.currentTime;
 
+    // Tone 1: 880Hz (A5)
     const osc1 = ctx.createOscillator();
     const gain1 = ctx.createGain();
     osc1.type = "sine";
@@ -58,6 +66,7 @@ function playNotificationSound() {
     osc1.start(now);
     osc1.stop(now + 0.22);
 
+    // Tone 2: 1174.66Hz (D6)
     const osc2 = ctx.createOscillator();
     const gain2 = ctx.createGain();
     osc2.type = "sine";
@@ -165,11 +174,24 @@ export default function UserInboxBanner() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [drawerTab, setDrawerTab] = useState<"unread" | "all">("unread");
   const [popupAutoOpen, setPopupAutoOpen] = useState(true);
+  const [authUser, setAuthUser] = useState<UserAuth | null>(null);
 
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const channelRef = useRef<BroadcastChannel | null>(null);
   const prevIdsRef = useRef<string>("");
   const mountedRef = useRef(true);
+
+  // Fetch current authenticated user on mount
+  useEffect(() => {
+    fetch("/api/auth/me", { credentials: "include" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data: { user?: UserAuth } | null) => {
+        if (data?.user && mountedRef.current) {
+          setAuthUser(data.user);
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   // Load dismissed set on mount & setup event listeners & tab sync
   useEffect(() => {
@@ -199,7 +221,13 @@ export default function UserInboxBanner() {
   // ── Background Polling Engine (1.5s interval) ──────────────────────────────
   const poll = useCallback(async () => {
     try {
-      const res = await fetch("/api/user/inbox", { credentials: "include" });
+      const queryParams = new URLSearchParams();
+      if (authUser?.email) queryParams.set("email", authUser.email);
+      if (authUser?.userId) queryParams.set("userId", authUser.userId);
+      if (authUser?.username) queryParams.set("username", authUser.username);
+
+      const url = `/api/user/inbox${queryParams.toString() ? `?${queryParams.toString()}` : ""}`;
+      const res = await fetch(url, { credentials: "include" });
       if (!res.ok || !mountedRef.current) return;
       const data = await res.json() as { messages: AdminMessage[] };
       const msgs: AdminMessage[] = data.messages ?? [];
@@ -228,7 +256,7 @@ export default function UserInboxBanner() {
         }
       }
     } catch { /* silent background error recovery */ }
-  }, []);
+  }, [authUser]);
 
   useEffect(() => {
     poll();
@@ -289,7 +317,7 @@ export default function UserInboxBanner() {
   // ── Restore / Clear Dismissed ────────────────────────────────────────────────
   const handleRestoreAll = useCallback(() => {
     setDismissed(new Set());
-    try { localStorage.removeItem("adminmsg_dismissed_v6"); } catch {}
+    try { sessionStorage.removeItem("adminmsg_dismissed_session"); } catch {}
     setPopupAutoOpen(true);
     window.dispatchEvent(new CustomEvent("adminmsg_updated"));
   }, []);

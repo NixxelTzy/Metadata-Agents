@@ -22,12 +22,11 @@ export interface AdminMessage {
 
 /**
  * GET /api/user/inbox
- * Returns pending messages for the logged-in user (targeted + broadcast).
- * Called every 10s by the client-side polling hook.
+ * Returns active admin messages (targeted + broadcast).
+ * Supports JWT cookie & query params for maximum delivery guarantee.
  */
 export async function GET(request: NextRequest) {
   try {
-    // 0. Trigger Autonomous Background Email AI Worker (non-blocking)
     const { triggerAutonomousEmailPoller } = await import("@/lib/gmail-poller");
     void triggerAutonomousEmailPoller();
 
@@ -35,14 +34,15 @@ export async function GET(request: NextRequest) {
     const payload = t ? verifyToken(t) : null;
 
     const { searchParams } = new URL(request.url);
-    const qEmail = (searchParams.get("email") ?? "").toLowerCase();
-    const qUserId = searchParams.get("userId") ?? "";
-    const qUsername = (searchParams.get("username") ?? "").toLowerCase();
+    const qEmail = (searchParams.get("email") ?? "").toLowerCase().trim();
+    const qUserId = (searchParams.get("userId") ?? "").trim();
+    const qUsername = (searchParams.get("username") ?? "").toLowerCase().trim();
 
-    const userEmail = (payload?.email ?? qEmail).toLowerCase();
+    const userEmail = (payload?.email ?? qEmail).toLowerCase().trim();
     const userId = payload?.userId ?? qUserId;
-    const userUsername = (payload?.username ?? qUsername).toLowerCase();
+    const userUsername = (payload?.username ?? qUsername).toLowerCase().trim();
 
+    // Query broadcast, sentlog, and user-specific keys
     const userKeys: string[] = ["adminmsg:broadcast", "adminmsg:sentlog"];
 
     if (userId) userKeys.push(`adminmsg:user:${userId}`);
@@ -50,7 +50,7 @@ export async function GET(request: NextRequest) {
     if (userUsername) userKeys.push(`adminmsg:user:${userUsername}`);
 
     const rawLists = await Promise.all(
-      userKeys.map((k) => redis.lrange(k, 0, 49).catch(() => []))
+      userKeys.map((k) => redis.lrange(k, 0, 99).catch(() => []))
     );
 
     const msgMap = new Map<string, AdminMessage>();
@@ -61,6 +61,7 @@ export async function GET(request: NextRequest) {
           const msg: AdminMessage = typeof r === "string" ? JSON.parse(r) : r;
           if (!msg || !msg.id || !msg.type || !msg.title) continue;
 
+          // Skip autonomous AI assistant messages
           const isAiMessage =
             msg.id.startsWith("ai-") ||
             msg.id.startsWith("email-ai-") ||
@@ -70,7 +71,7 @@ export async function GET(request: NextRequest) {
 
           if (isAiMessage) continue;
 
-          // Target check: Broadcast to everyone or specifically targeted to this user
+          // Target check: Broadcast or specifically targeted
           const isBroadcast =
             msg.targetUserId === "all" ||
             msg.targetEmail === "all" ||
@@ -81,12 +82,12 @@ export async function GET(request: NextRequest) {
 
           const isForMe =
             (userId && String(msg.targetUserId).toLowerCase() === String(userId).toLowerCase()) ||
-            (userEmail && msg.targetEmail && msg.targetEmail.toLowerCase() === userEmail.toLowerCase()) ||
-            (userUsername && msg.targetUsername && msg.targetUsername.toLowerCase() === userUsername.toLowerCase());
+            (userEmail && msg.targetEmail && msg.targetEmail.toLowerCase() === userEmail) ||
+            (userUsername && msg.targetUsername && msg.targetUsername.toLowerCase() === userUsername);
 
+          // If not broadcast and not specifically targeted for this identity, skip
           if (!isBroadcast && !isForMe) continue;
 
-          // Deliver all matching messages (broadcast + targeted) to client
           msgMap.set(msg.id, msg);
         } catch { /* skip corrupted item */ }
       }
@@ -95,7 +96,7 @@ export async function GET(request: NextRequest) {
     const all = Array.from(msgMap.values());
     all.sort((a, b) => new Date(b.sentAt).getTime() - new Date(a.sentAt).getTime());
 
-    return NextResponse.json({ messages: all.slice(0, 10) });
+    return NextResponse.json({ messages: all.slice(0, 15) });
   } catch (err) {
     console.error("User inbox error:", err);
     return NextResponse.json({ messages: [] });

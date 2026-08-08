@@ -927,7 +927,633 @@ function SentLogPanel({ messages, onRefresh }: { messages: SentMessage[]; onRefr
   );
 }
 
+// ─── Read Receipts Supporting System ──────────────────────────────────────────
+
+interface ReadReceiptItem {
+  messageId: string;
+  readCount: number;
+  totalRecipients: number;
+  readRatePct: number;
+  readers: {
+    userId: string;
+    email: string;
+    username: string;
+  }[];
+}
+
+function ReadReceiptsPanel() {
+  const [loading, setLoading] = useState(false);
+  const [receipts, setReceipts] = useState<Record<string, ReadReceiptItem>>({});
+  const [error, setError] = useState("");
+
+  const fetchReceipts = async () => {
+    setLoading(true);
+    setError("");
+    try {
+      const res = await fetch("/api/admin/read-receipts");
+      const data = await res.json() as { receipts?: Record<string, ReadReceiptItem>; error?: string };
+      if (!res.ok) { setError(data.error ?? "Gagal memuat tanda terima"); return; }
+      setReceipts(data.receipts ?? {});
+    } catch (e) {
+      setError("Koneksi gagal: " + String(e));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    void fetchReceipts();
+  }, []);
+
+  const items = Object.values(receipts);
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "10px" }}>
+        <div>
+          <div style={{ fontWeight: "800", fontSize: "14px", color: "var(--text)" }}>
+            👁️ Tanda Terima & Persentase Keterbacaan Pesan
+          </div>
+          <div style={{ fontSize: "12px", color: "var(--text-muted)", marginTop: "2px" }}>
+            Lacak secara real-time akun mana saja yang telah membuka dan membaca pesan dari Admin
+          </div>
+        </div>
+        <button
+          onClick={fetchReceipts}
+          disabled={loading}
+          style={{
+            padding: "7px 14px", borderRadius: "8px", border: "1px solid var(--border)",
+            background: "var(--bg-secondary)", color: "var(--text)", fontSize: "12px",
+            fontWeight: "600", cursor: loading ? "not-allowed" : "pointer",
+          }}
+        >
+          {loading ? "⏳ Memuat..." : "🔄 Refresh Tanda Terima"}
+        </button>
+      </div>
+
+      {error && (
+        <div style={{ background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.3)", borderRadius: "8px", padding: "10px 14px", fontSize: "12px", color: "#f87171" }}>
+          ❌ {error}
+        </div>
+      )}
+
+      {items.length === 0 ? (
+        <div style={{ textAlign: "center", padding: "40px", color: "var(--text-muted)", fontSize: "13px" }}>
+          📭 Belum ada data tanda terima dibaca.
+        </div>
+      ) : (
+        items.map((r) => (
+          <div
+            key={r.messageId}
+            style={{
+              background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "10px",
+              padding: "14px 16px", display: "flex", flexDirection: "column", gap: "10px",
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "8px" }}>
+              <code style={{ fontSize: "11px", color: "var(--text-muted)", background: "var(--bg-secondary)", padding: "2px 6px", borderRadius: "4px" }}>
+                ID: {r.messageId}
+              </code>
+              <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                <span style={{ fontSize: "12px", fontWeight: "800", color: "#4ade80" }}>
+                  👁️ {r.readCount}/{r.totalRecipients} Akun ({r.readRatePct}%)
+                </span>
+              </div>
+            </div>
+
+            {/* Progress bar */}
+            <div style={{ width: "100%", height: "6px", background: "var(--bg-secondary)", borderRadius: "3px", overflow: "hidden" }}>
+              <div style={{ width: `${r.readRatePct}%`, height: "100%", background: "linear-gradient(90deg, #2563eb, #4ade80)", transition: "width 0.5s ease" }} />
+            </div>
+
+            {/* Readers chips */}
+            {r.readers.length > 0 ? (
+              <div style={{ display: "flex", flexWrap: "wrap", gap: "6px", marginTop: "4px" }}>
+                {r.readers.map((u) => (
+                  <span
+                    key={u.userId}
+                    style={{
+                      fontSize: "11px", background: "rgba(74,222,128,0.12)", color: "#4ade80",
+                      padding: "3px 9px", borderRadius: "6px", border: "1px solid rgba(74,222,128,0.25)",
+                      display: "inline-flex", alignItems: "center", gap: "4px",
+                    }}
+                  >
+                    ✓ {u.username} ({u.email})
+                  </span>
+                ))}
+              </div>
+            ) : (
+              <div style={{ fontSize: "11px", color: "var(--text-muted)" }}>
+                ⏳ Belum ada pengguna yang membaca pesan ini.
+              </div>
+            )}
+          </div>
+        ))
+      )}
+    </div>
+  );
+}
+
+// ─── System Error Sentinel Supporting Panel ───────────────────────────────────
+
+interface SystemErrorLog {
+  id: string;
+  category: string;
+  message: string;
+  stack?: string;
+  endpoint?: string;
+  userEmail?: string;
+  ip?: string;
+  timestamp: string;
+}
+
+function SystemErrorAlertsPanel() {
+  const [loading, setLoading] = useState(false);
+  const [logs, setLogs] = useState<SystemErrorLog[]>([]);
+  const [error, setError] = useState("");
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+
+  const fetchLogs = async () => {
+    setLoading(true);
+    setError("");
+    try {
+      const res = await fetch("/api/admin/system-errors");
+      const data = await res.json() as { logs?: SystemErrorLog[]; error?: string };
+      if (!res.ok) { setError(data.error ?? "Gagal memuat log error"); return; }
+      setLogs(data.logs ?? []);
+    } catch (e) {
+      setError("Koneksi gagal: " + String(e));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleClear = async () => {
+    if (!confirm("Hapus semua log error system?")) return;
+    try {
+      await fetch("/api/admin/system-errors", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "clear" }),
+      });
+      void fetchLogs();
+    } catch { /* silent */ }
+  };
+
+  const handleTestTrigger = async () => {
+    try {
+      await fetch("/api/admin/system-errors", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "test" }),
+      });
+      alert("⚡ Notifikasi error tes berhasil dikirim ke Admin Inbox!");
+      void fetchLogs();
+    } catch { /* silent */ }
+  };
+
+  useEffect(() => {
+    void fetchLogs();
+  }, []);
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "10px" }}>
+        <div>
+          <div style={{ fontWeight: "800", fontSize: "14px", color: "var(--text)" }}>
+            🚨 System Anti-Error & Bug Sentinel Logs ({logs.length})
+          </div>
+          <div style={{ fontSize: "12px", color: "var(--text-muted)", marginTop: "2px" }}>
+            Laporan otomatis real-time jika terjadi crash, exception API, atau bug pada sistem
+          </div>
+        </div>
+        <div style={{ display: "flex", gap: "8px" }}>
+          <button
+            onClick={handleTestTrigger}
+            style={{ padding: "7px 12px", borderRadius: "8px", border: "1px solid rgba(96,165,250,0.4)", background: "rgba(96,165,250,0.12)", color: "#60a5fa", fontSize: "12px", fontWeight: "700", cursor: "pointer" }}
+          >
+            ⚡ Tes Sentinel Alert
+          </button>
+          <button
+            onClick={fetchLogs}
+            disabled={loading}
+            style={{ padding: "7px 12px", borderRadius: "8px", border: "1px solid var(--border)", background: "var(--bg-secondary)", color: "var(--text)", fontSize: "12px", fontWeight: "600", cursor: loading ? "not-allowed" : "pointer" }}
+          >
+            {loading ? "⏳" : "🔄"} Refresh
+          </button>
+          {logs.length > 0 && (
+            <button
+              onClick={handleClear}
+              style={{ padding: "7px 12px", borderRadius: "8px", border: "none", background: "rgba(239,68,68,0.15)", color: "#f87171", fontSize: "12px", fontWeight: "700", cursor: "pointer" }}
+            >
+              🗑️ Hapus Log
+            </button>
+          )}
+        </div>
+      </div>
+
+      {error && (
+        <div style={{ background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.3)", borderRadius: "8px", padding: "10px 14px", fontSize: "12px", color: "#f87171" }}>
+          ❌ {error}
+        </div>
+      )}
+
+      {logs.length === 0 ? (
+        <div style={{ textAlign: "center", padding: "40px", color: "#4ade80", fontSize: "13px", background: "rgba(74,222,128,0.05)", borderRadius: "12px", border: "1px solid rgba(74,222,128,0.2)" }}>
+          ✅ <strong>Sistem Bersih 100%!</strong> Tidak ada error atau bug yang terdeteksi saat ini.
+        </div>
+      ) : (
+        logs.map((log) => (
+          <div
+            key={log.id}
+            style={{
+              background: "var(--surface)", border: "1px solid rgba(239,68,68,0.3)", borderRadius: "10px",
+              overflow: "hidden",
+            }}
+          >
+            <div
+              onClick={() => setExpandedId(expandedId === log.id ? null : log.id)}
+              style={{ padding: "12px 16px", cursor: "pointer", display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}
+            >
+              <span style={{ fontSize: "10px", fontWeight: "800", background: "rgba(239,68,68,0.15)", color: "#f87171", padding: "2px 7px", borderRadius: "5px", textTransform: "uppercase" }}>
+                {log.category}
+              </span>
+              <div style={{ fontSize: "13px", fontWeight: "700", color: "var(--text)", flex: 1, minWidth: "200px" }}>
+                {log.message}
+              </div>
+              <span style={{ fontSize: "11px", color: "var(--text-muted)" }}>
+                {new Date(log.timestamp).toLocaleString("id-ID")}
+              </span>
+              <span style={{ fontSize: "12px", color: "var(--text-muted)" }}>{expandedId === log.id ? "▲" : "▼"}</span>
+            </div>
+
+            {expandedId === log.id && (
+              <div style={{ borderTop: "1px solid var(--border)", padding: "14px 16px", background: "var(--bg-secondary)", fontSize: "12px" }}>
+                <div style={{ marginBottom: "6px", color: "var(--text-muted)" }}>
+                  Endpoint: <code>{log.endpoint ?? "Client"}</code> &nbsp;·&nbsp; User: <code>{log.userEmail ?? "Anonim"}</code> &nbsp;·&nbsp; IP: <code>{log.ip ?? "Unknown"}</code>
+                </div>
+                {log.stack && (
+                  <pre style={{ margin: 0, padding: "10px", background: "#0f172a", borderRadius: "6px", color: "#fca5a5", fontSize: "11px", fontFamily: "monospace", overflowX: "auto", whiteSpace: "pre-wrap" }}>
+                    {log.stack}
+                  </pre>
+                )}
+              </div>
+            )}
+          </div>
+        ))
+      )}
+    </div>
+  );
+}
+
+
+// ─── Health Check Panel ───────────────────────────────────────────────────────
+
+interface ServiceHealth { service: string; status: string; latencyMs: number; details: string; }
+interface HealthReport { overallStatus: string; timestamp: string; services: ServiceHealth[]; }
+
+function HealthCheckPanel() {
+  const [loading, setLoading] = useState(false);
+  const [report, setReport] = useState<HealthReport | null>(null);
+
+  const run = async () => {
+    setLoading(true);
+    try {
+      const res = await fetch("/api/admin/health-check");
+      const data = await res.json() as HealthReport;
+      setReport(data);
+    } catch { /* silent */ } finally { setLoading(false); }
+  };
+
+  useEffect(() => { void run(); }, []);
+
+  const statusColor = (s: string) =>
+    s === "HEALTHY" ? "#4ade80" : s === "DEGRADED" ? "#fb923c" : "#f87171";
+
+  const statusBg = (s: string) =>
+    s === "HEALTHY" ? "rgba(74,222,128,0.12)" : s === "DEGRADED" ? "rgba(251,146,60,0.12)" : "rgba(248,113,113,0.12)";
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 10 }}>
+        <div>
+          <div style={{ fontWeight: 800, fontSize: 14, color: "var(--text)" }}>🏥 System Health Monitor — Real-Time Service Probe</div>
+          <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 2 }}>
+            Pemeriksaan otomatis seluruh layanan: Redis, AI Engine, Mailer
+          </div>
+        </div>
+        <button onClick={run} disabled={loading} style={{ padding: "7px 14px", borderRadius: 8, border: "1px solid var(--border)", background: "var(--bg-secondary)", color: "var(--text)", fontSize: 12, fontWeight: 600, cursor: loading ? "not-allowed" : "pointer" }}>
+          {loading ? "⏳ Memeriksa..." : "🔄 Jalankan Probe"}
+        </button>
+      </div>
+
+      {report && (
+        <>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "12px 16px", borderRadius: 10, background: statusBg(report.overallStatus), border: `1px solid ${statusColor(report.overallStatus)}40` }}>
+            <span style={{ fontSize: 22 }}>{report.overallStatus === "HEALTHY" ? "✅" : report.overallStatus === "DEGRADED" ? "⚠️" : "🚨"}</span>
+            <div>
+              <div style={{ fontWeight: 800, fontSize: 14, color: statusColor(report.overallStatus) }}>Overall: {report.overallStatus}</div>
+              <div style={{ fontSize: 11, color: "var(--text-muted)" }}>Diperiksa pada {new Date(report.timestamp).toLocaleString("id-ID")}</div>
+            </div>
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            {report.services.map((svc) => (
+              <div key={svc.service} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 14px", borderRadius: 8, background: "var(--surface)", border: `1px solid ${statusColor(svc.status)}30` }}>
+                <span style={{ width: 8, height: 8, borderRadius: "50%", background: statusColor(svc.status), flexShrink: 0 }} />
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text)" }}>{svc.service}</div>
+                  <div style={{ fontSize: 11, color: "var(--text-muted)" }}>{svc.details}</div>
+                </div>
+                <span style={{ fontSize: 11, fontWeight: 800, color: statusColor(svc.status), background: statusBg(svc.status), padding: "2px 8px", borderRadius: 5 }}>
+                  {svc.status} {svc.latencyMs > 0 ? `(${svc.latencyMs}ms)` : ""}
+                </span>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+// ─── Maintenance Mode Panel ───────────────────────────────────────────────────
+
+interface MaintenanceCfg { enabled: boolean; title: string; message: string; estimatedEnd?: string; allowedEmails: string[]; }
+
+function MaintenancePanel() {
+  const [cfg, setCfg] = useState<MaintenanceCfg | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [result, setResult] = useState("");
+
+  useEffect(() => {
+    fetch("/api/admin/maintenance").then((r) => r.json()).then((d: MaintenanceCfg) => setCfg(d)).catch(() => {});
+  }, []);
+
+  const save = async (patch: Partial<MaintenanceCfg>) => {
+    setSaving(true); setResult("");
+    try {
+      const res = await fetch("/api/admin/maintenance", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(patch) });
+      const d = await res.json() as { ok?: boolean; config?: MaintenanceCfg; error?: string };
+      if (d.ok && d.config) { setCfg(d.config); setResult("✅ Konfigurasi berhasil disimpan!"); }
+      else setResult("❌ " + (d.error ?? "Gagal menyimpan"));
+    } catch { setResult("❌ Koneksi gagal"); } finally { setSaving(false); }
+  };
+
+  if (!cfg) return <div style={{ padding: 40, textAlign: "center", color: "var(--text-muted)" }}>⏳ Memuat konfigurasi...</div>;
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+      <div style={{ fontWeight: 800, fontSize: 14, color: "var(--text)" }}>🔧 Maintenance Mode Controller</div>
+
+      {/* Toggle */}
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 16px", borderRadius: 10, background: cfg.enabled ? "rgba(251,146,60,0.1)" : "var(--surface)", border: `1px solid ${cfg.enabled ? "#fb923c" : "var(--border)"}` }}>
+        <div>
+          <div style={{ fontWeight: 700, fontSize: 14, color: cfg.enabled ? "#fb923c" : "var(--text)" }}>
+            {cfg.enabled ? "🔴 Maintenance Mode AKTIF" : "🟢 Situs Normal (Online)"}
+          </div>
+          <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 2 }}>
+            {cfg.enabled ? "Pengguna tidak dapat mengakses situs saat ini" : "Semua pengguna dapat mengakses situs"}
+          </div>
+        </div>
+        <button
+          onClick={() => save({ enabled: !cfg.enabled })}
+          disabled={saving}
+          style={{ padding: "10px 18px", borderRadius: 8, border: "none", background: cfg.enabled ? "#4ade80" : "#f87171", color: "#fff", fontWeight: 800, fontSize: 13, cursor: saving ? "not-allowed" : "pointer" }}
+        >
+          {cfg.enabled ? "✅ Nonaktifkan" : "🔴 Aktifkan Maintenance"}
+        </button>
+      </div>
+
+      {/* Config fields */}
+      <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+        <label style={{ fontSize: 11, fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase" }}>Judul Halaman Maintenance</label>
+        <input
+          defaultValue={cfg.title}
+          onBlur={(e) => setCfg((p) => p ? { ...p, title: e.target.value } : p)}
+          style={{ padding: "10px 14px", borderRadius: 8, border: "1px solid var(--border)", background: "var(--bg-secondary)", color: "var(--text)", fontSize: 13 }}
+        />
+        <label style={{ fontSize: 11, fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase" }}>Pesan ke Pengguna</label>
+        <textarea
+          defaultValue={cfg.message}
+          rows={3}
+          onBlur={(e) => setCfg((p) => p ? { ...p, message: e.target.value } : p)}
+          style={{ padding: "10px 14px", borderRadius: 8, border: "1px solid var(--border)", background: "var(--bg-secondary)", color: "var(--text)", fontSize: 13, resize: "vertical" }}
+        />
+        <label style={{ fontSize: 11, fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase" }}>Estimasi Selesai (opsional)</label>
+        <input
+          type="datetime-local"
+          defaultValue={cfg.estimatedEnd ? cfg.estimatedEnd.slice(0, 16) : ""}
+          onBlur={(e) => setCfg((p) => p ? { ...p, estimatedEnd: e.target.value ? new Date(e.target.value).toISOString() : undefined } : p)}
+          style={{ padding: "10px 14px", borderRadius: 8, border: "1px solid var(--border)", background: "var(--bg-secondary)", color: "var(--text)", fontSize: 13 }}
+        />
+      </div>
+
+      <button
+        onClick={() => save(cfg)}
+        disabled={saving}
+        style={{ padding: "12px", borderRadius: 10, border: "none", background: "linear-gradient(135deg,#2563eb,#7c3aed)", color: "#fff", fontWeight: 800, fontSize: 13, cursor: saving ? "not-allowed" : "pointer" }}
+      >
+        {saving ? "⏳ Menyimpan..." : "💾 Simpan Konfigurasi"}
+      </button>
+
+      {result && <div style={{ fontSize: 12, fontWeight: 700, color: result.startsWith("✅") ? "#4ade80" : "#f87171" }}>{result}</div>}
+    </div>
+  );
+}
+
+// ─── Message Templates Panel ─────────────────────────────────────────────────
+
+interface MsgTemplate { id: string; name: string; type: "message" | "refresh" | "block"; title: string; body: string; reason?: string; tags: string[]; usageCount: number; }
+
+function TemplatesPanel({ onUseTemplate }: { onUseTemplate?: (t: MsgTemplate) => void }) {
+  const [templates, setTemplates] = useState<MsgTemplate[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [showCreate, setShowCreate] = useState(false);
+  const [newName, setNewName] = useState("");
+  const [newTitle, setNewTitle] = useState("");
+  const [newBody, setNewBody] = useState("");
+  const [newType, setNewType] = useState<"message" | "refresh" | "block">("message");
+  const [saving, setSaving] = useState(false);
+
+  const fetch_ = async () => {
+    setLoading(true);
+    try {
+      const res = await fetch("/api/admin/message-templates");
+      const d = await res.json() as { templates?: MsgTemplate[] };
+      setTemplates(d.templates ?? []);
+    } catch { /* silent */ } finally { setLoading(false); }
+  };
+
+  useEffect(() => { void fetch_(); }, []);
+
+  const handleCreate = async () => {
+    if (!newName.trim() || !newTitle.trim() || !newBody.trim()) return;
+    setSaving(true);
+    try {
+      await fetch("/api/admin/message-templates", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "create", template: { name: newName, type: newType, title: newTitle, body: newBody, tags: [] } }),
+      });
+      setShowCreate(false); setNewName(""); setNewTitle(""); setNewBody("");
+      void fetch_();
+    } catch { /* silent */ } finally { setSaving(false); }
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!confirm("Hapus template ini?")) return;
+    await fetch("/api/admin/message-templates", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "delete", id }),
+    });
+    void fetch_();
+  };
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 10 }}>
+        <div>
+          <div style={{ fontWeight: 800, fontSize: 14, color: "var(--text)" }}>📁 Pustaka Template Pesan Admin</div>
+          <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 2 }}>Simpan & gunakan ulang pesan standar dengan 1 klik</div>
+        </div>
+        <div style={{ display: "flex", gap: 8 }}>
+          <button onClick={() => setShowCreate(!showCreate)} style={{ padding: "7px 14px", borderRadius: 8, border: "none", background: "linear-gradient(135deg,#7c3aed,#2563eb)", color: "#fff", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
+            {showCreate ? "✕ Batal" : "+ Template Baru"}
+          </button>
+          <button onClick={fetch_} disabled={loading} style={{ padding: "7px 14px", borderRadius: 8, border: "1px solid var(--border)", background: "var(--bg-secondary)", color: "var(--text)", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
+            {loading ? "⏳" : "🔄"}
+          </button>
+        </div>
+      </div>
+
+      {showCreate && (
+        <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 12, padding: 16, display: "flex", flexDirection: "column", gap: 10 }}>
+          <div style={{ fontWeight: 700, fontSize: 13, color: "var(--text)" }}>✏️ Buat Template Baru</div>
+          <select value={newType} onChange={(e) => setNewType(e.target.value as "message" | "refresh" | "block")} style={{ padding: "8px 12px", borderRadius: 8, border: "1px solid var(--border)", background: "var(--bg-secondary)", color: "var(--text)", fontSize: 13 }}>
+            <option value="message">💬 Pesan Biasa</option>
+            <option value="refresh">🔄 Refresh/Reload</option>
+            <option value="block">🚫 Blokir Akun</option>
+          </select>
+          <input placeholder="Nama template..." value={newName} onChange={(e) => setNewName(e.target.value)} style={{ padding: "9px 12px", borderRadius: 8, border: "1px solid var(--border)", background: "var(--bg-secondary)", color: "var(--text)", fontSize: 13 }} />
+          <input placeholder="Judul pesan..." value={newTitle} onChange={(e) => setNewTitle(e.target.value)} style={{ padding: "9px 12px", borderRadius: 8, border: "1px solid var(--border)", background: "var(--bg-secondary)", color: "var(--text)", fontSize: 13 }} />
+          <textarea placeholder="Isi pesan..." value={newBody} onChange={(e) => setNewBody(e.target.value)} rows={3} style={{ padding: "9px 12px", borderRadius: 8, border: "1px solid var(--border)", background: "var(--bg-secondary)", color: "var(--text)", fontSize: 13, resize: "vertical" }} />
+          <button onClick={handleCreate} disabled={saving || !newName || !newTitle || !newBody} style={{ padding: "10px", borderRadius: 8, border: "none", background: saving ? "#334155" : "linear-gradient(135deg,#2563eb,#7c3aed)", color: "#fff", fontWeight: 800, fontSize: 13, cursor: saving ? "not-allowed" : "pointer" }}>
+            {saving ? "⏳ Menyimpan..." : "💾 Simpan Template"}
+          </button>
+        </div>
+      )}
+
+      {templates.length === 0 ? (
+        <div style={{ textAlign: "center", padding: 40, color: "var(--text-muted)", fontSize: 13 }}>📁 Belum ada template tersimpan.</div>
+      ) : (
+        templates.map((t) => (
+          <div key={t.id} style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 10, padding: "12px 14px" }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 8, marginBottom: 6 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <span style={{ fontSize: 10, fontWeight: 800, textTransform: "uppercase", padding: "2px 7px", borderRadius: 5, background: t.type === "block" ? "rgba(239,68,68,0.15)" : t.type === "refresh" ? "rgba(74,222,128,0.12)" : "rgba(37,99,235,0.12)", color: t.type === "block" ? "#f87171" : t.type === "refresh" ? "#4ade80" : "#60a5fa" }}>
+                  {t.type === "block" ? "🚫 Blokir" : t.type === "refresh" ? "🔄 Refresh" : "💬 Pesan"}
+                </span>
+                <span style={{ fontWeight: 700, fontSize: 13, color: "var(--text)" }}>{t.name}</span>
+                <span style={{ fontSize: 11, color: "var(--text-muted)" }}>({t.usageCount}x digunakan)</span>
+              </div>
+              <div style={{ display: "flex", gap: 6 }}>
+                {onUseTemplate && (
+                  <button onClick={() => { onUseTemplate(t); }} style={{ padding: "5px 10px", borderRadius: 6, border: "none", background: "#2563eb", color: "#fff", fontSize: 11, fontWeight: 700, cursor: "pointer" }}>
+                    ⚡ Gunakan
+                  </button>
+                )}
+                <button onClick={() => handleDelete(t.id)} style={{ padding: "5px 10px", borderRadius: 6, border: "none", background: "rgba(239,68,68,0.15)", color: "#f87171", fontSize: 11, fontWeight: 700, cursor: "pointer" }}>
+                  🗑️
+                </button>
+              </div>
+            </div>
+            <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text)", marginBottom: 3 }}>{t.title}</div>
+            <div style={{ fontSize: 12, color: "var(--text-muted)", lineHeight: 1.5, whiteSpace: "pre-wrap" }}>{t.body.slice(0, 120)}{t.body.length > 120 ? "..." : ""}</div>
+          </div>
+        ))
+      )}
+    </div>
+  );
+}
+
+// ─── Activity Feed Panel ──────────────────────────────────────────────────────
+
+interface ActEvent { id: string; userId: string; email: string; username: string; action: string; path?: string; detail?: string; ip?: string; timestamp: string; }
+
+function ActivityFeedPanel({ users }: { users: { id: string; email: string; username: string }[] }) {
+  const [events, setEvents] = useState<ActEvent[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [selectedUid, setSelectedUid] = useState<string>("global");
+
+  const fetchEvents = async (uid: string) => {
+    setLoading(true);
+    try {
+      const query = uid !== "global" ? `?userId=${encodeURIComponent(uid)}` : "";
+      const res = await fetch(`/api/user/activity${query}`);
+      const d = await res.json() as { events?: ActEvent[] };
+      setEvents(d.events ?? []);
+    } catch { /* silent */ } finally { setLoading(false); }
+  };
+
+  useEffect(() => { void fetchEvents("global"); }, []);
+
+  const actionIcon: Record<string, string> = {
+    login: "🔑", logout: "🚪", page_view: "👁️", upload: "📤", generate: "⚡",
+    error: "🚨", block_attempt: "🛡️",
+  };
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 10 }}>
+        <div>
+          <div style={{ fontWeight: 800, fontSize: 14, color: "var(--text)" }}>📊 Activity Feed — Riwayat Aktivitas Pengguna</div>
+          <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 2 }}>Lacak login, upload, generate, dan error per pengguna secara real-time</div>
+        </div>
+        <button onClick={() => fetchEvents(selectedUid)} disabled={loading} style={{ padding: "7px 14px", borderRadius: 8, border: "1px solid var(--border)", background: "var(--bg-secondary)", color: "var(--text)", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
+          {loading ? "⏳" : "🔄"} Refresh
+        </button>
+      </div>
+
+      {/* User filter chips */}
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+        {[{ id: "global", username: "Semua Aktivitas" }, ...users].map((u) => {
+          const sel = selectedUid === u.id;
+          return (
+            <button key={u.id} onClick={() => { setSelectedUid(u.id); void fetchEvents(u.id); }} style={{ padding: "5px 12px", borderRadius: 8, border: `1px solid ${sel ? "#7c3aed" : "var(--border)"}`, background: sel ? "rgba(124,58,237,0.2)" : "transparent", color: sel ? "#a78bfa" : "var(--text-muted)", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
+              {u.username}
+            </button>
+          );
+        })}
+      </div>
+
+      {events.length === 0 ? (
+        <div style={{ textAlign: "center", padding: 40, color: "var(--text-muted)", fontSize: 13 }}>📭 Belum ada aktivitas terekam.</div>
+      ) : (
+        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+          {events.map((ev) => (
+            <div key={ev.id} style={{ display: "flex", alignItems: "flex-start", gap: 10, padding: "10px 12px", borderRadius: 8, background: "var(--surface)", border: "1px solid var(--border)" }}>
+              <span style={{ fontSize: 16, flexShrink: 0 }}>{actionIcon[ev.action] ?? "📌"}</span>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 12, fontWeight: 700, color: "var(--text)" }}>
+                  <span style={{ color: "#a78bfa" }}>{ev.username}</span> · {ev.action.replace("_", " ")}
+                  {ev.path ? <span style={{ color: "var(--text-muted)", fontWeight: 400 }}> @ {ev.path}</span> : null}
+                </div>
+                {ev.detail && <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 2 }}>{ev.detail}</div>}
+              </div>
+              <span style={{ fontSize: 10, color: "var(--text-muted)", flexShrink: 0, textAlign: "right" }}>
+                {new Date(ev.timestamp).toLocaleString("id-ID", { hour: "2-digit", minute: "2-digit", day: "2-digit", month: "short" })}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Shared Styles ────────────────────────────────────────────────────────────
+
 
 const labelStyle: React.CSSProperties = {
   display: "block",
@@ -955,7 +1581,7 @@ const inputStyle: React.CSSProperties = {
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 export default function MessageWebPanel() {
-  const [activeView, setActiveView] = useState<"compose" | "log" | "debug">("compose");
+  const [activeView, setActiveView] = useState<"compose" | "log" | "receipts" | "errors" | "health" | "maintenance" | "templates" | "activity" | "debug">("compose");
   const [users, setUsers] = useState<AccountUser[]>([]);
   const [sentMessages, setSentMessages] = useState<SentMessage[]>([]);
   const [loadingLog, setLoadingLog] = useState(false);
@@ -1105,6 +1731,12 @@ export default function MessageWebPanel() {
         {([
           { id: "compose", icon: "✏️", label: "Tulis Pesan" },
           { id: "log", icon: "📋", label: `Riwayat (${sentMessages.length})` },
+          { id: "receipts", icon: "👁️", label: "Tanda Terima" },
+          { id: "errors", icon: "🚨", label: "Error Logs" },
+          { id: "health", icon: "🏥", label: "Health Check" },
+          { id: "maintenance", icon: "🔧", label: "Maintenance" },
+          { id: "templates", icon: "📁", label: "Templates" },
+          { id: "activity", icon: "📊", label: "Activity Feed" },
           { id: "debug", icon: "🔍", label: "Debug Log" },
         ] as const).map((tab) => {
           const active = activeView === tab.id;
@@ -1195,6 +1827,18 @@ export default function MessageWebPanel() {
         <div style={{ padding: activeView !== "log" ? "24px" : "0" }}>
           {activeView === "compose" ? (
             <ComposePanelForm users={users} onSent={fetchLog} />
+          ) : activeView === "receipts" ? (
+            <ReadReceiptsPanel />
+          ) : activeView === "errors" ? (
+            <SystemErrorAlertsPanel />
+          ) : activeView === "health" ? (
+            <HealthCheckPanel />
+          ) : activeView === "maintenance" ? (
+            <MaintenancePanel />
+          ) : activeView === "templates" ? (
+            <TemplatesPanel />
+          ) : activeView === "activity" ? (
+            <ActivityFeedPanel users={users} />
           ) : activeView === "debug" ? (
             <DebugPanel users={users} />
           ) : loadingLog ? (
