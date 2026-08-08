@@ -484,7 +484,7 @@ export default function Home() {
       </div>
 
       {/* ── User Inbox Banner (polling, all users) ── */}
-      {user && <UserInboxBanner />}
+      <UserInboxBanner />
     </div>
   );
 }

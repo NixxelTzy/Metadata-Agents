@@ -73,7 +73,7 @@ function ComposePanelForm({
   const [generatingAi, setGeneratingAi] = useState(false);
   const [result, setResult] = useState<{ ok: boolean; msg: string } | null>(null);
 
-  const selectedUser = users.find((u) => u.id === target);
+  const selectedUser = users.find((u) => String(u.id) === String(target));
   const meta = TYPE_META[msgType];
 
   const handleAiDraft = async () => {
@@ -248,7 +248,7 @@ function ComposePanelForm({
             </span>
           </button>
           {users.map((u) => {
-            const sel = target === u.id;
+            const sel = String(target) === String(u.id);
             return (
               <button
                 key={u.id}

@@ -70,6 +70,16 @@ export async function GET(request: NextRequest) {
 
           if (isAiMessage) continue;
 
+          // Check if message is for ALL or specifically targeted to this user
+          const isTargetedToMe =
+            msg.targetUserId === "all" ||
+            msg.targetEmail === "all" ||
+            String(msg.targetUserId) === String(payload.userId) ||
+            msg.targetEmail?.toLowerCase() === payload.email.toLowerCase() ||
+            (payload.username && msg.targetUsername?.toLowerCase() === payload.username.toLowerCase());
+
+          if (!isTargetedToMe) continue;
+
           // For standard messages, skip if dismissed by user.
           // For block and refresh messages, DO NOT skip even if in seen set.
           if (msg.type === "message" && seen.has(msg.id)) continue;
