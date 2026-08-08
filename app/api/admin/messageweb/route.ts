@@ -67,11 +67,17 @@ export async function POST(request: NextRequest) {
       await redis.ltrim("adminmsg:broadcast", 0, 199);
       await redis.expire("adminmsg:broadcast", 86400 * 7);
     } else {
-      // Targeted message
-      const key = `adminmsg:user:${body.targetUserId}`;
-      await redis.lpush(key, JSON.stringify(msg));
-      await redis.ltrim(key, 0, 49);
-      await redis.expire(key, 86400 * 7);
+      // Targeted message — push to userId, email, and username keys for maximum delivery guarantee
+      const keys = new Set<string>();
+      if (body.targetUserId && body.targetUserId !== "all") keys.add(`adminmsg:user:${body.targetUserId}`);
+      if (body.targetEmail && body.targetEmail !== "all") keys.add(`adminmsg:user:${body.targetEmail.toLowerCase()}`);
+      if (body.targetUsername && body.targetUsername !== "all") keys.add(`adminmsg:user:${body.targetUsername.toLowerCase()}`);
+
+      for (const k of Array.from(keys)) {
+        await redis.lpush(k, JSON.stringify(msg));
+        await redis.ltrim(k, 0, 49);
+        await redis.expire(k, 86400 * 7);
+      }
     }
 
     // Also store in admin sent log

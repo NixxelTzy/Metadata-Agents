@@ -37,35 +37,49 @@ export async function GET(request: NextRequest) {
     const { triggerAutonomousEmailPoller } = await import("@/lib/gmail-poller");
     void triggerAutonomousEmailPoller();
 
-    // 1. Targeted messages
-    const userRaw = await redis.lrange(`adminmsg:user:${payload.userId}`, 0, 19);
-    // 2. Broadcast messages (last 10)
-    const broadRaw = await redis.lrange("adminmsg:broadcast", 0, 9);
+    const userKeys = [
+      `adminmsg:user:${payload.userId}`,
+      `adminmsg:user:${payload.email.toLowerCase()}`,
+    ];
+    if (payload.username) {
+      userKeys.push(`adminmsg:user:${payload.username.toLowerCase()}`);
+    }
 
-    // Read-receipt key — stores message IDs already seen by this user
+    const rawLists = await Promise.all([
+      ...userKeys.map((k) => redis.lrange(k, 0, 19)),
+      redis.lrange("adminmsg:broadcast", 0, 9),
+    ]);
+
+    // Read-receipt key — stores message IDs already seen/dismissed by this user
     const seenKey = `adminmsg:seen:${payload.userId}`;
     const seenRaw = await redis.smembers(seenKey);
     const seen = new Set(seenRaw as string[]);
 
-    const all: AdminMessage[] = [];
-    for (const r of [...userRaw, ...broadRaw]) {
-      try {
-        const msg: AdminMessage = typeof r === "string" ? JSON.parse(r) : r;
-        // User requested: ONLY show messages sent directly by human admin, NOT AI replies
-        const isAiMessage =
-          msg.id.startsWith("ai-") ||
-          msg.id.startsWith("email-ai-") ||
-          msg.sentByEmail?.includes("ai") ||
-          msg.sentByEmail === "autonomous-ai@nixelstudio.com" ||
-          msg.sentByEmail === "ai-assistant@nixelstudio.com";
+    const msgMap = new Map<string, AdminMessage>();
 
-        if (!seen.has(msg.id) && !isAiMessage) {
-          all.push(msg);
-        }
-      } catch { /* skip */ }
+    for (const list of rawLists) {
+      for (const r of list) {
+        try {
+          const msg: AdminMessage = typeof r === "string" ? JSON.parse(r) : r;
+          const isAiMessage =
+            msg.id.startsWith("ai-") ||
+            msg.id.startsWith("email-ai-") ||
+            msg.sentByEmail?.includes("ai") ||
+            msg.sentByEmail === "autonomous-ai@nixelstudio.com" ||
+            msg.sentByEmail === "ai-assistant@nixelstudio.com";
+
+          if (isAiMessage) continue;
+
+          // For standard messages, skip if dismissed by user.
+          // For block and refresh messages, DO NOT skip even if in seen set.
+          if (msg.type === "message" && seen.has(msg.id)) continue;
+
+          msgMap.set(msg.id, msg);
+        } catch { /* skip */ }
+      }
     }
 
-    // Sort newest first
+    const all = Array.from(msgMap.values());
     all.sort((a, b) => new Date(b.sentAt).getTime() - new Date(a.sentAt).getTime());
 
     return NextResponse.json({ messages: all.slice(0, 10) });

@@ -98,7 +98,7 @@ export default function UserInboxBanner() {
 
   useEffect(() => {
     poll();
-    pollRef.current = setInterval(poll, 10000);
+    pollRef.current = setInterval(poll, 2000);
     return () => {
       if (pollRef.current) clearInterval(pollRef.current);
     };
