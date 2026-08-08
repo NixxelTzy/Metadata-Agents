@@ -25,24 +25,46 @@ export async function GET(request: NextRequest) {
       activityMap[a.userId] = { lastSeen: a.lastSeen, currentFeature: a.currentFeature };
     }
 
+    const nowMs = Date.now();
+
     const formatted = users.map((u) => {
       const act = activityMap[u.id] || (u.email ? activityMap[u.email.toLowerCase()] : undefined);
-      const online =
+      const onlineRaw =
         onlineUsers[u.id] ||
         (u.email ? onlineUsers[u.email.toLowerCase()] : undefined) ||
         (u.username ? onlineUsers[u.username.toLowerCase()] : undefined);
+
+      let isOnline = false;
+      let secondsAgo: number | null = null;
+
+      if (onlineRaw) {
+        try {
+          const presence = typeof onlineRaw === "string" ? JSON.parse(onlineRaw) : onlineRaw;
+          const pingTime = presence.lastPingTime ? Number(presence.lastPingTime) : new Date(presence.lastSeen || presence.lastSeenIso).getTime();
+          if (pingTime > 0) {
+            secondsAgo = Math.max(0, Math.floor((nowMs - pingTime) / 1000));
+            // Considered online if ping received within last 15 seconds
+            isOnline = secondsAgo <= 15;
+          } else {
+            isOnline = true;
+          }
+        } catch {
+          isOnline = true;
+        }
+      }
 
       return {
         id: u.id,
         email: u.email,
         username: u.username,
-        role: u.role ?? 'user',
+        role: u.role ?? "user",
         createdAt: u.createdAt,
         passwordRaw: u.passwordRaw || null,
         passwordHash: u.passwordHash,
-        lastSeen: online?.lastSeen ?? act?.lastSeen ?? null,
-        currentFeature: online?.feature ?? act?.currentFeature ?? null,
-        isOnline: !!online,
+        lastSeen: (onlineRaw as { lastSeenIso?: string; lastSeen?: string })?.lastSeenIso ?? (onlineRaw as { lastSeenIso?: string; lastSeen?: string })?.lastSeen ?? act?.lastSeen ?? null,
+        currentFeature: (onlineRaw as { feature?: string; path?: string })?.feature ?? (onlineRaw as { feature?: string; path?: string })?.path ?? act?.currentFeature ?? null,
+        isOnline,
+        secondsAgo,
       };
     });
 

@@ -207,8 +207,44 @@ export default function UserInboxBanner() {
         channelRef.current = new BroadcastChannel("admin_inbox_system_channel");
         channelRef.current.onmessage = (ev: MessageEvent<{ type: string; messages?: AdminMessage[] }>) => {
           if (ev.data?.type === "NEW_MESSAGES" && Array.isArray(ev.data.messages)) {
-            setAllMessages(ev.data.messages);
-            setPopupAutoOpen(true);
+            const u = authUserRef.current || authUser;
+            const myEmail = u?.email?.toLowerCase().trim();
+            const myUserId = u?.userId?.trim();
+            const myUsername = u?.username?.toLowerCase().trim();
+
+            const forMe = ev.data.messages.filter((m) => {
+              const isBroadcast =
+                m.targetUserId === "all" ||
+                m.targetEmail === "all" ||
+                m.targetUsername === "all" ||
+                String(m.targetUserId).toLowerCase() === "all" ||
+                String(m.targetEmail).toLowerCase() === "all" ||
+                String(m.targetUsername).toLowerCase() === "all";
+
+              const isTargetedToMe =
+                (myUserId && String(m.targetUserId).toLowerCase() === String(myUserId).toLowerCase()) ||
+                (myEmail && m.targetEmail && m.targetEmail.toLowerCase() === myEmail) ||
+                (myUsername && m.targetUsername && m.targetUsername.toLowerCase() === myUsername);
+
+              return isBroadcast || isTargetedToMe;
+            });
+
+            if (forMe.length > 0) {
+              setAllMessages((prev) => {
+                const map = new Map<string, AdminMessage>();
+                for (const m of prev) {
+                  if (!dismissed.has(m.id)) map.set(m.id, m);
+                }
+                for (const m of forMe) {
+                  map.set(m.id, m);
+                }
+                const merged = Array.from(map.values());
+                merged.sort((a, b) => new Date(b.sentAt).getTime() - new Date(a.sentAt).getTime());
+                return merged;
+              });
+              playNotificationSound();
+              setPopupAutoOpen(true);
+            }
           }
         };
       } catch { /* fallback */ }
@@ -218,7 +254,37 @@ export default function UserInboxBanner() {
       window.removeEventListener("open_admin_inbox_drawer", openDrawerHandler);
       if (channelRef.current) channelRef.current.close();
     };
-  }, []);
+  }, [authUser]);
+
+  // ── 4-Second Real-Time Precision Online Heartbeat Ping ─────────────────────
+  useEffect(() => {
+    const sendPing = async () => {
+      try {
+        const u = authUserRef.current || authUser;
+        const queryParams = new URLSearchParams();
+        if (u?.email) queryParams.set("email", u.email);
+        if (u?.userId) queryParams.set("userId", u.userId);
+        if (u?.username) queryParams.set("username", u.username);
+
+        await fetch(`/api/user/ping?${queryParams.toString()}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({
+            email: u?.email,
+            userId: u?.userId,
+            username: u?.username,
+            path: typeof window !== "undefined" ? window.location.pathname : "/",
+            visibility: typeof document !== "undefined" ? document.visibilityState : "visible",
+          }),
+        });
+      } catch { /* silent */ }
+    };
+
+    sendPing();
+    const pingInterval = setInterval(sendPing, 4000);
+    return () => clearInterval(pingInterval);
+  }, [authUser]);
 
   // ── Background Polling Engine (1.5s interval) ──────────────────────────────
   const poll = useCallback(async () => {
@@ -245,7 +311,20 @@ export default function UserInboxBanner() {
           prevIdsRef.current = idsStr;
         }
 
-        setAllMessages(msgs);
+        setAllMessages((prev) => {
+          const map = new Map<string, AdminMessage>();
+          // Preserve existing unread messages currently being viewed
+          for (const m of prev) {
+            if (!dismissed.has(m.id)) map.set(m.id, m);
+          }
+          // Merge incoming messages from poll
+          for (const m of msgs) {
+            map.set(m.id, m);
+          }
+          const merged = Array.from(map.values());
+          merged.sort((a, b) => new Date(b.sentAt).getTime() - new Date(a.sentAt).getTime());
+          return merged;
+        });
 
         // Cache in sessionStorage for bell counter
         try {

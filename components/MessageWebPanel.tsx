@@ -11,6 +11,7 @@ interface AccountUser {
   role: "user" | "premium" | "admin";
   isOnline: boolean;
   lastSeen: string | null;
+  secondsAgo?: number | null;
 }
 
 interface SentMessage {
@@ -596,6 +597,9 @@ function ComposePanelForm({
           </button>
           {users.map((u) => {
             const sel = String(target) === String(u.id);
+            const isOnline = u.isOnline;
+            const secsAgo = u.secondsAgo != null ? `${u.secondsAgo}d lalu` : "";
+
             return (
               <button
                 key={u.id}
@@ -603,8 +607,8 @@ function ComposePanelForm({
                 style={{
                   padding: "8px 14px",
                   borderRadius: "8px",
-                  border: `2px solid ${sel ? "#60a5fa" : "var(--border)"}`,
-                  background: sel ? "rgba(96,165,250,0.15)" : "var(--bg-secondary)",
+                  border: `2px solid ${sel ? "#60a5fa" : isOnline ? "rgba(74,222,128,0.4)" : "var(--border)"}`,
+                  background: sel ? "rgba(96,165,250,0.15)" : isOnline ? "rgba(74,222,128,0.06)" : "var(--bg-secondary)",
                   color: sel ? "#60a5fa" : "var(--text)",
                   cursor: "pointer",
                   fontWeight: "600",
@@ -620,13 +624,14 @@ function ComposePanelForm({
                     width: "8px",
                     height: "8px",
                     borderRadius: "50%",
-                    background: u.isOnline ? "#4ade80" : "#64748b",
+                    background: isOnline ? "#4ade80" : "#64748b",
+                    boxShadow: isOnline ? "0 0 8px rgba(74,222,128,0.6)" : "none",
                     flexShrink: 0,
                   }}
                 />
                 {u.username}
-                <span style={{ fontSize: "10px", color: "var(--text-muted)" }}>
-                  {u.role === "premium" ? "⭐" : u.role === "admin" ? "🛡️" : ""}
+                <span style={{ fontSize: "10px", color: isOnline ? "#4ade80" : "var(--text-muted)", fontWeight: isOnline ? "700" : "400" }}>
+                  {isOnline ? `Online ${secsAgo}` : "Offline"}
                 </span>
               </button>
             );
@@ -1632,7 +1637,7 @@ export default function MessageWebPanel() {
   useEffect(() => {
     fetchUsers();
     fetchLog();
-    const id = setInterval(fetchUsers, 20000);
+    const id = setInterval(fetchUsers, 3000);
     return () => clearInterval(id);
   }, [fetchUsers, fetchLog]);
 
