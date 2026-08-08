@@ -571,11 +571,15 @@ export async function POST(request: NextRequest) {
     };
 
     const keysSet = new Set<string>();
-    if (finalUserId && finalUserId !== "all") keysSet.add(`adminmsg:user:${finalUserId}`);
-    if (finalEmail && finalEmail !== "all") keysSet.add(`adminmsg:user:${finalEmail}`);
-    if (finalUsername && finalUsername !== "all") keysSet.add(`adminmsg:user:${finalUsername}`);
-    if (finalRecId) keysSet.add(`adminmsg:user:${finalRecId}`);
-    if (cleanRawTarget && cleanRawTarget !== "all") keysSet.add(`adminmsg:user:${cleanRawTarget}`);
+    // ── STRICT: Only write to userId key — prevents message leaking to other users
+    // Email and username are NOT unique enough to use as delivery keys
+    if (finalUserId && finalUserId !== "all") {
+      keysSet.add(`adminmsg:user:${finalUserId}`);
+    }
+    // Fallback: if no userId resolved, use email as secondary key only
+    if (keysSet.size === 0 && finalEmail && finalEmail !== "all") {
+      keysSet.add(`adminmsg:user:${finalEmail}`);
+    }
 
     for (const k of Array.from(keysSet)) {
       await redis.lpush(k, JSON.stringify(msg));

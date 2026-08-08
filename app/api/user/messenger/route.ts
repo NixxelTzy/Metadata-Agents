@@ -86,11 +86,12 @@ export async function GET(request: NextRequest) {
     }
 
     // ── Fetch all message keys for this user ─────────────────────────────────
+    // STRICT: Use only userId key as primary (most reliable, no collision risk)
+    // Email/username keys are kept as fallback for backward compat with old messages
     const keysToCheck: string[] = ["adminmsg:broadcast"];
-    if (myUserId)                        keysToCheck.push(`adminmsg:user:${myUserId}`);
-    if (myEmail)                         keysToCheck.push(`adminmsg:user:${myEmail}`);
-    if (myUsername && myUsername !== myEmail) keysToCheck.push(`adminmsg:user:${myUsername}`);
-    if (myRecipientId)                   keysToCheck.push(`adminmsg:user:${myRecipientId}`);
+    if (myUserId) keysToCheck.push(`adminmsg:user:${myUserId}`);
+    // Fallback to email key only if no userId (unauthenticated/guest edge case)
+    else if (myEmail) keysToCheck.push(`adminmsg:user:${myEmail}`);
 
     const rawLists = await Promise.all(
       keysToCheck.map(k => redis.lrange(k, 0, 99).catch(() => []))
@@ -143,21 +144,24 @@ export async function GET(request: NextRequest) {
     const allMessages = Array.from(msgMap.values());
     allMessages.sort((a, b) => new Date(b.sentAt).getTime() - new Date(a.sentAt).getTime());
 
-    // ── Determine block state ────────────────────────────────────────────────
-    // If justUnblocked, filter out all block messages from response
-    const messages = justUnblocked
-      ? allMessages.filter(m => m.type !== "block").slice(0, 20)
-      : allMessages.slice(0, 20);
-
-    const isBlocked = !justUnblocked && messages.some(m => m.type === "block");
-
-    // ── Get seen set for unread count ────────────────────────────────────────
+    // ── Get seen set ─────────────────────────────────────────────────────────
     let seenIds = new Set<string>();
     if (myUserId) {
       const seenRaw = await redis.smembers(`adminmsg:seen:${myUserId}`).catch(() => []);
       seenIds = new Set(seenRaw as string[]);
     }
 
+    // ── Filter: exclude already-seen non-block messages ──────────────────────
+    // Block messages always show regardless of seen status (safety requirement)
+    // Message/refresh types are hidden once user has dismissed/read them
+    const messages = (justUnblocked
+      ? allMessages.filter(m => m.type !== "block")
+      : allMessages
+    )
+      .filter(m => m.type === "block" || !seenIds.has(m.id))
+      .slice(0, 20);
+
+    const isBlocked = !justUnblocked && messages.some(m => m.type === "block");
     const unreadCount = messages.filter(m => !seenIds.has(m.id)).length;
 
     return NextResponse.json({
@@ -249,10 +253,11 @@ export async function POST(request: NextRequest) {
 
     // ── MARK READ ────────────────────────────────────────────────────────────
     const ids = Array.isArray(body.ids) ? body.ids : [];
-    if (ids.length > 0) {
+    if (ids.length > 0 && payload.userId) {
       const seenKey = `adminmsg:seen:${payload.userId}`;
+      // Add to seen set (persistent across sessions)
       await Promise.all(ids.map(id => redis.sadd(seenKey, id).catch(() => {})));
-      await redis.expire(seenKey, 86400 * 14).catch(() => {});
+      await redis.expire(seenKey, 86400 * 30).catch(() => {});
     }
     return NextResponse.json({ ok: true });
 

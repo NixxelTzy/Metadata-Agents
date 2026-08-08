@@ -17,6 +17,7 @@ import MessageWebPanel from "@/components/MessageWebPanel";
 import ClosingFeaturesPanel, { ClosingEntry } from "@/components/ClosingFeaturesPanel";
 import FeatureClosedNotice from "@/components/FeatureClosedNotice";
 import UserInboxBanner, { NotificationBellButton } from "@/components/UserInboxBanner";
+import ServerShutdownPanel from "@/components/ServerShutdownPanel";
 import { useDevice } from "@/lib/useDevice";
 import { useRouter } from "next/navigation";
 import {
@@ -25,7 +26,7 @@ import {
   estimateCost, type Platform,
 } from "@/lib/tokenStore";
 
-type Tab = "metadata" | "chat" | "research" | "vector" | "upscale" | "watermark" | "accounts" | "feedback" | "admin-messages" | "storage" | "motion" | "messageweb" | "closing";
+type Tab = "metadata" | "chat" | "research" | "vector" | "upscale" | "watermark" | "accounts" | "feedback" | "admin-messages" | "storage" | "motion" | "messageweb" | "closing" | "shutdown";
 const ADMIN_EMAIL = "nixxeltzy@gmail.com";
 
 const TAB_CONFIG: { id: Tab; icon: string; label: string; desc: string; color: string }[] = [
@@ -259,6 +260,17 @@ export default function Home() {
                   <span className="sidebar__item-desc">Redis DB Monitor</span>
                 </span>
               </button>
+              <button type="button"
+                className={`sidebar__item ${activeTab === "shutdown" && !monitorOpen ? "sidebar__item--active" : ""}`}
+                onClick={() => { handleTabChange("shutdown"); }}
+                style={{ borderTop: "1px solid rgba(239,68,68,0.2)", marginTop: 4 }}
+              >
+                <span className="sidebar__icon">🔌</span>
+                <span className="sidebar__item-content">
+                  <span className="sidebar__item-label" style={{ color: activeTab === "shutdown" ? "var(--text)" : "#f87171" }}>Server Shutdown</span>
+                  <span className="sidebar__item-desc">Tutup / Buka Server</span>
+                </span>
+              </button>
             </nav>
           </>
         )}
@@ -465,6 +477,8 @@ export default function Home() {
             <AdminMessagesPanel />
           ) : isAdmin && activeTab === "storage" ? (
             <StoragePanel />
+          ) : isAdmin && activeTab === "shutdown" ? (
+            <ServerShutdownPanel />
           ) : activeTab === "feedback" ? (
             <FeedbackPanel />
           ) : activeTab === "metadata" ? (

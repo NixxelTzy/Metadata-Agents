@@ -303,6 +303,27 @@ export default function UserInboxBanner() {
 
         setAllMessages(msgs);
 
+        // ── Auto-mark-read: mark non-block messages as seen after 5s ──────────
+        // Prevents messages from reappearing when user closes/reopens the browser
+        const nonBlockIds = msgs
+          .filter(m => m.type !== "block")
+          .map(m => m.id)
+          .filter(id => !dismissed.has(id));
+        if (nonBlockIds.length > 0) {
+          setTimeout(() => {
+            if (mountedRef.current) {
+              void markRead(nonBlockIds);
+              setDismissed(prev => {
+                const next = new Set(prev);
+                nonBlockIds.forEach(id => next.add(id));
+                saveDismissed(next);
+                return next;
+              });
+              window.dispatchEvent(new CustomEvent("adminmsg_updated"));
+            }
+          }, 5000);
+        }
+
         // Cache in sessionStorage for bell counter
         try {
           sessionStorage.setItem("adminmsg_latest_cache", JSON.stringify(msgs));
@@ -315,7 +336,7 @@ export default function UserInboxBanner() {
         }
       }
     } catch { /* silent background error recovery */ }
-  }, [authUser, dismissed]);
+  }, [authUser, dismissed, markRead]);
 
   useEffect(() => {
     poll();
