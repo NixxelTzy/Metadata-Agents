@@ -83,19 +83,20 @@ export async function POST(request: NextRequest) {
     }
 
     // ── TARGETED: Resolve target user from DB ─────────────────────────────
-    // rawTargetId is the user's UUID (from chip/dropdown selection)
     const allUsers = await getAllUsers();
+    const cleanRawTarget = rawTargetId.trim();
+
     const targetUser = allUsers.find((u) =>
-      u.id === rawTargetId ||
-      u.email.toLowerCase() === rawTargetId.toLowerCase() ||
-      u.username.toLowerCase() === rawTargetId.toLowerCase()
+      u.id === cleanRawTarget ||
+      u.email.toLowerCase() === cleanRawTarget.toLowerCase() ||
+      u.username.toLowerCase() === cleanRawTarget.toLowerCase() ||
+      (u.recipientId && u.recipientId.toUpperCase() === cleanRawTarget.toUpperCase())
     );
 
-    if (!targetUser) {
-      return NextResponse.json({
-        error: `Pengguna dengan ID "${rawTargetId}" tidak ditemukan di sistem.`,
-      }, { status: 404 });
-    }
+    const finalUserId = targetUser?.id || (body.targetUserId && body.targetUserId !== "all" ? body.targetUserId : cleanRawTarget);
+    const finalEmail = targetUser?.email.toLowerCase() || (body.targetEmail && body.targetEmail !== "all" ? body.targetEmail.toLowerCase().trim() : (cleanRawTarget.includes("@") ? cleanRawTarget.toLowerCase() : cleanRawTarget));
+    const finalUsername = targetUser?.username.toLowerCase() || (body.targetUsername && body.targetUsername !== "all" ? body.targetUsername.toLowerCase().trim() : finalEmail);
+    const finalRecId = targetUser?.recipientId?.toUpperCase() || (cleanRawTarget.startsWith("REC-") ? cleanRawTarget.toUpperCase() : undefined);
 
     const msg: AdminMessage = {
       id: msgId,
@@ -103,28 +104,23 @@ export async function POST(request: NextRequest) {
       title: body.title.trim(),
       body: body.body.trim(),
       reason: body.reason?.trim(),
-      // Store all three identifiers so inbox can match on any of them
-      targetUserId: targetUser.id,
-      targetEmail: targetUser.email.toLowerCase(),
-      targetUsername: targetUser.username.toLowerCase(),
+      targetUserId: finalUserId,
+      targetEmail: finalEmail,
+      targetUsername: finalUsername,
       sentAt: new Date().toISOString(),
       sentByEmail: payload.email,
       read: false,
     };
 
-    // Write to 3 keys so the user's inbox finds it regardless of which identifier they poll with
-    const keys = [
-      `adminmsg:user:${targetUser.id}`,
-      `adminmsg:user:${targetUser.email.toLowerCase()}`,
-      `adminmsg:user:${targetUser.username.toLowerCase()}`,
-    ];
+    // Write to all target keys so inbox polling finds it regardless of identity key used
+    const keysSet = new Set<string>();
+    if (finalUserId && finalUserId !== "all") keysSet.add(`adminmsg:user:${finalUserId}`);
+    if (finalEmail && finalEmail !== "all") keysSet.add(`adminmsg:user:${finalEmail}`);
+    if (finalUsername && finalUsername !== "all") keysSet.add(`adminmsg:user:${finalUsername}`);
+    if (finalRecId) keysSet.add(`adminmsg:user:${finalRecId}`);
+    if (cleanRawTarget && cleanRawTarget !== "all") keysSet.add(`adminmsg:user:${cleanRawTarget}`);
 
-    // Also write to recipientId key if it exists
-    if (targetUser.recipientId) {
-      keys.push(`adminmsg:user:${targetUser.recipientId.toUpperCase()}`);
-    }
-
-    for (const k of keys) {
+    for (const k of Array.from(keysSet)) {
       await redis.lpush(k, JSON.stringify(msg));
       await redis.ltrim(k, 0, 49);
       await redis.expire(k, 86400 * 7);
@@ -139,7 +135,7 @@ export async function POST(request: NextRequest) {
       ok: true,
       messageId: msg.id,
       mode: "targeted",
-      sentTo: { id: targetUser.id, email: targetUser.email, username: targetUser.username },
+      sentTo: { id: finalUserId, email: finalEmail, username: finalUsername },
     });
   } catch (err) {
     console.error("Admin send message error:", err);
