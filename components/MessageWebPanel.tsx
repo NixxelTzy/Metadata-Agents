@@ -453,6 +453,52 @@ function ComposePanelForm({
     }
   };
 
+  const handleTestSelf = async () => {
+    const testTitle = title.trim() || "⚡ Uji Coba Tampilan Notifikasi Admin";
+    const testBody = body.trim() || "Ini adalah pesan uji coba otomatis untuk memverifikasi bahwa notifikasi di layar website berfungsi 100% tanpa kendala.";
+
+    setSending(true);
+    try {
+      await fetch("/api/admin/messageweb", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          type: msgType,
+          title: testTitle,
+          body: testBody,
+          reason: msgType === "block" ? (reason.trim() || "Uji Coba Sistem") : undefined,
+          targetUserId: "all",
+          targetEmail: "all",
+          targetUsername: "all",
+        }),
+      });
+
+      if (typeof window !== "undefined" && "BroadcastChannel" in window) {
+        try {
+          const bc = new BroadcastChannel("admin_inbox_channel");
+          bc.postMessage({
+            type: "NEW_MESSAGES",
+            messages: [{
+              id: `test-${Date.now()}`,
+              type: msgType,
+              title: testTitle,
+              body: testBody,
+              sentAt: new Date().toISOString(),
+            }],
+          });
+          bc.close();
+        } catch { /* fallback */ }
+      }
+
+      setResult({ ok: true, msg: "⚡ Pesan tes broadcast berhasil terkirim! Notifikasi langsung tampil di layar web." });
+      onSent();
+    } catch {
+      setResult({ ok: false, msg: "Gagal mengirim pesan tes" });
+    } finally {
+      setSending(false);
+    }
+  };
+
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
 
@@ -719,43 +765,66 @@ function ComposePanelForm({
         </div>
       )}
 
-      {/* Send Button */}
-      <button
-        onClick={handleSend}
-        disabled={sending}
-        style={{
-          padding: "14px 28px",
-          borderRadius: "10px",
-          border: "none",
-          background: sending
-            ? "rgba(255,255,255,0.1)"
-            : msgType === "block"
-            ? "linear-gradient(135deg,#dc2626,#991b1b)"
-            : msgType === "refresh"
-            ? "linear-gradient(135deg,#059669,#065f46)"
-            : "linear-gradient(135deg,#7c3aed,#4f46e5)",
-          color: "white",
-          fontWeight: "800",
-          fontSize: "14px",
-          cursor: sending ? "not-allowed" : "pointer",
-          transition: "all 0.2s",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          gap: "10px",
-          letterSpacing: "0.02em",
-          boxShadow: sending ? "none" : "0 4px 20px rgba(0,0,0,0.3)",
-        }}
-      >
-        {sending ? (
-          <>⏳ Mengirim...</>
-        ) : (
-          <>
-            {meta.icon} Kirim {meta.label}{" "}
-            {target === "all" ? `ke Semua (${users.length})` : `ke ${selectedUser?.username ?? "..."}`}
-          </>
-        )}
-      </button>
+      {/* Action Buttons */}
+      <div style={{ display: "flex", gap: "12px", flexWrap: "wrap" }}>
+        <button
+          onClick={handleSend}
+          disabled={sending}
+          style={{
+            flex: 1,
+            padding: "14px 24px",
+            borderRadius: "10px",
+            border: "none",
+            background: sending
+              ? "rgba(255,255,255,0.1)"
+              : msgType === "block"
+              ? "linear-gradient(135deg,#dc2626,#991b1b)"
+              : msgType === "refresh"
+              ? "linear-gradient(135deg,#059669,#065f46)"
+              : "linear-gradient(135deg,#7c3aed,#4f46e5)",
+            color: "white",
+            fontWeight: "800",
+            fontSize: "14px",
+            cursor: sending ? "not-allowed" : "pointer",
+            transition: "all 0.2s",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: "10px",
+            letterSpacing: "0.02em",
+            boxShadow: sending ? "none" : "0 4px 20px rgba(0,0,0,0.3)",
+          }}
+        >
+          {sending ? (
+            <>⏳ Mengirim...</>
+          ) : (
+            <>
+              {meta.icon} Kirim {meta.label}{" "}
+              {target === "all" ? `ke Semua (${users.length})` : `ke ${selectedUser?.username ?? "..."}`}
+            </>
+          )}
+        </button>
+
+        <button
+          type="button"
+          onClick={handleTestSelf}
+          disabled={sending}
+          style={{
+            padding: "14px 20px",
+            borderRadius: "10px",
+            border: "1px solid rgba(96,165,250,0.4)",
+            background: "rgba(96,165,250,0.12)",
+            color: "#60a5fa",
+            fontWeight: "700",
+            fontSize: "13px",
+            cursor: sending ? "not-allowed" : "pointer",
+            transition: "all 0.2s",
+            whiteSpace: "nowrap",
+          }}
+        >
+          ⚡ Tes Notifikasi Layar Real-Time
+        </button>
+      </div>
     </div>
   );
 }

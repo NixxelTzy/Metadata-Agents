@@ -78,10 +78,7 @@ export async function GET(request: NextRequest) {
 
           if (!isBroadcast && !isForMe) continue;
 
-          // For standard messages, skip if dismissed by user.
-          // For block and refresh messages, DO NOT skip even if in seen set.
-          if (msg.type === "message" && seen.has(msg.id)) continue;
-
+          // Deliver all matching messages (broadcast + targeted) to client
           msgMap.set(msg.id, msg);
         } catch { /* skip corrupted item */ }
       }
