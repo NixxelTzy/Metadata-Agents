@@ -22,7 +22,7 @@ export interface AdminMessage {
 function loadDismissed(): Set<string> {
   if (typeof window === "undefined") return new Set();
   try {
-    const raw = localStorage.getItem("adminmsg_dismissed_v5");
+    const raw = localStorage.getItem("adminmsg_dismissed_v6");
     const arr: string[] = raw ? JSON.parse(raw) : [];
     return new Set(arr);
   } catch {
@@ -32,7 +32,7 @@ function loadDismissed(): Set<string> {
 
 function saveDismissed(set: Set<string>) {
   try {
-    localStorage.setItem("adminmsg_dismissed_v5", JSON.stringify(Array.from(set)));
+    localStorage.setItem("adminmsg_dismissed_v6", JSON.stringify(Array.from(set)));
   } catch {}
 }
 
@@ -44,12 +44,9 @@ function playNotificationSound() {
     const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof window.AudioContext }).webkitAudioContext;
     if (!AudioCtx) return;
     const ctx = new AudioCtx();
-    if (ctx.state === "suspended") {
-      void ctx.resume();
-    }
+    if (ctx.state === "suspended") void ctx.resume();
     const now = ctx.currentTime;
 
-    // First tone (A5 - 880Hz)
     const osc1 = ctx.createOscillator();
     const gain1 = ctx.createGain();
     osc1.type = "sine";
@@ -61,7 +58,6 @@ function playNotificationSound() {
     osc1.start(now);
     osc1.stop(now + 0.22);
 
-    // Second tone (D6 - 1174.66Hz)
     const osc2 = ctx.createOscillator();
     const gain2 = ctx.createGain();
     osc2.type = "sine";
@@ -172,7 +168,7 @@ export default function UserInboxBanner() {
 
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const channelRef = useRef<BroadcastChannel | null>(null);
-  const prevCountRef = useRef<number>(0);
+  const prevIdsRef = useRef<string>("");
   const mountedRef = useRef(true);
 
   // Load dismissed set on mount & setup event listeners & tab sync
@@ -209,15 +205,14 @@ export default function UserInboxBanner() {
       const msgs: AdminMessage[] = data.messages ?? [];
 
       if (mountedRef.current) {
-        const dismissedSet = loadDismissed();
-        const activeUnreadCount = msgs.filter((m) => !dismissedSet.has(m.id)).length;
+        const idsStr = msgs.map((m) => m.id).join(",");
 
-        // Play chime sound if new unread message arrived in background
-        if (activeUnreadCount > prevCountRef.current && prevCountRef.current >= 0) {
+        // New messages arrived that weren't in previous poll
+        if (idsStr && idsStr !== prevIdsRef.current) {
           playNotificationSound();
           setPopupAutoOpen(true);
+          prevIdsRef.current = idsStr;
         }
-        prevCountRef.current = activeUnreadCount;
 
         setAllMessages(msgs);
 
@@ -239,7 +234,6 @@ export default function UserInboxBanner() {
     poll();
     pollRef.current = setInterval(poll, 1500);
 
-    // Re-poll on tab visibility focus
     const handleVisibility = () => {
       if (document.visibilityState === "visible") void poll();
     };
@@ -295,7 +289,7 @@ export default function UserInboxBanner() {
   // ── Restore / Clear Dismissed ────────────────────────────────────────────────
   const handleRestoreAll = useCallback(() => {
     setDismissed(new Set());
-    try { localStorage.removeItem("adminmsg_dismissed_v5"); } catch {}
+    try { localStorage.removeItem("adminmsg_dismissed_v6"); } catch {}
     setPopupAutoOpen(true);
     window.dispatchEvent(new CustomEvent("adminmsg_updated"));
   }, []);
@@ -345,9 +339,63 @@ export default function UserInboxBanner() {
           from { opacity: 0; transform: translateX(100%); }
           to { opacity: 1; transform: translateX(0); }
         }
+        @keyframes topBannerSlide {
+          from { transform: translateY(-100%); opacity: 0; }
+          to { transform: translateY(0); opacity: 1; }
+        }
         .inbox-btn-blue:hover { background: linear-gradient(135deg, #1d4ed8, #1e40af) !important; }
         .inbox-btn-light:hover { background: #e2e8f0 !important; }
       `}</style>
+
+      {/* ── Top-of-Screen Sticky Admin Announcement Notice Bar ──────────────── */}
+      {activeMsg && (
+        <div
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            right: 0,
+            zIndex: 999980,
+            background: "linear-gradient(135deg, #0f172a, #1e3a8a)",
+            borderBottom: "2px solid #2563eb",
+            padding: "10px 20px",
+            color: "#ffffff",
+            fontFamily: "'Inter', system-ui, -apple-system, sans-serif",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: "16px",
+            boxShadow: "0 4px 20px rgba(0,0,0,0.3)",
+            animation: "topBannerSlide 0.3s cubic-bezier(0.16, 1, 0.3, 1)",
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", gap: "10px", flex: 1, minWidth: 0 }}>
+            <span style={{ fontSize: "18px" }}>💬</span>
+            <div style={{ minWidth: 0 }}>
+              <div style={{ fontSize: "11px", fontWeight: "800", color: "#60a5fa", textTransform: "uppercase" }}>
+                Pesan dari Admin
+              </div>
+              <div style={{ fontSize: "13px", fontWeight: "700", color: "#ffffff", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                {activeMsg.title}: <span style={{ fontWeight: "400", color: "#cbd5e1" }}>{activeMsg.body}</span>
+              </div>
+            </div>
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: "8px", flexShrink: 0 }}>
+            <button
+              onClick={() => setPopupAutoOpen(true)}
+              style={{ padding: "6px 12px", borderRadius: "6px", border: "none", background: "#2563eb", color: "#ffffff", fontWeight: "700", fontSize: "12px", cursor: "pointer" }}
+            >
+              🔍 Buka Detail
+            </button>
+            <button
+              onClick={() => handleDismiss(activeMsg)}
+              style={{ padding: "6px 10px", borderRadius: "6px", border: "1px solid #475569", background: "transparent", color: "#94a3b8", fontWeight: "600", fontSize: "12px", cursor: "pointer" }}
+            >
+              ✕ Tutup
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* ── Block Overlay (Highest Priority) ─────────────────────────────────── */}
       {blockMsg && (

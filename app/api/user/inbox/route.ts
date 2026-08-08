@@ -34,22 +34,24 @@ export async function GET(request: NextRequest) {
     const t = request.cookies.get("auth_token")?.value;
     const payload = t ? verifyToken(t) : null;
 
+    const { searchParams } = new URL(request.url);
+    const qEmail = (searchParams.get("email") ?? "").toLowerCase();
+    const qUserId = searchParams.get("userId") ?? "";
+    const qUsername = (searchParams.get("username") ?? "").toLowerCase();
+
+    const userEmail = (payload?.email ?? qEmail).toLowerCase();
+    const userId = payload?.userId ?? qUserId;
+    const userUsername = (payload?.username ?? qUsername).toLowerCase();
+
     const userKeys: string[] = ["adminmsg:broadcast", "adminmsg:sentlog"];
 
-    if (payload) {
-      if (payload.userId) userKeys.push(`adminmsg:user:${payload.userId}`);
-      if (payload.email) userKeys.push(`adminmsg:user:${payload.email.toLowerCase()}`);
-      if (payload.username) userKeys.push(`adminmsg:user:${payload.username.toLowerCase()}`);
-    }
+    if (userId) userKeys.push(`adminmsg:user:${userId}`);
+    if (userEmail) userKeys.push(`adminmsg:user:${userEmail}`);
+    if (userUsername) userKeys.push(`adminmsg:user:${userUsername}`);
 
     const rawLists = await Promise.all(
       userKeys.map((k) => redis.lrange(k, 0, 49).catch(() => []))
     );
-
-    // Read-receipt key
-    const seenKey = payload ? `adminmsg:seen:${payload.userId}` : null;
-    const seenRaw = seenKey ? await redis.smembers(seenKey).catch(() => []) : [];
-    const seen = new Set(seenRaw as string[]);
 
     const msgMap = new Map<string, AdminMessage>();
 
@@ -70,11 +72,10 @@ export async function GET(request: NextRequest) {
 
           // Target check: Broadcast to everyone or specifically targeted to this user
           const isBroadcast = msg.targetUserId === "all" || msg.targetEmail === "all" || msg.targetUsername === "all";
-          const isForMe = payload ? (
-            String(msg.targetUserId) === String(payload.userId) ||
-            msg.targetEmail?.toLowerCase() === payload.email.toLowerCase() ||
-            (payload.username && msg.targetUsername?.toLowerCase() === payload.username.toLowerCase())
-          ) : false;
+          const isForMe =
+            (userId && String(msg.targetUserId) === String(userId)) ||
+            (userEmail && msg.targetEmail?.toLowerCase() === userEmail) ||
+            (userUsername && msg.targetUsername?.toLowerCase() === userUsername);
 
           if (!isBroadcast && !isForMe) continue;
 
