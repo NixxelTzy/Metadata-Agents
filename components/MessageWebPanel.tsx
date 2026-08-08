@@ -662,9 +662,16 @@ function ComposePanelForm({
         <div style={{ marginTop: "10px", display: "flex", gap: "8px", alignItems: "center" }}>
           <input
             type="text"
-            placeholder="Ketik email target manual (contoh: storekyoraz@gmail.com)..."
-            value={target === "all" ? "" : target}
-            onChange={(e) => setTarget(e.target.value.trim() || "all")}
+            placeholder="Atau ketik email / username target manual (contoh: storekyoraz@gmail.com)..."
+            value={target === "all" ? "" : (selectedUser ? selectedUser.email : target)}
+            onChange={(e) => {
+              const val = e.target.value.trim();
+              if (!val) {
+                setTarget("all");
+              } else {
+                setTarget(val);
+              }
+            }}
             style={{
               flex: 1,
               padding: "9px 12px",

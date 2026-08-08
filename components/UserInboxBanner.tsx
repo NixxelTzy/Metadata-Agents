@@ -371,10 +371,10 @@ export default function UserInboxBanner() {
     setAppealing(true);
     setAppealRes(null);
     try {
-      const res = await fetch("/api/user/unblock-appeal", {
+      const res = await fetch("/api/user/inbox", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ appealMessage: appealText.trim() }),
+        body: JSON.stringify({ action: "appeal", appealMessage: appealText.trim() }),
       });
       const data = await res.json() as { ok?: boolean; aiReplyText?: string; unblocked?: boolean };
       if (data.ok && data.unblocked) {
@@ -397,11 +397,11 @@ export default function UserInboxBanner() {
     setUnblocking(true);
     setUnblockResult(null);
     try {
-      const res = await fetch("/api/admin/unblock-user", {
+      const res = await fetch("/api/admin/messageweb", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ targetUserId: targetUserId ?? authUser?.userId }),
+        body: JSON.stringify({ action: "unblock", targetUserId: targetUserId ?? authUser?.userId }),
       });
       const data = await res.json() as { ok?: boolean; message?: string; error?: string };
       if (data.ok) {
