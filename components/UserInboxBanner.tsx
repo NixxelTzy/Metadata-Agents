@@ -177,6 +177,8 @@ export default function UserInboxBanner() {
   const [popupAutoOpen, setPopupAutoOpen] = useState(true);
   const [authUser, setAuthUser] = useState<UserAuth | null>(null);
   const authUserRef = useRef<UserAuth | null>(null);
+  const [unblocking, setUnblocking] = useState(false);
+  const [unblockResult, setUnblockResult] = useState<{ ok: boolean; msg: string } | null>(null);
 
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const channelRef = useRef<BroadcastChannel | null>(null);
@@ -396,6 +398,34 @@ export default function UserInboxBanner() {
     }
   };
 
+  // ── Admin Force Unblock (Testing) ────────────────────────────────────────────
+  const handleAdminUnblock = async (targetUserId?: string) => {
+    setUnblocking(true);
+    setUnblockResult(null);
+    try {
+      const res = await fetch("/api/admin/unblock-user", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ targetUserId: targetUserId ?? authUser?.userId }),
+      });
+      const data = await res.json() as { ok?: boolean; message?: string; error?: string };
+      if (data.ok) {
+        setUnblockResult({ ok: true, msg: data.message ?? "✅ Blokir berhasil dilepas!" });
+        // Clear local messages and reload after short delay
+        setAllMessages([]);
+        prevIdsRef.current = "";
+        setTimeout(() => window.location.reload(), 1800);
+      } else {
+        setUnblockResult({ ok: false, msg: data.error ?? "Gagal melepas blokir" });
+      }
+    } catch {
+      setUnblockResult({ ok: false, msg: "Gagal terhubung ke server" });
+    } finally {
+      setUnblocking(false);
+    }
+  };
+
   // ── Derived state ─────────────────────────────────────────────────────────────
   const blockMsg = allMessages.find((m) => m.type === "block" && !dismissed.has(m.id)) ?? null;
   const refreshMsg = allMessages.find((m) => m.type === "refresh" && !dismissed.has(m.id)) ?? null;
@@ -409,8 +439,9 @@ export default function UserInboxBanner() {
   return (
     <>
       <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
         @keyframes centerModalIn {
-          from { opacity: 0; transform: scale(0.92) translateY(16px); }
+          from { opacity: 0; transform: scale(0.90) translateY(24px); }
           to { opacity: 1; transform: scale(1) translateY(0); }
         }
         @keyframes drawerIn {
@@ -421,8 +452,25 @@ export default function UserInboxBanner() {
           from { transform: translateY(-100%); opacity: 0; }
           to { transform: translateY(0); opacity: 1; }
         }
-        .inbox-btn-blue:hover { background: linear-gradient(135deg, #1d4ed8, #1e40af) !important; }
-        .inbox-btn-light:hover { background: #e2e8f0 !important; }
+        @keyframes shimmer {
+          0% { background-position: -200% center; }
+          100% { background-position: 200% center; }
+        }
+        @keyframes pulse-glow {
+          0%, 100% { box-shadow: 0 0 20px rgba(239,68,68,0.4); }
+          50% { box-shadow: 0 0 40px rgba(239,68,68,0.8), 0 0 60px rgba(239,68,68,0.3); }
+        }
+        @keyframes float {
+          0%, 100% { transform: translateY(0px); }
+          50% { transform: translateY(-6px); }
+        }
+        .inbox-modal * { font-family: 'Inter', system-ui, -apple-system, sans-serif !important; }
+        .inbox-close-btn:hover { background: rgba(255,255,255,0.15) !important; transform: scale(1.1); }
+        .inbox-action-btn:hover { transform: translateY(-2px); filter: brightness(1.1); }
+        .inbox-pill:hover { opacity: 0.85; transform: scale(0.97); }
+        .inbox-appeal-input { transition: border-color 0.2s, box-shadow 0.2s; }
+        .inbox-appeal-input:focus { border-color: #818cf8 !important; box-shadow: 0 0 0 3px rgba(129,140,248,0.2) !important; outline: none; }
+        .inbox-drawer-item:hover { background: rgba(255,255,255,0.05) !important; }
       `}</style>
 
       {/* ── Top-of-Screen Sticky Admin Announcement Notice Bar ──────────────── */}
@@ -478,89 +526,215 @@ export default function UserInboxBanner() {
       {/* ── Block Overlay (Highest Priority) ─────────────────────────────────── */}
       {blockMsg && (
         <div
+          className="inbox-modal"
           style={{
             position: "fixed", inset: 0, zIndex: 999999,
-            background: "rgba(15, 23, 42, 0.88)", backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)",
+            background: "rgba(2, 4, 18, 0.92)",
+            backdropFilter: "blur(24px)", WebkitBackdropFilter: "blur(24px)",
             display: "flex", alignItems: "center", justifyContent: "center", padding: "20px",
-            fontFamily: "'Inter', system-ui, -apple-system, sans-serif",
           }}
         >
+          {/* Ambient background orbs */}
+          <div style={{ position: "absolute", top: "15%", left: "20%", width: "400px", height: "400px", borderRadius: "50%", background: "radial-gradient(circle, rgba(239,68,68,0.15) 0%, transparent 70%)", pointerEvents: "none" }} />
+          <div style={{ position: "absolute", bottom: "15%", right: "20%", width: "300px", height: "300px", borderRadius: "50%", background: "radial-gradient(circle, rgba(220,38,38,0.1) 0%, transparent 70%)", pointerEvents: "none" }} />
+
           <div
             style={{
-              maxWidth: "500px", width: "100%", background: "#ffffff", borderRadius: "20px", overflow: "hidden",
-              boxShadow: "0 25px 60px -15px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(239, 68, 68, 0.2)",
-              animation: "centerModalIn 0.35s cubic-bezier(0.16, 1, 0.3, 1)",
+              maxWidth: "520px", width: "100%", position: "relative",
+              background: "linear-gradient(145deg, rgba(15,10,30,0.98) 0%, rgba(30,10,20,0.98) 100%)",
+              borderRadius: "28px", overflow: "hidden",
+              border: "1px solid rgba(239,68,68,0.25)",
+              boxShadow: "0 0 0 1px rgba(239,68,68,0.1), 0 40px 80px -20px rgba(0,0,0,0.8), 0 0 60px rgba(239,68,68,0.12)",
+              animation: "centerModalIn 0.4s cubic-bezier(0.16, 1, 0.3, 1)",
             }}
           >
-            <div style={{ background: "#0f172a", padding: "28px 32px", textAlign: "center" }}>
-              <div style={{ width: "64px", height: "64px", borderRadius: "50%", background: "rgba(239, 68, 68, 0.15)", border: "2px solid #ef4444", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "28px", margin: "0 auto 14px" }}>
+            {/* Top Danger Stripe */}
+            <div style={{ height: "4px", background: "linear-gradient(90deg, #dc2626, #ef4444, #f87171, #ef4444, #dc2626)", backgroundSize: "200% auto", animation: "shimmer 3s linear infinite" }} />
+
+            {/* Header */}
+            <div style={{ padding: "36px 36px 28px", textAlign: "center", position: "relative" }}>
+              {/* Icon */}
+              <div style={{
+                width: "80px", height: "80px", borderRadius: "50%",
+                background: "linear-gradient(135deg, rgba(239,68,68,0.2), rgba(220,38,38,0.1))",
+                border: "2px solid rgba(239,68,68,0.5)",
+                display: "flex", alignItems: "center", justifyContent: "center",
+                fontSize: "36px", margin: "0 auto 20px",
+                animation: "pulse-glow 2.5s ease-in-out infinite, float 4s ease-in-out infinite",
+              }}>
                 🚫
               </div>
-              <h2 style={{ margin: 0, fontSize: "20px", fontWeight: "800", color: "#ffffff" }}>
+              <div style={{ fontSize: "10px", fontWeight: "700", letterSpacing: "0.15em", textTransform: "uppercase", color: "#f87171", marginBottom: "10px" }}>
+                ⚠️ Akun Diblokir
+              </div>
+              <h2 style={{ margin: 0, fontSize: "22px", fontWeight: "900", color: "#ffffff", letterSpacing: "-0.02em", lineHeight: 1.3 }}>
                 {blockMsg.title}
               </h2>
-              <div style={{ fontSize: "12px", color: "#94a3b8", marginTop: "4px" }}>
+              <div style={{ fontSize: "12px", color: "rgba(255,255,255,0.4)", marginTop: "6px" }}>
                 Sistem Keamanan & Batasan Akses Akun
               </div>
             </div>
 
-            <div style={{ padding: "28px 32px" }}>
-              <p style={{ margin: "0 0 18px", fontSize: "14px", color: "#334155", lineHeight: 1.6 }}>
+            {/* Body */}
+            <div style={{ padding: "0 36px 28px" }}>
+              {/* Message body */}
+              <div style={{
+                background: "rgba(255,255,255,0.04)",
+                border: "1px solid rgba(255,255,255,0.08)",
+                borderRadius: "16px", padding: "20px", marginBottom: "18px",
+                fontSize: "14px", color: "rgba(255,255,255,0.75)", lineHeight: 1.75,
+              }}>
                 {blockMsg.body}
-              </p>
+              </div>
 
+              {/* Block reason */}
               {blockMsg.reason && (
-                <div style={{ background: "#fef2f2", borderLeft: "4px solid #ef4444", padding: "14px 16px", borderRadius: "8px", marginBottom: "20px" }}>
-                  <div style={{ fontSize: "11px", fontWeight: "800", color: "#dc2626", textTransform: "uppercase", marginBottom: "3px" }}>
-                    Alasan Pemblokiran
-                  </div>
-                  <div style={{ fontSize: "13px", color: "#991b1b", fontWeight: "500" }}>
-                    {blockMsg.reason}
+                <div style={{
+                  background: "linear-gradient(135deg, rgba(239,68,68,0.12), rgba(220,38,38,0.06))",
+                  border: "1px solid rgba(239,68,68,0.3)",
+                  borderRadius: "14px", padding: "16px 18px", marginBottom: "20px",
+                  display: "flex", gap: "12px", alignItems: "flex-start",
+                }}>
+                  <div style={{ fontSize: "22px", flexShrink: 0, marginTop: "2px" }}>⚠️</div>
+                  <div>
+                    <div style={{ fontSize: "10px", fontWeight: "800", color: "#f87171", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: "5px" }}>Alasan Pemblokiran</div>
+                    <div style={{ fontSize: "14px", color: "#fca5a5", fontWeight: "600", lineHeight: 1.5 }}>{blockMsg.reason}</div>
                   </div>
                 </div>
               )}
 
-              <div style={{ background: "linear-gradient(135deg, rgba(37,99,235,0.06), rgba(124,58,237,0.04))", border: "1px solid rgba(37,99,235,0.2)", borderRadius: "12px", padding: "16px", marginBottom: "20px" }}>
-                <div style={{ fontSize: "12px", fontWeight: "700", color: "#1e3a8a", marginBottom: "8px", display: "flex", alignItems: "center", gap: "6px" }}>
-                  <span>🤖</span> Ajukan Banding & Unblock Otomatis oleh AI
+              {/* Appeal section */}
+              <div style={{
+                background: "linear-gradient(135deg, rgba(99,102,241,0.1), rgba(139,92,246,0.06))",
+                border: "1px solid rgba(99,102,241,0.25)",
+                borderRadius: "16px", padding: "20px", marginBottom: "16px",
+              }}>
+                <div style={{ fontSize: "12px", fontWeight: "700", color: "#a5b4fc", marginBottom: "12px", display: "flex", alignItems: "center", gap: "8px" }}>
+                  <span style={{ fontSize: "16px" }}>🤖</span>
+                  Ajukan Banding & Unblock Otomatis oleh AI
                 </div>
-                <input
-                  type="text"
-                  placeholder="Tulis alasan/penjelasan banding Anda..."
+                <textarea
+                  placeholder="Tulis alasan/penjelasan banding Anda dengan jelas..."
                   value={appealText}
                   onChange={(e) => setAppealText(e.target.value)}
-                  style={{ width: "100%", padding: "10px 12px", borderRadius: "8px", border: "1px solid #cbd5e1", fontSize: "13px", color: "#0f172a", marginBottom: "10px", boxSizing: "border-box" }}
+                  rows={3}
+                  className="inbox-appeal-input"
+                  style={{
+                    width: "100%", padding: "12px 14px", borderRadius: "10px",
+                    border: "1px solid rgba(99,102,241,0.3)",
+                    background: "rgba(15,10,40,0.6)",
+                    fontSize: "13px", color: "#e2e8f0", marginBottom: "12px",
+                    boxSizing: "border-box", resize: "none",
+                    lineHeight: 1.6,
+                  }}
                 />
                 <button
+                  className="inbox-action-btn"
                   onClick={handleAiUnblockAppeal}
                   disabled={appealing || !appealText.trim()}
                   style={{
-                    width: "100%", padding: "10px", borderRadius: "8px", border: "none",
-                    background: appealing || !appealText.trim() ? "#cbd5e1" : "linear-gradient(135deg, #2563eb, #7c3aed)",
-                    color: "#ffffff", fontWeight: "700", fontSize: "13px",
+                    width: "100%", padding: "12px", borderRadius: "10px", border: "none",
+                    background: appealing || !appealText.trim()
+                      ? "rgba(255,255,255,0.08)"
+                      : "linear-gradient(135deg, #6366f1, #8b5cf6)",
+                    color: appealing || !appealText.trim() ? "rgba(255,255,255,0.3)" : "#ffffff",
+                    fontWeight: "700", fontSize: "13px",
                     cursor: appealing || !appealText.trim() ? "not-allowed" : "pointer",
+                    transition: "all 0.2s",
+                    boxShadow: appealing || !appealText.trim() ? "none" : "0 6px 20px rgba(99,102,241,0.35)",
                   }}
                 >
-                  {appealing ? "⏳ AI Sedang Mengevaluasi Banding..." : "⚡ Evaluasi & Unblock Akun dengan AI"}
+                  {appealing ? "⏳ AI Sedang Mengevaluasi Banding..." : "⚡ Kirim Banding ke AI"}
                 </button>
                 {appealRes && (
-                  <div style={{ marginTop: "10px", fontSize: "12px", color: "#2563eb", fontWeight: "600" }}>
+                  <div style={{ marginTop: "12px", fontSize: "13px", color: "#a5b4fc", fontWeight: "600", padding: "10px 14px", background: "rgba(99,102,241,0.1)", borderRadius: "8px", lineHeight: 1.5 }}>
                     {appealRes}
                   </div>
                 )}
               </div>
 
+              {/* ── Admin-Only: Force Unblock Button ───────────────────── */}
+              {authUser?.email === "nixxeltzy@gmail.com" && (
+                <div style={{
+                  marginBottom: "12px",
+                  background: "linear-gradient(135deg, rgba(234,179,8,0.12), rgba(202,138,4,0.06))",
+                  border: "1px solid rgba(234,179,8,0.3)",
+                  borderRadius: "16px",
+                  padding: "18px 20px",
+                }}>
+                  {/* Admin badge */}
+                  <div style={{
+                    display: "flex", alignItems: "center", gap: "8px",
+                    marginBottom: "12px",
+                  }}>
+                    <div style={{
+                      padding: "3px 10px", borderRadius: "20px",
+                      background: "rgba(234,179,8,0.2)", border: "1px solid rgba(234,179,8,0.4)",
+                      fontSize: "10px", fontWeight: "800", color: "#fde047",
+                      letterSpacing: "0.08em", textTransform: "uppercase",
+                    }}>
+                      🛡️ Mode Admin
+                    </div>
+                    <span style={{ fontSize: "11px", color: "rgba(253,224,71,0.6)" }}>
+                      Hanya terlihat oleh kamu
+                    </span>
+                  </div>
+
+                  <div style={{ fontSize: "12px", color: "rgba(253,224,71,0.75)", marginBottom: "14px", lineHeight: 1.5 }}>
+                    Kamu sedang dalam mode blokir uji coba. Klik tombol di bawah untuk langsung melepas blokir dan memulihkan akses.
+                  </div>
+
+                  <button
+                    className="inbox-action-btn"
+                    onClick={() => void handleAdminUnblock(blockMsg?.targetUserId === "all" ? authUser.userId : (blockMsg?.targetUserId ?? authUser.userId))}
+                    disabled={unblocking}
+                    style={{
+                      width: "100%", padding: "13px", borderRadius: "12px", border: "none",
+                      background: unblocking
+                        ? "rgba(255,255,255,0.08)"
+                        : "linear-gradient(135deg, #eab308, #ca8a04)",
+                      color: unblocking ? "rgba(255,255,255,0.3)" : "#000000",
+                      fontWeight: "800", fontSize: "13px",
+                      cursor: unblocking ? "not-allowed" : "pointer",
+                      transition: "all 0.2s",
+                      boxShadow: unblocking ? "none" : "0 6px 20px rgba(234,179,8,0.4)",
+                      display: "flex", alignItems: "center", justifyContent: "center", gap: "8px",
+                    }}
+                  >
+                    {unblocking ? "⏳ Melepas blokir..." : "🔓 Lepas Blokir Sekarang"}
+                  </button>
+
+                  {unblockResult && (
+                    <div style={{
+                      marginTop: "12px", fontSize: "13px", fontWeight: "600",
+                      color: unblockResult.ok ? "#4ade80" : "#f87171",
+                      padding: "10px 14px",
+                      background: unblockResult.ok ? "rgba(74,222,128,0.08)" : "rgba(248,113,113,0.08)",
+                      border: `1px solid ${unblockResult.ok ? "rgba(74,222,128,0.2)" : "rgba(248,113,113,0.2)"}`,
+                      borderRadius: "10px", lineHeight: 1.5,
+                    }}>
+                      {unblockResult.msg}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Reload button */}
               <button
+                className="inbox-action-btn"
                 onClick={() => window.location.reload()}
                 style={{
-                  width: "100%", padding: "14px", borderRadius: "10px", border: "none",
-                  background: "linear-gradient(135deg, #1e293b, #0f172a)", color: "#ffffff",
-                  fontWeight: "700", fontSize: "14px", cursor: "pointer",
+                  width: "100%", padding: "14px", borderRadius: "12px", border: "1px solid rgba(255,255,255,0.1)",
+                  background: "rgba(255,255,255,0.06)", color: "rgba(255,255,255,0.6)",
+                  fontWeight: "600", fontSize: "13px", cursor: "pointer", transition: "all 0.2s",
                 }}
               >
                 🔄 Muat Ulang Halaman
               </button>
             </div>
+
+            {/* Bottom stripe */}
+            <div style={{ height: "3px", background: "linear-gradient(90deg, transparent, rgba(239,68,68,0.4), transparent)" }} />
           </div>
         </div>
       )}
@@ -568,56 +742,75 @@ export default function UserInboxBanner() {
       {/* ── Refresh Modal ───────────────────────────────────────────────────── */}
       {refreshMsg && (
         <div
+          className="inbox-modal"
           style={{
             position: "fixed", inset: 0, zIndex: 999998,
-            background: "rgba(15, 23, 42, 0.78)", backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)",
+            background: "rgba(2, 6, 23, 0.90)",
+            backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)",
             display: "flex", alignItems: "center", justifyContent: "center", padding: "20px",
-            fontFamily: "'Inter', system-ui, -apple-system, sans-serif",
           }}
         >
+          <div style={{ position: "absolute", top: "20%", left: "25%", width: "350px", height: "350px", borderRadius: "50%", background: "radial-gradient(circle, rgba(16,185,129,0.12) 0%, transparent 70%)", pointerEvents: "none" }} />
+
           <div
             style={{
-              maxWidth: "460px", width: "100%", background: "#ffffff", borderRadius: "20px", overflow: "hidden",
-              boxShadow: "0 25px 60px -15px rgba(37, 99, 235, 0.3), 0 0 0 1px rgba(37, 99, 235, 0.2)",
-              animation: "centerModalIn 0.3s cubic-bezier(0.16, 1, 0.3, 1)",
+              maxWidth: "460px", width: "100%",
+              background: "linear-gradient(145deg, rgba(5,25,40,0.98) 0%, rgba(5,30,20,0.98) 100%)",
+              borderRadius: "24px", overflow: "hidden",
+              border: "1px solid rgba(16,185,129,0.2)",
+              boxShadow: "0 0 0 1px rgba(16,185,129,0.08), 0 40px 80px -20px rgba(0,0,0,0.8), 0 0 50px rgba(16,185,129,0.08)",
+              animation: "centerModalIn 0.35s cubic-bezier(0.16, 1, 0.3, 1)",
             }}
           >
-            <div style={{ background: "linear-gradient(135deg, #0f172a, #1e3a8a)", padding: "24px 28px", display: "flex", alignItems: "center", gap: "14px" }}>
-              <div style={{ width: "48px", height: "48px", borderRadius: "12px", background: "#2563eb", color: "#ffffff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "22px", flexShrink: 0 }}>
+            <div style={{ height: "3px", background: "linear-gradient(90deg, #059669, #10b981, #34d399, #10b981, #059669)", backgroundSize: "200% auto", animation: "shimmer 3s linear infinite" }} />
+
+            <div style={{ padding: "32px 32px 24px", display: "flex", alignItems: "center", gap: "16px" }}>
+              <div style={{
+                width: "56px", height: "56px", borderRadius: "16px", flexShrink: 0,
+                background: "linear-gradient(135deg, #059669, #047857)",
+                color: "#ffffff", display: "flex", alignItems: "center", justifyContent: "center",
+                fontSize: "26px",
+                boxShadow: "0 8px 20px rgba(5,150,105,0.4)",
+                animation: "float 3s ease-in-out infinite",
+              }}>
                 🔄
               </div>
               <div>
-                <h3 style={{ margin: 0, fontSize: "17px", fontWeight: "800", color: "#ffffff" }}>
-                  {refreshMsg.title}
-                </h3>
-                <div style={{ fontSize: "12px", color: "#93c5fd", marginTop: "2px" }}>
-                  Pembaruan Sistem Tersedia
-                </div>
+                <div style={{ fontSize: "10px", fontWeight: "700", letterSpacing: "0.1em", textTransform: "uppercase", color: "#34d399", marginBottom: "4px" }}>Pembaruan Tersedia</div>
+                <h3 style={{ margin: 0, fontSize: "18px", fontWeight: "800", color: "#ffffff", letterSpacing: "-0.02em" }}>{refreshMsg.title}</h3>
               </div>
             </div>
 
-            <div style={{ padding: "24px 28px" }}>
-              <p style={{ margin: "0 0 20px", fontSize: "14px", color: "#334155", lineHeight: 1.6 }}>
+            <div style={{ padding: "0 32px 28px" }}>
+              <div style={{
+                background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)",
+                borderRadius: "14px", padding: "18px", marginBottom: "20px",
+                fontSize: "14px", color: "rgba(255,255,255,0.7)", lineHeight: 1.7,
+              }}>
                 {refreshMsg.body}
-              </p>
+              </div>
 
               <div style={{ display: "flex", gap: "10px" }}>
                 <button
+                  className="inbox-action-btn"
                   onClick={() => { void markRead([refreshMsg.id]); window.location.reload(); }}
                   style={{
-                    flex: 1, padding: "12px", borderRadius: "10px", border: "none",
-                    background: "linear-gradient(135deg, #2563eb, #1d4ed8)", color: "#ffffff",
+                    flex: 1, padding: "13px", borderRadius: "12px", border: "none",
+                    background: "linear-gradient(135deg, #059669, #10b981)", color: "#ffffff",
                     fontWeight: "700", fontSize: "13px", cursor: "pointer",
+                    boxShadow: "0 6px 20px rgba(5,150,105,0.35)", transition: "all 0.2s",
                   }}
                 >
-                  🔄 Buka Ulang Sekarang
+                  🔄 Perbarui Sekarang
                 </button>
                 <button
+                  className="inbox-action-btn"
                   onClick={() => handleDismiss(refreshMsg)}
                   style={{
-                    padding: "12px 18px", borderRadius: "10px", border: "1px solid #cbd5e1",
-                    background: "#f8fafc", color: "#475569", fontWeight: "600",
-                    fontSize: "13px", cursor: "pointer",
+                    padding: "13px 18px", borderRadius: "12px",
+                    border: "1px solid rgba(255,255,255,0.1)",
+                    background: "rgba(255,255,255,0.05)", color: "rgba(255,255,255,0.5)",
+                    fontWeight: "600", fontSize: "13px", cursor: "pointer", transition: "all 0.2s",
                   }}
                 >
                   Nanti
@@ -631,100 +824,119 @@ export default function UserInboxBanner() {
       {/* ── Central Message Modal Popup (Ultra-Sleek Landscape Glassmorphic Design) ─── */}
       {showCenterPopup && activeMsg && (
         <div
+          className="inbox-modal"
           style={{
             position: "fixed", inset: 0, zIndex: 999997,
-            background: "rgba(15, 23, 42, 0.78)",
-            backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)",
+            background: "rgba(2, 4, 18, 0.88)",
+            backdropFilter: "blur(24px)", WebkitBackdropFilter: "blur(24px)",
             display: "flex", alignItems: "center", justifyContent: "center", padding: "20px",
-            fontFamily: "'Inter', system-ui, -apple-system, sans-serif",
           }}
         >
+          {/* Ambient glows */}
+          <div style={{ position: "absolute", top: "10%", left: "10%", width: "500px", height: "500px", borderRadius: "50%", background: "radial-gradient(circle, rgba(99,102,241,0.1) 0%, transparent 65%)", pointerEvents: "none" }} />
+          <div style={{ position: "absolute", bottom: "10%", right: "10%", width: "400px", height: "400px", borderRadius: "50%", background: "radial-gradient(circle, rgba(139,92,246,0.08) 0%, transparent 65%)", pointerEvents: "none" }} />
+
           <div
             key={activeMsg.id}
             style={{
-              maxWidth: "780px", width: "100%", background: "#ffffff", borderRadius: "28px", overflow: "hidden",
-              boxShadow: "0 35px 90px -20px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(255, 255, 255, 0.25)",
-              display: "grid", gridTemplateColumns: "260px 1fr",
-              animation: "centerModalIn 0.35s cubic-bezier(0.16, 1, 0.3, 1)",
+              maxWidth: "800px", width: "100%", position: "relative",
+              background: "linear-gradient(145deg, rgba(8,10,28,0.98) 0%, rgba(12,10,30,0.98) 100%)",
+              borderRadius: "28px", overflow: "hidden",
+              border: "1px solid rgba(99,102,241,0.2)",
+              boxShadow: "0 0 0 1px rgba(99,102,241,0.08), 0 40px 100px -20px rgba(0,0,0,0.9), 0 0 80px rgba(99,102,241,0.1)",
+              display: "grid", gridTemplateColumns: "270px 1fr",
+              animation: "centerModalIn 0.4s cubic-bezier(0.16, 1, 0.3, 1)",
             }}
           >
-            {/* Left Column: Dark Obsidian Gradient Sidebar */}
+            {/* Top accent line */}
+            <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: "3px", background: "linear-gradient(90deg, #6366f1, #8b5cf6, #a78bfa, #8b5cf6, #6366f1)", backgroundSize: "200% auto", animation: "shimmer 4s linear infinite", zIndex: 2 }} />
+
+            {/* Left Column: Dark Sidebar */}
             <div style={{
-              background: "linear-gradient(145deg, #0b1329 0%, #1e293b 100%)",
-              padding: "36px 28px", display: "flex", flexDirection: "column", justifyContent: "space-between",
-              borderRight: "1px solid rgba(255, 255, 255, 0.08)", position: "relative", overflow: "hidden",
+              background: "linear-gradient(160deg, rgba(30,20,60,0.8) 0%, rgba(15,10,35,0.95) 100%)",
+              padding: "44px 28px 36px",
+              display: "flex", flexDirection: "column", justifyContent: "space-between",
+              borderRight: "1px solid rgba(255,255,255,0.07)", position: "relative", overflow: "hidden",
             }}>
-              {/* Background Ambient Glow */}
+              {/* Ambient glow orb */}
               <div style={{
-                position: "absolute", top: "-40px", left: "-40px", width: "160px", height: "160px",
-                borderRadius: "50%", background: activeMsg.type === "block" ? "rgba(239,68,68,0.25)" : activeMsg.type === "refresh" ? "rgba(16,185,129,0.25)" : "rgba(99,102,241,0.3)",
-                filter: "blur(40px)", pointerEvents: "none",
+                position: "absolute", top: "-60px", left: "-60px", width: "220px", height: "220px",
+                borderRadius: "50%",
+                background: activeMsg.type === "block" ? "rgba(239,68,68,0.2)" : activeMsg.type === "refresh" ? "rgba(16,185,129,0.2)" : "rgba(99,102,241,0.25)",
+                filter: "blur(50px)", pointerEvents: "none",
               }} />
 
               <div style={{ position: "relative", zIndex: 1 }}>
-                {/* Glowing Icon Badge */}
+                {/* Icon Badge */}
                 <div style={{
-                  width: "60px", height: "60px", borderRadius: "18px",
+                  width: "64px", height: "64px", borderRadius: "20px", marginBottom: "24px",
                   background: activeMsg.type === "block"
-                    ? "linear-gradient(135deg, #dc2626, #991b1b)"
+                    ? "linear-gradient(135deg, #dc2626, #b91c1c)"
                     : activeMsg.type === "refresh"
                     ? "linear-gradient(135deg, #059669, #047857)"
-                    : "linear-gradient(135deg, #3b82f6, #6366f1)",
+                    : "linear-gradient(135deg, #6366f1, #8b5cf6)",
                   color: "#ffffff", display: "flex", alignItems: "center", justifyContent: "center",
-                  fontSize: "28px", boxShadow: activeMsg.type === "block"
-                    ? "0 10px 25px rgba(220, 38, 38, 0.4)"
+                  fontSize: "30px",
+                  boxShadow: activeMsg.type === "block"
+                    ? "0 12px 30px rgba(220,38,38,0.5), inset 0 1px 0 rgba(255,255,255,0.2)"
                     : activeMsg.type === "refresh"
-                    ? "0 10px 25px rgba(5, 150, 105, 0.4)"
-                    : "0 10px 25px rgba(99, 102, 241, 0.45)",
-                  marginBottom: "22px",
+                    ? "0 12px 30px rgba(5,150,105,0.5), inset 0 1px 0 rgba(255,255,255,0.2)"
+                    : "0 12px 30px rgba(99,102,241,0.5), inset 0 1px 0 rgba(255,255,255,0.2)",
+                  animation: "float 4s ease-in-out infinite",
                 }}>
                   {activeMsg.type === "block" ? "🚫" : activeMsg.type === "refresh" ? "🔄" : "💬"}
                 </div>
 
+                {/* Type badge */}
                 <div style={{
-                  display: "inline-block", fontSize: "10px", fontWeight: "800",
-                  letterSpacing: "0.08em", textTransform: "uppercase", padding: "3px 10px", borderRadius: "6px",
-                  background: "rgba(255, 255, 255, 0.1)", color: "#93c5fd", border: "1px solid rgba(255, 255, 255, 0.15)",
-                  marginBottom: "10px",
+                  display: "inline-flex", alignItems: "center", gap: "5px",
+                  fontSize: "10px", fontWeight: "800", letterSpacing: "0.1em",
+                  textTransform: "uppercase", padding: "4px 10px", borderRadius: "8px",
+                  background: "rgba(255,255,255,0.07)",
+                  color: activeMsg.type === "block" ? "#f87171" : activeMsg.type === "refresh" ? "#34d399" : "#a5b4fc",
+                  border: `1px solid ${activeMsg.type === "block" ? "rgba(239,68,68,0.3)" : activeMsg.type === "refresh" ? "rgba(16,185,129,0.3)" : "rgba(99,102,241,0.3)"}`,
+                  marginBottom: "12px",
                 }}>
                   {activeMsg.type === "block" ? "🚫 Keamanan Akun" : activeMsg.type === "refresh" ? "🔄 Pembaruan Web" : "💬 Pesan Resmi Admin"}
                 </div>
 
-                <div style={{ fontSize: "20px", fontWeight: "900", color: "#ffffff", letterSpacing: "-0.02em", lineHeight: 1.25 }}>
-                  Stock AI Studio
+                <div style={{ fontSize: "21px", fontWeight: "900", color: "#ffffff", letterSpacing: "-0.03em", lineHeight: 1.2, marginBottom: "4px" }}>
+                  Nixel Studio
                 </div>
+                <div style={{ fontSize: "12px", color: "rgba(255,255,255,0.35)" }}>Stock AI Platform</div>
               </div>
 
-              <div style={{ position: "relative", zIndex: 1, marginTop: "24px" }}>
+              <div style={{ position: "relative", zIndex: 1, marginTop: "28px" }}>
                 {unreadMessages.length > 1 && (
                   <div style={{
-                    background: "rgba(99, 102, 241, 0.18)", border: "1px solid rgba(99, 102, 241, 0.35)",
-                    padding: "6px 12px", borderRadius: "8px", color: "#a5b4fc", fontSize: "11px", fontWeight: "700",
+                    background: "rgba(99,102,241,0.15)", border: "1px solid rgba(99,102,241,0.3)",
+                    padding: "7px 12px", borderRadius: "10px", color: "#a5b4fc", fontSize: "11px", fontWeight: "700",
                     marginBottom: "14px", display: "inline-flex", alignItems: "center", gap: "6px",
                   }}>
-                    <span>📬</span> Pesan {safeIdx + 1} dari {unreadMessages.length}
+                    📬 Pesan {safeIdx + 1} dari {unreadMessages.length}
                   </div>
                 )}
-                <div style={{ fontSize: "11px", color: "#94a3b8", fontWeight: "500", display: "flex", alignItems: "center", gap: "6px" }}>
-                  <span>📅</span> {new Date(activeMsg.sentAt).toLocaleString("id-ID", { timeZone: "Asia/Jakarta", hour: "2-digit", minute: "2-digit", day: "2-digit", month: "short" })} WIB
+                <div style={{ fontSize: "11px", color: "rgba(255,255,255,0.35)", fontWeight: "500", display: "flex", alignItems: "center", gap: "6px" }}>
+                  📅 {new Date(activeMsg.sentAt).toLocaleString("id-ID", { timeZone: "Asia/Jakarta", hour: "2-digit", minute: "2-digit", day: "2-digit", month: "short" })} WIB
                 </div>
               </div>
             </div>
 
-            {/* Right Column: Clean White Content Area */}
-            <div style={{ padding: "36px", display: "flex", flexDirection: "column", justifyContent: "space-between", background: "#ffffff" }}>
+            {/* Right Column: Content */}
+            <div style={{ padding: "44px 36px 36px", display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
               <div>
-                {/* Header Title & Close Button */}
-                <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "16px", marginBottom: "18px" }}>
-                  <h3 style={{ margin: 0, fontSize: "20px", fontWeight: "800", color: "#0f172a", letterSpacing: "-0.02em", lineHeight: 1.35 }}>
+                {/* Title row with close button */}
+                <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "16px", marginBottom: "20px" }}>
+                  <h3 style={{ margin: 0, fontSize: "21px", fontWeight: "900", color: "#ffffff", letterSpacing: "-0.03em", lineHeight: 1.3 }}>
                     {activeMsg.title}
                   </h3>
                   <button
+                    className="inbox-close-btn"
                     onClick={() => handleDismiss(activeMsg)}
                     title="Tutup & Tandai Dibaca"
                     style={{
-                      width: "36px", height: "36px", borderRadius: "10px", border: "none",
-                      background: "#f1f5f9", color: "#64748b", cursor: "pointer", fontSize: "15px",
+                      width: "36px", height: "36px", borderRadius: "10px", border: "1px solid rgba(255,255,255,0.12)",
+                      background: "rgba(255,255,255,0.07)", color: "rgba(255,255,255,0.5)", cursor: "pointer", fontSize: "14px",
                       fontWeight: "800", display: "flex", alignItems: "center", justifyContent: "center",
                       flexShrink: 0, transition: "all 0.2s",
                     }}
@@ -733,28 +945,30 @@ export default function UserInboxBanner() {
                   </button>
                 </div>
 
-                {/* Styled Message Body Text Area */}
+                {/* Message body */}
                 <div style={{
-                  fontSize: "14px", color: "#334155", lineHeight: 1.7, whiteSpace: "pre-wrap",
-                  background: "#f8fafc", padding: "20px 22px", borderRadius: "14px",
-                  border: "1px solid #e2e8f0", maxHeight: "250px", overflowY: "auto",
-                  marginBottom: "28px", boxShadow: "inset 0 2px 4px rgba(0,0,0,0.02)",
+                  fontSize: "14px", color: "rgba(255,255,255,0.65)", lineHeight: 1.8, whiteSpace: "pre-wrap",
+                  background: "rgba(255,255,255,0.04)",
+                  padding: "20px 22px", borderRadius: "16px",
+                  border: "1px solid rgba(255,255,255,0.08)",
+                  maxHeight: "240px", overflowY: "auto",
+                  marginBottom: "24px",
                 }}>
                   {activeMsg.body}
                 </div>
               </div>
 
-              {/* Bottom Action Toolbar */}
-              <div style={{ display: "flex", gap: "12px", flexWrap: "wrap", alignItems: "center" }}>
+              {/* Actions */}
+              <div style={{ display: "flex", gap: "10px", flexWrap: "wrap", alignItems: "center" }}>
                 <button
-                  className="inbox-btn-blue"
+                  className="inbox-action-btn"
                   onClick={() => handleDismiss(activeMsg)}
                   style={{
                     flex: 1, padding: "14px 24px", borderRadius: "12px", border: "none",
-                    background: "linear-gradient(135deg, #2563eb, #4f46e5)", color: "#ffffff",
+                    background: "linear-gradient(135deg, #6366f1, #8b5cf6)", color: "#ffffff",
                     fontWeight: "800", fontSize: "13.5px", cursor: "pointer",
                     display: "flex", alignItems: "center", justifyContent: "center", gap: "8px",
-                    boxShadow: "0 6px 18px rgba(37, 99, 235, 0.35)", transition: "all 0.2s",
+                    boxShadow: "0 6px 20px rgba(99,102,241,0.4)", transition: "all 0.2s",
                   }}
                 >
                   ✓ Tutup & Tandai Dibaca
@@ -762,12 +976,13 @@ export default function UserInboxBanner() {
 
                 {unreadMessages.length > 1 && safeIdx < unreadMessages.length - 1 && (
                   <button
-                    className="inbox-btn-light"
+                    className="inbox-action-btn"
                     onClick={() => { handleDismiss(activeMsg); setCurrentIdx(safeIdx + 1); }}
                     style={{
-                      padding: "14px 20px", borderRadius: "12px", border: "1px solid #cbd5e1",
-                      background: "#ffffff", color: "#0f172a", fontWeight: "700",
-                      fontSize: "13px", cursor: "pointer", transition: "all 0.2s",
+                      padding: "14px 20px", borderRadius: "12px",
+                      border: "1px solid rgba(255,255,255,0.12)",
+                      background: "rgba(255,255,255,0.06)", color: "rgba(255,255,255,0.7)",
+                      fontWeight: "700", fontSize: "13px", cursor: "pointer", transition: "all 0.2s",
                     }}
                   >
                     Berikutnya →
@@ -779,8 +994,8 @@ export default function UserInboxBanner() {
                     onClick={handleDismissAll}
                     style={{
                       padding: "14px 16px", borderRadius: "12px", border: "none",
-                      background: "transparent", color: "#64748b", fontWeight: "600",
-                      fontSize: "12.5px", cursor: "pointer",
+                      background: "transparent", color: "rgba(255,255,255,0.3)",
+                      fontWeight: "600", fontSize: "12px", cursor: "pointer", transition: "all 0.2s",
                     }}
                   >
                     Tutup Semua
@@ -795,52 +1010,63 @@ export default function UserInboxBanner() {
       {/* ── Interactive Notification Drawer Modal ───────────────────────────── */}
       {drawerOpen && (
         <div
+          className="inbox-modal"
           style={{
             position: "fixed", inset: 0, zIndex: 999995,
-            background: "rgba(15, 23, 42, 0.6)", backdropFilter: "blur(8px)", WebkitBackdropFilter: "blur(8px)",
+            background: "rgba(2, 4, 18, 0.80)",
+            backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)",
             display: "flex", justifyContent: "flex-end",
-            fontFamily: "'Inter', system-ui, -apple-system, sans-serif",
           }}
           onClick={() => setDrawerOpen(false)}
         >
           <div
             onClick={(e) => e.stopPropagation()}
             style={{
-              maxWidth: "440px", width: "100%", height: "100%", background: "#ffffff",
-              boxShadow: "-10px 0 40px rgba(0,0,0,0.3)", display: "flex", flexDirection: "column",
+              maxWidth: "420px", width: "100%", height: "100%",
+              background: "linear-gradient(180deg, rgba(10,8,28,0.98) 0%, rgba(8,6,22,0.98) 100%)",
+              border: "1px solid rgba(99,102,241,0.2)",
+              borderRight: "none",
+              boxShadow: "-20px 0 60px rgba(0,0,0,0.6)",
+              display: "flex", flexDirection: "column",
               animation: "drawerIn 0.3s cubic-bezier(0.16, 1, 0.3, 1)",
             }}
           >
             {/* Drawer Header */}
-            <div style={{ background: "linear-gradient(135deg, #0f172a, #1e293b)", padding: "20px 24px", borderBottom: "3px solid #2563eb", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                <span style={{ fontSize: "20px" }}>📬</span>
+            <div style={{
+              padding: "22px 24px",
+              borderBottom: "1px solid rgba(255,255,255,0.07)",
+              background: "linear-gradient(135deg, rgba(30,20,60,0.8), rgba(15,10,40,0.9))",
+              display: "flex", alignItems: "center", justifyContent: "space-between",
+            }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                <div style={{ width: "38px", height: "38px", borderRadius: "12px", background: "linear-gradient(135deg, #6366f1, #8b5cf6)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "18px", boxShadow: "0 6px 16px rgba(99,102,241,0.4)" }}>📬</div>
                 <div>
-                  <h3 style={{ margin: 0, fontSize: "16px", fontWeight: "800", color: "#ffffff" }}>
-                    Kotak Masuk Notifikasi Admin
-                  </h3>
-                  <div style={{ fontSize: "11px", color: "#94a3b8", marginTop: "2px" }}>
-                    {unreadMessages.length} belum dibaca · {allMessages.length} total pesan
+                  <h3 style={{ margin: 0, fontSize: "15px", fontWeight: "800", color: "#ffffff" }}>Kotak Masuk</h3>
+                  <div style={{ fontSize: "11px", color: "rgba(255,255,255,0.4)", marginTop: "2px" }}>
+                    {unreadMessages.length} belum dibaca · {allMessages.length} total
                   </div>
                 </div>
               </div>
               <button
+                className="inbox-close-btn"
                 onClick={() => setDrawerOpen(false)}
-                style={{ width: "32px", height: "32px", borderRadius: "8px", border: "none", background: "rgba(255,255,255,0.1)", color: "#94a3b8", cursor: "pointer", fontSize: "14px" }}
+                style={{ width: "32px", height: "32px", borderRadius: "8px", border: "1px solid rgba(255,255,255,0.1)", background: "rgba(255,255,255,0.06)", color: "rgba(255,255,255,0.5)", cursor: "pointer", fontSize: "14px", transition: "all 0.2s" }}
               >
                 ✕
               </button>
             </div>
 
             {/* Tab Filter */}
-            <div style={{ display: "flex", borderBottom: "1px solid #e2e8f0", background: "#f8fafc", padding: "8px 16px", gap: "8px" }}>
+            <div style={{ display: "flex", padding: "12px 16px", gap: "8px", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
               <button
                 onClick={() => setDrawerTab("unread")}
                 style={{
-                  flex: 1, padding: "8px", borderRadius: "8px", border: "none",
-                  background: drawerTab === "unread" ? "#2563eb" : "transparent",
-                  color: drawerTab === "unread" ? "#ffffff" : "#64748b",
-                  fontWeight: "700", fontSize: "12px", cursor: "pointer",
+                  flex: 1, padding: "8px", borderRadius: "8px", border: "none", cursor: "pointer",
+                  background: drawerTab === "unread" ? "linear-gradient(135deg, #6366f1, #8b5cf6)" : "rgba(255,255,255,0.05)",
+                  color: drawerTab === "unread" ? "#ffffff" : "rgba(255,255,255,0.4)",
+                  fontWeight: "700", fontSize: "12px",
+                  boxShadow: drawerTab === "unread" ? "0 4px 12px rgba(99,102,241,0.3)" : "none",
+                  transition: "all 0.2s",
                 }}
               >
                 Belum Dibaca ({unreadMessages.length})
@@ -848,74 +1074,73 @@ export default function UserInboxBanner() {
               <button
                 onClick={() => setDrawerTab("all")}
                 style={{
-                  flex: 1, padding: "8px", borderRadius: "8px", border: "none",
-                  background: drawerTab === "all" ? "#2563eb" : "transparent",
-                  color: drawerTab === "all" ? "#ffffff" : "#64748b",
-                  fontWeight: "700", fontSize: "12px", cursor: "pointer",
+                  flex: 1, padding: "8px", borderRadius: "8px", border: "none", cursor: "pointer",
+                  background: drawerTab === "all" ? "linear-gradient(135deg, #6366f1, #8b5cf6)" : "rgba(255,255,255,0.05)",
+                  color: drawerTab === "all" ? "#ffffff" : "rgba(255,255,255,0.4)",
+                  fontWeight: "700", fontSize: "12px",
+                  boxShadow: drawerTab === "all" ? "0 4px 12px rgba(99,102,241,0.3)" : "none",
+                  transition: "all 0.2s",
                 }}
               >
-                Semua Pesan ({allMessages.length})
+                Semua ({allMessages.length})
               </button>
             </div>
 
             {/* Drawer Body List */}
-            <div style={{ flex: 1, overflowY: "auto", padding: "16px" }}>
+            <div style={{ flex: 1, overflowY: "auto", padding: "14px" }}>
               {allMessages.length === 0 ? (
-                <div style={{ textAlign: "center", padding: "40px 20px", color: "#64748b" }}>
-                  <div style={{ fontSize: "32px", marginBottom: "8px" }}>📭</div>
-                  <div style={{ fontSize: "14px", fontWeight: "700", color: "#0f172a" }}>Belum Ada Pesan</div>
-                  <div style={{ fontSize: "12px", marginTop: "4px" }}>Pesan yang dikirim admin akan muncul di sini secara otomatis.</div>
+                <div style={{ textAlign: "center", padding: "50px 20px" }}>
+                  <div style={{ fontSize: "40px", marginBottom: "12px" }}>📭</div>
+                  <div style={{ fontSize: "14px", fontWeight: "700", color: "rgba(255,255,255,0.7)" }}>Belum Ada Pesan</div>
+                  <div style={{ fontSize: "12px", marginTop: "6px", color: "rgba(255,255,255,0.3)" }}>Pesan dari admin akan muncul otomatis.</div>
                 </div>
               ) : drawerTab === "unread" && unreadMessages.length === 0 ? (
-                <div style={{ textAlign: "center", padding: "40px 20px", color: "#64748b" }}>
-                  <div style={{ fontSize: "32px", marginBottom: "8px" }}>✅</div>
-                  <div style={{ fontSize: "14px", fontWeight: "700", color: "#0f172a" }}>Semua Pesan Sudah Dibaca</div>
+                <div style={{ textAlign: "center", padding: "50px 20px" }}>
+                  <div style={{ fontSize: "40px", marginBottom: "12px" }}>✅</div>
+                  <div style={{ fontSize: "14px", fontWeight: "700", color: "rgba(255,255,255,0.7)" }}>Semua Sudah Dibaca</div>
                   <button
                     onClick={handleRestoreAll}
-                    style={{ marginTop: "12px", padding: "8px 16px", borderRadius: "8px", border: "1px solid #cbd5e1", background: "#ffffff", color: "#2563eb", fontWeight: "700", fontSize: "12px", cursor: "pointer" }}
+                    style={{ marginTop: "14px", padding: "9px 18px", borderRadius: "8px", border: "1px solid rgba(99,102,241,0.3)", background: "rgba(99,102,241,0.1)", color: "#a5b4fc", fontWeight: "700", fontSize: "12px", cursor: "pointer" }}
                   >
-                    🔄 Tampilkan Kembali Semua Pesan
+                    🔄 Tampilkan Kembali
                   </button>
                 </div>
               ) : (
                 (drawerTab === "unread" ? unreadMessages : allMessages).map((msg) => {
                   const isSeen = dismissed.has(msg.id);
+                  const typeColor = msg.type === "block" ? "#f87171" : msg.type === "refresh" ? "#34d399" : "#a5b4fc";
+                  const typeBg = msg.type === "block" ? "rgba(239,68,68,0.12)" : msg.type === "refresh" ? "rgba(16,185,129,0.12)" : "rgba(99,102,241,0.12)";
                   return (
                     <div
                       key={msg.id}
+                      className="inbox-drawer-item"
                       style={{
-                        padding: "14px 16px", borderRadius: "12px", marginBottom: "10px",
-                        border: `1px solid ${isSeen ? "#e2e8f0" : "rgba(37,99,235,0.3)"}`,
-                        background: isSeen ? "#ffffff" : "rgba(37,99,235,0.04)",
+                        padding: "14px 16px", borderRadius: "14px", marginBottom: "10px",
+                        border: `1px solid ${isSeen ? "rgba(255,255,255,0.06)" : "rgba(99,102,241,0.25)"}`,
+                        background: isSeen ? "rgba(255,255,255,0.03)" : "rgba(99,102,241,0.06)",
                         transition: "all 0.2s",
                       }}
                     >
-                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "6px" }}>
-                        <span style={{ fontSize: "10px", fontWeight: "800", textTransform: "uppercase", padding: "2px 7px", borderRadius: "6px", background: msg.type === "block" ? "#fef2f2" : msg.type === "refresh" ? "#ecfdf5" : "#eff6ff", color: msg.type === "block" ? "#dc2626" : msg.type === "refresh" ? "#059669" : "#2563eb" }}>
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "8px" }}>
+                        <span style={{ fontSize: "10px", fontWeight: "800", textTransform: "uppercase", padding: "3px 8px", borderRadius: "6px", background: typeBg, color: typeColor, border: `1px solid ${typeColor}30` }}>
                           {msg.type === "block" ? "🚫 Blokir" : msg.type === "refresh" ? "🔄 Refresh" : "💬 Pesan Admin"}
                         </span>
-                        <span style={{ fontSize: "10px", color: "#94a3b8" }}>
+                        <span style={{ fontSize: "10px", color: "rgba(255,255,255,0.3)" }}>
                           {new Date(msg.sentAt).toLocaleString("id-ID", { hour: "2-digit", minute: "2-digit", day: "2-digit", month: "short" })}
                         </span>
                       </div>
-                      <div style={{ fontSize: "14px", fontWeight: "700", color: "#0f172a", marginBottom: "4px" }}>
-                        {msg.title}
-                      </div>
-                      <div style={{ fontSize: "13px", color: "#334155", lineHeight: 1.5, whiteSpace: "pre-wrap", marginBottom: "10px" }}>
-                        {msg.body}
-                      </div>
-                      <div style={{ display: "flex", gap: "8px" }}>
-                        {!isSeen ? (
-                          <button
-                            onClick={() => handleDismiss(msg)}
-                            style={{ padding: "6px 12px", borderRadius: "6px", border: "none", background: "#2563eb", color: "#ffffff", fontWeight: "700", fontSize: "11px", cursor: "pointer" }}
-                          >
-                            ✓ Tandai Dibaca
-                          </button>
-                        ) : (
-                          <span style={{ fontSize: "11px", color: "#94a3b8", fontWeight: "600" }}>✓ Sudah Dibaca</span>
-                        )}
-                      </div>
+                      <div style={{ fontSize: "13px", fontWeight: "700", color: "rgba(255,255,255,0.9)", marginBottom: "5px" }}>{msg.title}</div>
+                      <div style={{ fontSize: "12px", color: "rgba(255,255,255,0.5)", lineHeight: 1.6, whiteSpace: "pre-wrap", marginBottom: "12px", display: "-webkit-box", WebkitLineClamp: 3, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{msg.body}</div>
+                      {!isSeen ? (
+                        <button
+                          onClick={() => handleDismiss(msg)}
+                          style={{ padding: "6px 14px", borderRadius: "7px", border: "none", background: "linear-gradient(135deg, #6366f1, #8b5cf6)", color: "#ffffff", fontWeight: "700", fontSize: "11px", cursor: "pointer", boxShadow: "0 3px 10px rgba(99,102,241,0.3)" }}
+                        >
+                          ✓ Tandai Dibaca
+                        </button>
+                      ) : (
+                        <span style={{ fontSize: "11px", color: "rgba(255,255,255,0.25)", fontWeight: "600" }}>✓ Sudah Dibaca</span>
+                      )}
                     </div>
                   );
                 })
@@ -923,16 +1148,16 @@ export default function UserInboxBanner() {
             </div>
 
             {/* Drawer Footer */}
-            <div style={{ padding: "16px", borderTop: "1px solid #e2e8f0", background: "#f8fafc", display: "flex", gap: "10px" }}>
+            <div style={{ padding: "14px 16px", borderTop: "1px solid rgba(255,255,255,0.07)", background: "rgba(255,255,255,0.02)", display: "flex", gap: "10px" }}>
               <button
                 onClick={handleRestoreAll}
-                style={{ flex: 1, padding: "10px", borderRadius: "8px", border: "1px solid #cbd5e1", background: "#ffffff", color: "#475569", fontWeight: "700", fontSize: "12px", cursor: "pointer" }}
+                style={{ flex: 1, padding: "10px", borderRadius: "8px", border: "1px solid rgba(255,255,255,0.1)", background: "rgba(255,255,255,0.05)", color: "rgba(255,255,255,0.5)", fontWeight: "700", fontSize: "12px", cursor: "pointer", transition: "all 0.2s" }}
               >
-                🔄 Reset Status Pesan
+                🔄 Reset
               </button>
               <button
                 onClick={handleDismissAll}
-                style={{ padding: "10px 14px", borderRadius: "8px", border: "none", background: "#0f172a", color: "#ffffff", fontWeight: "700", fontSize: "12px", cursor: "pointer" }}
+                style={{ padding: "10px 16px", borderRadius: "8px", border: "none", background: "linear-gradient(135deg, #6366f1, #8b5cf6)", color: "#ffffff", fontWeight: "700", fontSize: "12px", cursor: "pointer", boxShadow: "0 4px 12px rgba(99,102,241,0.3)", transition: "all 0.2s" }}
               >
                 Tandai Semua Dibaca
               </button>
