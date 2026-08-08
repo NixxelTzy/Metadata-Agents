@@ -357,7 +357,8 @@ export default function UserInboxBanner() {
   const safeIdx = unreadMessages.length > 0 ? Math.min(currentIdx, unreadMessages.length - 1) : 0;
   const activeMsg = unreadMessages[safeIdx] ?? unreadMessages[0] ?? null;
 
-  const showCenterPopup = popupAutoOpen && activeMsg !== null;
+  // Show modal popup continuously for any active unread message until explicitly closed by user
+  const showCenterPopup = activeMsg !== null && !dismissed.has(activeMsg.id);
 
   return (
     <>
