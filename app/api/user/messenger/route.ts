@@ -21,44 +21,70 @@ export interface AdminMessage {
 }
 
 /**
- * ═════════════════════════════════════════════════════════════════════════════
- * MASTER USER MESSENGER & PRESENCE ENGINE
- * Rute Utama Terpadu untuk Inbox, Ping Heartbeat, & Unblock Appeal Pengguna.
- * Handles: Inbox Fetching, Mark Read, Autonomous AI Appeal, & Online Ping
- * ═════════════════════════════════════════════════════════════════════════════
+ * ═══════════════════════════════════════════════════════════════════════════
+ * MASTER USER MESSENGER — Full Real-Time Background System
+ *
+ * Features:
+ * - Background inbox polling (client polls this every 5s)
+ * - Instant unblock detection via Redis signal key
+ * - Targeted + broadcast message delivery
+ * - Block state detection with immediate unblock support
+ * - Online heartbeat ping
+ * - Appeal processing via AI agent
+ * ═══════════════════════════════════════════════════════════════════════════
  */
 
-// ── GET: Fetch Inbox Messages ────────────────────────────────────────────────
+// ── GET: Fetch Inbox — called every 5s by client in background ───────────────
 export async function GET(request: NextRequest) {
   try {
     const t = request.cookies.get("auth_token")?.value;
     const payload = t ? verifyToken(t) : null;
 
     const { searchParams } = new URL(request.url);
-    const qEmail = (searchParams.get("email") ?? "").toLowerCase().trim();
-    const qUserId = (searchParams.get("userId") ?? "").trim();
-    const qUsername = (searchParams.get("username") ?? "").toLowerCase().trim();
+    const qEmail      = (searchParams.get("email")       ?? "").toLowerCase().trim();
+    const qUserId     = (searchParams.get("userId")      ?? "").trim();
+    const qUsername   = (searchParams.get("username")    ?? "").toLowerCase().trim();
     const qRecipientId = (searchParams.get("recipientId") ?? "").toUpperCase().trim();
 
-    const myUserId = (payload?.userId ?? qUserId).trim();
-    const myEmail = (payload?.email ?? qEmail).toLowerCase().trim();
-    const myUsername = (payload?.username ?? qUsername).toLowerCase().trim();
+    const myUserId     = (payload?.userId  ?? qUserId).trim();
+    const myEmail      = (payload?.email   ?? qEmail).toLowerCase().trim();
+    const myUsername   = (payload?.username ?? qUsername).toLowerCase().trim();
     const myRecipientId = qRecipientId;
 
-    // Update online status in background (non-blocking)
+    // Background: update online status (non-blocking, fire-and-forget)
     if (myUserId || myEmail) {
-      const { updateUserActivity } = await import("@/lib/db");
-      void updateUserActivity(myUserId || myEmail, myEmail, myUsername, "inbox_active");
+      void import("@/lib/db").then(({ updateUserActivity }) =>
+        updateUserActivity(myUserId || myEmail, myEmail, myUsername, "inbox_active")
+      ).catch(() => {});
     }
 
+    // ── Check realtime unblock signal ───────────────────────────────────────
+    // Admin sets this key when unblocking. We check it so unblock is instant.
+    const unblockKeys = [
+      myUserId     ? `adminmsg:unblocked:${myUserId}`   : null,
+      myEmail      ? `adminmsg:unblocked:${myEmail}`    : null,
+      myUsername   ? `adminmsg:unblocked:${myUsername}` : null,
+    ].filter(Boolean) as string[];
+
+    let justUnblocked = false;
+    if (unblockKeys.length > 0) {
+      const unblockChecks = await Promise.all(unblockKeys.map(k => redis.get(k).catch(() => null)));
+      justUnblocked = unblockChecks.some(v => v !== null);
+      // Clear the signal after detecting it
+      if (justUnblocked) {
+        await Promise.all(unblockKeys.map(k => redis.del(k).catch(() => null)));
+      }
+    }
+
+    // ── Fetch all message keys for this user ─────────────────────────────────
     const keysToCheck: string[] = ["adminmsg:broadcast"];
-    if (myUserId) keysToCheck.push(`adminmsg:user:${myUserId}`);
-    if (myEmail) keysToCheck.push(`adminmsg:user:${myEmail}`);
-    if (myUsername) keysToCheck.push(`adminmsg:user:${myUsername}`);
-    if (myRecipientId) keysToCheck.push(`adminmsg:user:${myRecipientId}`);
+    if (myUserId)                        keysToCheck.push(`adminmsg:user:${myUserId}`);
+    if (myEmail)                         keysToCheck.push(`adminmsg:user:${myEmail}`);
+    if (myUsername && myUsername !== myEmail) keysToCheck.push(`adminmsg:user:${myUsername}`);
+    if (myRecipientId)                   keysToCheck.push(`adminmsg:user:${myRecipientId}`);
 
     const rawLists = await Promise.all(
-      keysToCheck.map((k) => redis.lrange(k, 0, 99).catch(() => []))
+      keysToCheck.map(k => redis.lrange(k, 0, 99).catch(() => []))
     );
 
     const msgMap = new Map<string, AdminMessage>();
@@ -66,9 +92,10 @@ export async function GET(request: NextRequest) {
     for (const list of rawLists) {
       for (const r of list) {
         try {
-          const msg: AdminMessage = typeof r === "string" ? JSON.parse(r) : r;
+          const msg = (typeof r === "string" ? JSON.parse(r) : r) as AdminMessage;
           if (!msg?.id || !msg?.type || !msg?.title) continue;
 
+          // Skip AI-generated internal messages
           if (
             msg.id.startsWith("ai-") ||
             msg.id.startsWith("email-ai-") ||
@@ -81,17 +108,41 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    const messages = Array.from(msgMap.values());
-    messages.sort((a, b) => new Date(b.sentAt).getTime() - new Date(a.sentAt).getTime());
+    const allMessages = Array.from(msgMap.values());
+    allMessages.sort((a, b) => new Date(b.sentAt).getTime() - new Date(a.sentAt).getTime());
 
-    return NextResponse.json({ messages: messages.slice(0, 20) });
+    // ── Determine block state ────────────────────────────────────────────────
+    // If justUnblocked, filter out all block messages from response
+    const messages = justUnblocked
+      ? allMessages.filter(m => m.type !== "block").slice(0, 20)
+      : allMessages.slice(0, 20);
+
+    const isBlocked = !justUnblocked && messages.some(m => m.type === "block");
+
+    // ── Get seen set for unread count ────────────────────────────────────────
+    let seenIds = new Set<string>();
+    if (myUserId) {
+      const seenRaw = await redis.smembers(`adminmsg:seen:${myUserId}`).catch(() => []);
+      seenIds = new Set(seenRaw as string[]);
+    }
+
+    const unreadCount = messages.filter(m => !seenIds.has(m.id)).length;
+
+    return NextResponse.json({
+      messages,
+      isBlocked,
+      justUnblocked,
+      unreadCount,
+      fetchedAt: Date.now(),
+    });
+
   } catch (err) {
-    console.error("Master User Messenger GET error:", err);
-    return NextResponse.json({ messages: [] });
+    console.error("[user/messenger GET]", err);
+    return NextResponse.json({ messages: [], isBlocked: false, justUnblocked: false, unreadCount: 0, fetchedAt: Date.now() });
   }
 }
 
-// ── POST: Mark Read, Submit Appeal, or Ping Heartbeat ────────────────────────
+// ── POST: Mark Read, Submit Appeal, Ping Heartbeat ───────────────────────────
 export async function POST(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const actionParam = searchParams.get("action");
@@ -108,87 +159,73 @@ export async function POST(request: NextRequest) {
       visibility?: string;
     };
 
-    const action = body.action || actionParam || (body.appealMessage ? "appeal" : body.path ? "ping" : "read");
+    const action = body.action || actionParam
+      || (body.appealMessage ? "appeal" : body.path ? "ping" : "read");
 
-    // ── ACTION: PING ONLINE HEARTBEAT ────────────────────────────────────────
+    // ── PING ─────────────────────────────────────────────────────────────────
     if (action === "ping") {
-      const qEmail = (searchParams.get("email") ?? "").toLowerCase().trim();
-      const qUserId = (searchParams.get("userId") ?? "").trim();
-      const qUsername = (searchParams.get("username") ?? "").toLowerCase().trim();
-
-      const userEmail = (body.email || qEmail).toLowerCase().trim();
-      const userId = (body.userId || qUserId).trim();
-      const userUsername = (body.username || qUsername).toLowerCase().trim();
+      const userEmail    = (body.email    || searchParams.get("email")    || "").toLowerCase().trim();
+      const userId       = (body.userId   || searchParams.get("userId")   || "").trim();
+      const userUsername = (body.username || searchParams.get("username") || "").toLowerCase().trim();
 
       if (userId || userEmail) {
         const pingPayload = {
-          isOnline: body.visibility !== "hidden",
-          lastPing: new Date().toISOString(),
-          path: body.path || "/",
+          isOnline:   body.visibility !== "hidden",
+          lastPing:   new Date().toISOString(),
+          path:       body.path || "/",
           visibility: body.visibility || "visible",
-          email: userEmail,
-          userId: userId,
-          username: userUsername,
+          email:      userEmail,
+          userId,
+          username:   userUsername,
         };
-
         const keys: string[] = [];
-        if (userId) keys.push(`online:user:${userId}`);
-        if (userEmail) keys.push(`online:user:${userEmail}`);
+        if (userId)       keys.push(`online:user:${userId}`);
+        if (userEmail)    keys.push(`online:user:${userEmail}`);
         if (userUsername) keys.push(`online:user:${userUsername}`);
-
-        for (const k of keys) {
-          await redis.set(k, pingPayload, { ex: 12 }).catch(() => {});
-        }
+        await Promise.all(keys.map(k => redis.set(k, pingPayload, { ex: 12 }).catch(() => {})));
       }
-
       return NextResponse.json({ ok: true });
     }
 
-    // Require Auth for Appeal & Mark Read
+    // Require auth for appeal & mark-read
     const t = request.cookies.get("auth_token")?.value;
     const payload = t ? verifyToken(t) : null;
-    if (!payload) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    if (!payload) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-    // ── ACTION: APPEAL UNBLOCK ───────────────────────────────────────────────
+    // ── APPEAL ───────────────────────────────────────────────────────────────
     if (action === "appeal") {
       const appealText = (body.appealMessage ?? "").trim();
       if (!appealText || appealText.length < 5) {
         return NextResponse.json({ error: "Pesan banding minimal 5 karakter" }, { status: 400 });
       }
-
       const { processAutonomousAiSupport } = await import("@/lib/ai-agent");
       const result = await processAutonomousAiSupport({
-        userId: payload.userId,
+        userId:   payload.userId,
         username: payload.username,
-        email: payload.email,
+        email:    payload.email,
         category: "appeal",
         userMessage: appealText,
       });
-
       return NextResponse.json({
         ok: true,
-        message: "Banding berhasil diproses secara otomatis oleh AI!",
+        message: "Banding berhasil diproses oleh AI!",
         aiReplyText: result.aiReplyText,
-        unblocked: result.unblocked,
-        emailSent: result.emailSent,
+        unblocked:   result.unblocked,
+        emailSent:   result.emailSent,
       });
     }
 
-    // ── ACTION: MARK READ ────────────────────────────────────────────────────
+    // ── MARK READ ────────────────────────────────────────────────────────────
     const ids = Array.isArray(body.ids) ? body.ids : [];
     if (ids.length > 0) {
       const seenKey = `adminmsg:seen:${payload.userId}`;
-      for (const id of ids) {
-        await redis.sadd(seenKey, id);
-      }
-      await redis.expire(seenKey, 86400 * 14);
+      await Promise.all(ids.map(id => redis.sadd(seenKey, id).catch(() => {})));
+      await redis.expire(seenKey, 86400 * 14).catch(() => {});
     }
-
     return NextResponse.json({ ok: true });
+
   } catch (err) {
-    console.error("Master User Messenger POST error:", err);
-    return NextResponse.json({ error: "Gagal memproses permintaan pengguna" }, { status: 500 });
+    console.error("[user/messenger POST]", err);
+    return NextResponse.json({ error: "Gagal memproses permintaan" }, { status: 500 });
   }
 }

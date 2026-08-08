@@ -304,6 +304,7 @@ export async function POST(request: NextRequest) {
         }
       }
 
+      // Also clean broadcast
       const broadcastRaw = await redis.lrange("adminmsg:broadcast", 0, 199).catch(() => []);
       const filteredBroadcast: string[] = [];
       for (const r of broadcastRaw) {
@@ -325,6 +326,30 @@ export async function POST(request: NextRequest) {
         await redis.expire("adminmsg:broadcast", 86400 * 7);
       }
 
+      // ── FIX: Send unblock confirmation message to user ──
+      const unblockMsg = {
+        id: `unblock-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+        type: "message",
+        title: "✅ Akses Akun Anda Telah Dipulihkan",
+        body: `Halo${targetUser?.username ? ` ${targetUser.username}` : ""}, akun Anda telah dibuka dari pembatasan oleh Admin NixelStudio. Anda kini dapat menggunakan seluruh fitur platform kembali. Terima kasih atas kesabaran Anda.`,
+        targetUserId: targetId,
+        targetEmail: targetEmail,
+        targetUsername: targetUsername,
+        sentAt: new Date().toISOString(),
+        sentByEmail: ADMIN_EMAIL,
+        read: false,
+      };
+      for (const key of userKeys) {
+        await redis.lpush(key, JSON.stringify(unblockMsg));
+        await redis.ltrim(key, 0, 49);
+        await redis.expire(key, 86400 * 7);
+      }
+
+      // ── Set realtime unblock signal — client polls this key ──
+      // When user fetches inbox and sees this key, they are immediately unblocked
+      await redis.set(`adminmsg:unblocked:${targetId}`, Date.now(), { ex: 300 }); // 5min signal
+      if (targetEmail) await redis.set(`adminmsg:unblocked:${targetEmail}`, Date.now(), { ex: 300 });
+
       return NextResponse.json({
         ok: true,
         message: `✅ Akun ${targetUser?.username ?? targetId} berhasil dibuka dari pemblokiran!`,
@@ -343,25 +368,49 @@ export async function POST(request: NextRequest) {
         { role: "user", content: `User ID: ${targetId}. Reason: ${blockReason}` },
       ], { temperature: 0.3, max_tokens: 300 });
 
+      // Resolve all keys for this user (same logic as unblock)
+      const allUsers = await getAllUsers();
+      const targetUser = allUsers.find((u) =>
+        u.id === targetId ||
+        u.email.toLowerCase() === targetId.toLowerCase() ||
+        u.username.toLowerCase() === targetId.toLowerCase() ||
+        (u.recipientId && u.recipientId.toUpperCase() === targetId.toUpperCase())
+      );
+
+      const resolvedId = targetUser?.id || targetId;
+      const resolvedEmail = targetUser?.email.toLowerCase() || (targetId.includes("@") ? targetId.toLowerCase() : "");
+      const resolvedUsername = targetUser?.username.toLowerCase() || "";
+
       const blockMsg = {
         id: `block-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
         type: "block",
         title: "🚫 Akses Akun Dibatasi Sementara",
         body: aiRes.text.trim(),
         reason: blockReason,
-        targetUserId: targetId,
-        targetEmail: body.targetEmail || "user",
-        targetUsername: body.targetUsername || "user",
+        targetUserId: resolvedId,
+        targetEmail: resolvedEmail || body.targetEmail || "user",
+        targetUsername: resolvedUsername || body.targetUsername || "user",
         sentAt: new Date().toISOString(),
         sentByEmail: ADMIN_EMAIL,
         read: false,
       };
 
-      await redis.lpush(`adminmsg:user:${targetId}`, JSON.stringify(blockMsg));
-      await redis.ltrim(`adminmsg:user:${targetId}`, 0, 49);
-      await redis.expire(`adminmsg:user:${targetId}`, 86400 * 7);
+      // Push to ALL keys so user always sees block regardless of how they fetch
+      const blockKeys = new Set<string>();
+      blockKeys.add(`adminmsg:user:${resolvedId}`);
+      if (resolvedEmail) blockKeys.add(`adminmsg:user:${resolvedEmail}`);
+      if (resolvedUsername) blockKeys.add(`adminmsg:user:${resolvedUsername}`);
+      if (targetUser?.recipientId) blockKeys.add(`adminmsg:user:${targetUser.recipientId.toUpperCase()}`);
+      if (body.targetEmail && body.targetEmail !== "user") blockKeys.add(`adminmsg:user:${body.targetEmail.toLowerCase()}`);
+      if (body.targetUsername && body.targetUsername !== "user") blockKeys.add(`adminmsg:user:${body.targetUsername.toLowerCase()}`);
 
-      return NextResponse.json({ ok: true, message: `✅ User ${targetId} berhasil diblokir.` });
+      for (const key of Array.from(blockKeys)) {
+        await redis.lpush(key, JSON.stringify(blockMsg));
+        await redis.ltrim(key, 0, 49);
+        await redis.expire(key, 86400 * 7);
+      }
+
+      return NextResponse.json({ ok: true, message: `✅ User ${targetUser?.username ?? targetId} berhasil diblokir.` });
     }
 
     // ── BOOST TOKENS ─────────────────────────────────────────────────────────
