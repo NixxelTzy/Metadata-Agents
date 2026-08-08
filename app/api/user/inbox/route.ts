@@ -37,6 +37,7 @@ export async function GET(request: NextRequest) {
     const qEmail = (searchParams.get("email") ?? "").toLowerCase().trim();
     const qUserId = (searchParams.get("userId") ?? "").trim();
     const qUsername = (searchParams.get("username") ?? "").toLowerCase().trim();
+    const qRecipientId = (searchParams.get("recipientId") ?? "").toUpperCase().trim();
 
     const userEmail = (payload?.email ?? qEmail).toLowerCase().trim();
     const userId = payload?.userId ?? qUserId;
@@ -54,6 +55,7 @@ export async function GET(request: NextRequest) {
     if (userId) userKeys.push(`adminmsg:user:${userId}`);
     if (userEmail) userKeys.push(`adminmsg:user:${userEmail}`);
     if (userUsername) userKeys.push(`adminmsg:user:${userUsername}`);
+    if (qRecipientId) userKeys.push(`adminmsg:user:${qRecipientId}`);
 
     const rawLists = await Promise.all(
       userKeys.map((k) => redis.lrange(k, 0, 99).catch(() => []))

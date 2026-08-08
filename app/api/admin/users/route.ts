@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifyToken } from "@/lib/auth";
-import { getAllUsers, deleteUser, getUserByEmail, getAllUserActivities, getAllOnlineUsers } from "@/lib/db";
+import { getAllUsers, deleteUser, getUserByEmail, getAllUserActivities, getAllOnlineUsers, generateRecipientId } from "@/lib/db";
 
 const ADMIN_EMAIL = "nixxeltzy@gmail.com";
 
@@ -57,6 +57,7 @@ export async function GET(request: NextRequest) {
         id: u.id,
         email: u.email,
         username: u.username,
+        recipientId: u.recipientId ?? generateRecipientId(u.id || u.email),
         role: u.role ?? "user",
         createdAt: u.createdAt,
         passwordRaw: u.passwordRaw || null,

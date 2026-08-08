@@ -21,6 +21,7 @@ interface UserAuth {
   userId: string;
   email: string;
   username: string;
+  recipientId?: string;
   role: string;
 }
 
@@ -211,8 +212,17 @@ export default function UserInboxBanner() {
             const myEmail = u?.email?.toLowerCase().trim();
             const myUserId = u?.userId?.trim();
             const myUsername = u?.username?.toLowerCase().trim();
+            const myRecId = u?.recipientId?.toUpperCase().trim();
 
             const forMe = ev.data.messages.filter((m) => {
+              const isTargetedToMe =
+                (myUserId && String(m.targetUserId).toLowerCase() === String(myUserId).toLowerCase()) ||
+                (myEmail && m.targetEmail && m.targetEmail.toLowerCase() === myEmail) ||
+                (myUsername && m.targetUsername && m.targetUsername.toLowerCase() === myUsername) ||
+                (myRecId && m.targetUserId && m.targetUserId.toUpperCase() === myRecId) ||
+                (myRecId && m.targetEmail && m.targetEmail.toUpperCase() === myRecId) ||
+                (myRecId && m.targetUsername && m.targetUsername.toUpperCase() === myRecId);
+
               const isBroadcast =
                 m.targetUserId === "all" ||
                 m.targetEmail === "all" ||
@@ -221,10 +231,10 @@ export default function UserInboxBanner() {
                 String(m.targetEmail).toLowerCase() === "all" ||
                 String(m.targetUsername).toLowerCase() === "all";
 
-              const isTargetedToMe =
-                (myUserId && String(m.targetUserId).toLowerCase() === String(myUserId).toLowerCase()) ||
-                (myEmail && m.targetEmail && m.targetEmail.toLowerCase() === myEmail) ||
-                (myUsername && m.targetUsername && m.targetUsername.toLowerCase() === myUsername);
+              // If admin sent a targeted message to someone else, do NOT pop up on admin's own screen
+              if (myEmail === "nixxeltzy@gmail.com" && !isBroadcast && !isTargetedToMe) {
+                return false;
+              }
 
               return isBroadcast || isTargetedToMe;
             });
@@ -294,6 +304,7 @@ export default function UserInboxBanner() {
       if (u?.email) queryParams.set("email", u.email);
       if (u?.userId) queryParams.set("userId", u.userId);
       if (u?.username) queryParams.set("username", u.username);
+      if (u?.recipientId) queryParams.set("recipientId", u.recipientId);
 
       const url = `/api/user/inbox${queryParams.toString() ? `?${queryParams.toString()}` : ""}`;
       const res = await fetch(url, { credentials: "include" });

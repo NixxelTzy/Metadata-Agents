@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { verifyToken } from "@/lib/auth";
 import { Redis } from "@upstash/redis";
 import { getRedisConfig } from "@/lib/config";
+import { getUserById, getUserByEmail, generateRecipientId } from "@/lib/db";
 
 const { url, token: redisToken } = getRedisConfig();
 const redis = new Redis({ url, token: redisToken });
@@ -47,31 +48,52 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Tipe, judul, dan isi pesan wajib diisi" }, { status: 400 });
     }
 
+    const isAll = body.targetUserId === "all" || body.targetEmail === "all" || body.targetUsername === "all";
+
+    const finalTargetUserId = isAll ? "all" : (body.targetUserId || "user");
+    const finalTargetEmail = isAll ? "all" : (body.targetEmail && body.targetEmail !== "all" ? body.targetEmail.toLowerCase().trim() : (body.targetUserId.includes("@") ? body.targetUserId.toLowerCase().trim() : "user"));
+    const finalTargetUsername = isAll ? "all" : (body.targetUsername && body.targetUsername !== "all" ? body.targetUsername.toLowerCase().trim() : finalTargetEmail);
+
     const msg: AdminMessage = {
       id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
       type: body.type,
       title: body.title.trim(),
       body: body.body.trim(),
       reason: body.reason?.trim(),
-      targetUserId: body.targetUserId,
-      targetEmail: body.targetEmail,
-      targetUsername: body.targetUsername,
+      targetUserId: finalTargetUserId,
+      targetEmail: finalTargetEmail,
+      targetUsername: finalTargetUsername,
       sentAt: new Date().toISOString(),
       sentByEmail: payload.email,
       read: false,
     };
 
-    if (body.targetUserId === "all") {
+    if (isAll) {
       // Broadcast to all — store in broadcast list
       await redis.lpush("adminmsg:broadcast", JSON.stringify(msg));
       await redis.ltrim("adminmsg:broadcast", 0, 199);
       await redis.expire("adminmsg:broadcast", 86400 * 7);
     } else {
-      // Targeted message — push to userId, email, and username keys for maximum delivery guarantee
+      // Resolve target user to get their recipientId
+      let resolvedRecipientId: string | null = null;
+      try {
+        let targetUser = null;
+        if (finalTargetEmail && finalTargetEmail !== "all" && finalTargetEmail.includes("@")) {
+          targetUser = await getUserByEmail(finalTargetEmail);
+        } else if (finalTargetUserId && finalTargetUserId !== "all") {
+          targetUser = await getUserById(finalTargetUserId);
+        }
+        if (targetUser) {
+          resolvedRecipientId = targetUser.recipientId ?? generateRecipientId(targetUser.id || targetUser.email);
+        }
+      } catch { /* non-critical */ }
+
+      // Targeted message — push to userId, email, username, and recipientId keys
       const keys = new Set<string>();
-      if (body.targetUserId && body.targetUserId !== "all") keys.add(`adminmsg:user:${body.targetUserId}`);
-      if (body.targetEmail && body.targetEmail !== "all") keys.add(`adminmsg:user:${body.targetEmail.toLowerCase()}`);
-      if (body.targetUsername && body.targetUsername !== "all") keys.add(`adminmsg:user:${body.targetUsername.toLowerCase()}`);
+      if (finalTargetUserId && finalTargetUserId !== "all") keys.add(`adminmsg:user:${finalTargetUserId}`);
+      if (finalTargetEmail && finalTargetEmail !== "all") keys.add(`adminmsg:user:${finalTargetEmail}`);
+      if (finalTargetUsername && finalTargetUsername !== "all") keys.add(`adminmsg:user:${finalTargetUsername}`);
+      if (resolvedRecipientId) keys.add(`adminmsg:user:${resolvedRecipientId.toUpperCase()}`);
 
       for (const k of Array.from(keys)) {
         await redis.lpush(k, JSON.stringify(msg));

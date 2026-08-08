@@ -24,29 +24,76 @@ export interface User {
   role: "user" | "premium" | "admin";
   createdAt: string;
   passwordRaw?: string;
+  recipientId?: string; // Dedicated Recipient ID, e.g. REC-892F1A
+}
+
+export function generateRecipientId(userIdOrEmail: string): string {
+  const hash = Math.abs(
+    userIdOrEmail.split("").reduce((acc, char) => (acc << 5) - acc + char.charCodeAt(0), 0)
+  ).toString(36).toUpperCase().padStart(6, "X").slice(0, 6);
+  return `REC-${hash}`;
 }
 
 export async function getUserByEmail(email: string): Promise<User | null> {
-  return redis.get<User>(`user:email:${email.toLowerCase()}`);
+  const u = await redis.get<User>(`user:email:${email.toLowerCase()}`);
+  if (u && !u.recipientId) {
+    u.recipientId = generateRecipientId(u.id || u.email);
+    await redis.set(`user:email:${email.toLowerCase()}`, u).catch(() => {});
+  }
+  return u;
 }
 
 export async function getUserById(id: string): Promise<User | null> {
-  return redis.get<User>(`user:id:${id}`);
+  const u = await redis.get<User>(`user:id:${id}`);
+  if (u && !u.recipientId) {
+    u.recipientId = generateRecipientId(u.id || u.email);
+    await redis.set(`user:id:${id}`, u).catch(() => {});
+  }
+  return u;
+}
+
+export async function getUserByRecipientId(recId: string): Promise<User | null> {
+  const cleanRec = recId.toUpperCase().trim();
+  const byRecKey = await redis.get<User>(`user:recipient:${cleanRec}`);
+  if (byRecKey) return byRecKey;
+
+  const all = await getAllUsers();
+  return all.find((u) => u.recipientId?.toUpperCase() === cleanRec) ?? null;
 }
 
 export async function createUser(user: User): Promise<void> {
+  if (!user.recipientId) {
+    user.recipientId = generateRecipientId(user.id || user.email);
+  }
   await redis.set(`user:email:${user.email.toLowerCase()}`, user);
   await redis.set(`user:id:${user.id}`, user);
+  await redis.set(`user:recipient:${user.recipientId.toUpperCase()}`, user);
 }
 
 export async function getAllUsers(): Promise<User[]> {
   const keys = await redis.keys("user:email:*");
   if (!keys || keys.length === 0) return [];
   const users = await Promise.all(keys.map((k) => redis.get<User>(k)));
-  return users.filter((u): u is User => u !== null);
+  const validUsers: User[] = [];
+
+  for (const u of users) {
+    if (!u) continue;
+    if (!u.recipientId) {
+      u.recipientId = generateRecipientId(u.id || u.email);
+      await redis.set(`user:email:${u.email.toLowerCase()}`, u).catch(() => {});
+      await redis.set(`user:id:${u.id}`, u).catch(() => {});
+      await redis.set(`user:recipient:${u.recipientId.toUpperCase()}`, u).catch(() => {});
+    }
+    validUsers.push(u);
+  }
+  return validUsers;
 }
 
 export async function deleteUser(email: string, id: string): Promise<void> {
+  const u = await getUserByEmail(email);
+  if (u?.recipientId) {
+    await redis.del(`user:recipient:${u.recipientId.toUpperCase()}`);
+  }
   await redis.del(`user:email:${email.toLowerCase()}`);
   await redis.del(`user:id:${id}`);
 }

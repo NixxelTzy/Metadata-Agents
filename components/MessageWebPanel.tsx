@@ -8,6 +8,7 @@ interface AccountUser {
   id: string;
   email: string;
   username: string;
+  recipientId?: string;
   role: "user" | "premium" | "admin";
   isOnline: boolean;
   lastSeen: string | null;
@@ -407,6 +408,10 @@ function ComposePanelForm({
     setSending(true);
     setResult(null);
 
+    const calcTargetEmail = target === "all" ? "all" : (selectedUser?.email ?? (target.includes("@") ? target.trim() : target.trim()));
+    const calcTargetUsername = target === "all" ? "all" : (selectedUser?.username ?? calcTargetEmail);
+    const calcTargetUserId = target === "all" ? "all" : (selectedUser?.id ?? target.trim());
+
     try {
       // 1. Send via MessageWeb API (In-App)
       const res = await fetch("/api/admin/messageweb", {
@@ -417,21 +422,22 @@ function ComposePanelForm({
           title: title.trim(),
           body: body.trim(),
           reason: reason.trim() || undefined,
-          targetUserId: target,
-          targetEmail: target === "all" ? "all" : (selectedUser?.email ?? "all"),
-          targetUsername: target === "all" ? "all" : (selectedUser?.username ?? "all"),
+          targetUserId: calcTargetUserId,
+          targetEmail: calcTargetEmail,
+          targetUsername: calcTargetUsername,
         }),
       });
 
       // 2. Also send Email if option enabled
-      if (sendEmailAlso && target !== "all" && selectedUser?.email) {
+      const emailToUse = selectedUser?.email || (target.includes("@") ? target.trim() : undefined);
+      if (sendEmailAlso && target !== "all" && emailToUse) {
         await fetch("/api/admin/ai-reply", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            toEmail: selectedUser.email,
-            toUsername: selectedUser.username,
-            targetUserId: selectedUser.id,
+            toEmail: emailToUse,
+            toUsername: calcTargetUsername,
+            targetUserId: calcTargetUserId,
             actionType: msgType === "block" ? "block_reason" : "reply_user",
             userMessage: body.trim(),
             customPrompt: title.trim(),
@@ -452,9 +458,9 @@ function ComposePanelForm({
                 title: title.trim(),
                 body: body.trim(),
                 reason: reason.trim() || undefined,
-                targetUserId: target,
-                targetEmail: target === "all" ? "all" : (selectedUser?.email ?? "all"),
-                targetUsername: target === "all" ? "all" : (selectedUser?.username ?? "all"),
+                targetUserId: calcTargetUserId,
+                targetEmail: calcTargetEmail,
+                targetUsername: calcTargetUsername,
                 sentAt: new Date().toISOString(),
                 sentByEmail: "admin@nixelstudio.com",
                 read: false,
@@ -569,6 +575,33 @@ function ComposePanelForm({
       {/* Target */}
       <div>
         <label style={labelStyle}>Kirim Kepada</label>
+
+        {/* Dropdown Selector for 1-click targeting */}
+        <div style={{ marginBottom: "10px" }}>
+          <select
+            value={target}
+            onChange={(e) => setTarget(e.target.value)}
+            style={{
+              width: "100%",
+              padding: "11px 14px",
+              borderRadius: "10px",
+              border: "1px solid var(--border)",
+              background: "var(--bg-secondary)",
+              color: "var(--text)",
+              fontSize: "13px",
+              fontWeight: "600",
+            }}
+          >
+            <option value="all">🌐 Semua Pengguna ({users.length} akun)</option>
+            {users.map((u) => (
+              <option key={u.id} value={u.id}>
+                {u.isOnline ? "🟢" : "⚪"} {u.username} — {u.email} ({u.recipientId ?? u.id})
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {/* User Chips */}
         <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
           <button
             onClick={() => setTarget("all")}
@@ -596,7 +629,7 @@ function ComposePanelForm({
             </span>
           </button>
           {users.map((u) => {
-            const sel = String(target) === String(u.id);
+            const sel = String(target) === String(u.id) || target.toLowerCase() === u.email.toLowerCase() || target.toUpperCase() === u.recipientId?.toUpperCase();
             const isOnline = u.isOnline;
             const secsAgo = u.secondsAgo != null ? `${u.secondsAgo}d lalu` : "";
 
@@ -630,12 +663,54 @@ function ComposePanelForm({
                   }}
                 />
                 {u.username}
+                {u.recipientId && (
+                  <span style={{ fontSize: "10px", background: "rgba(255,255,255,0.1)", padding: "1px 4px", borderRadius: "4px", color: "var(--text-muted)" }}>
+                    {u.recipientId}
+                  </span>
+                )}
                 <span style={{ fontSize: "10px", color: isOnline ? "#4ade80" : "var(--text-muted)", fontWeight: isOnline ? "700" : "400" }}>
                   {isOnline ? `Online ${secsAgo}` : "Offline"}
                 </span>
               </button>
             );
           })}
+        </div>
+
+        {/* Manual Target Email Input */}
+        <div style={{ marginTop: "10px", display: "flex", gap: "8px", alignItems: "center" }}>
+          <input
+            type="text"
+            placeholder="Ketik email target manual (contoh: storekyoraz@gmail.com)..."
+            value={target === "all" ? "" : target}
+            onChange={(e) => setTarget(e.target.value.trim() || "all")}
+            style={{
+              flex: 1,
+              padding: "9px 12px",
+              borderRadius: "8px",
+              border: "1px solid var(--border)",
+              background: "var(--bg-secondary)",
+              color: "var(--text)",
+              fontSize: "12px",
+            }}
+          />
+          {target !== "all" && (
+            <button
+              type="button"
+              onClick={() => setTarget("all")}
+              style={{
+                padding: "8px 12px",
+                borderRadius: "8px",
+                border: "none",
+                background: "rgba(239,68,68,0.15)",
+                color: "#f87171",
+                fontSize: "11px",
+                fontWeight: "700",
+                cursor: "pointer",
+              }}
+            >
+              Reset ke Semua
+            </button>
+          )}
         </div>
 
         {/* Target preview */}
@@ -650,7 +725,7 @@ function ComposePanelForm({
         }}>
           📮 Pesan akan dikirim ke:{" "}
           <strong style={{ color: "#a78bfa" }}>
-            {target === "all" ? `Semua ${users.length} pengguna` : `${selectedUser?.username} (${selectedUser?.email})`}
+            {target === "all" ? `Semua ${users.length} pengguna` : selectedUser ? `${selectedUser.username} (${selectedUser.email})` : target}
           </strong>
           {target !== "all" && (
             <span style={{ marginLeft: "8px" }}>
