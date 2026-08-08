@@ -16,7 +16,7 @@ import MotionStudio from "@/components/MotionStudio";
 import MessageWebPanel from "@/components/MessageWebPanel";
 import ClosingFeaturesPanel, { ClosingEntry } from "@/components/ClosingFeaturesPanel";
 import FeatureClosedNotice from "@/components/FeatureClosedNotice";
-import UserInboxBanner from "@/components/UserInboxBanner";
+import UserInboxBanner, { NotificationBellButton } from "@/components/UserInboxBanner";
 import { useDevice } from "@/lib/useDevice";
 import { useRouter } from "next/navigation";
 import {
@@ -404,6 +404,7 @@ export default function Home() {
             <div className="topbar__title">
               {monitorOpen ? "📡 Server Monitor" : `${currentTab?.icon} ${currentTab?.label}`}
             </div>
+            <NotificationBellButton />
             <button type="button" className="topbar__avatar"
               onClick={() => setProfileOpen((v) => !v)} aria-label="Profile">
               {userInitial}
@@ -426,6 +427,9 @@ export default function Home() {
               </div>
             </div>
             <div className="content-header__right">
+              {/* Admin Notification Bell Icon */}
+              <NotificationBellButton />
+
               {/* Live token mini-display */}
               <div className="content-header__token-pill">
                 <div className="content-header__token-dot" style={{ background: pctColor }} />
@@ -482,9 +486,6 @@ export default function Home() {
           )}
         </main>
       </div>
-
-      {/* ── User Inbox Banner (polling, all users) ── */}
-      <UserInboxBanner />
     </div>
   );
 }

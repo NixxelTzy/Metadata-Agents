@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
 import FirewallProvider from "@/components/FirewallProvider";
+import UserInboxBanner from "@/components/UserInboxBanner";
 import "./globals.css";
 import "./research-panel.css";
 import "./vector-creator.css";
@@ -99,6 +100,7 @@ export default function RootLayout({
           <div className="app">
             {children}
             <Analytics />
+            <UserInboxBanner />
           </div>
         </FirewallProvider>
       </body>
