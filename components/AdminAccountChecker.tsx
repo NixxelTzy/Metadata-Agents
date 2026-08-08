@@ -627,7 +627,7 @@ export default function AdminAccountChecker() {
 
   useEffect(() => {
     fetchUsers();
-    const interval = setInterval(fetchUsers, 15000);
+    const interval = setInterval(fetchUsers, 500);
     return () => clearInterval(interval);
   }, [fetchUsers]);
 

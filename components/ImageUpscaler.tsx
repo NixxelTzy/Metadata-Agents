@@ -124,44 +124,97 @@ function loadImage(src: string): Promise<HTMLImageElement> {
   });
 }
 
+function isVideoFile(file: File): boolean {
+  return file.type.startsWith("video/") || /\.(mp4|webm|mov|mkv|avi|m4v|3gp)$/i.test(file.name);
+}
+
+function isImageFile(file: File): boolean {
+  return file.type.startsWith("image/") || /\.(jpg|jpeg|png|webp|gif|bmp|svg|tiff)$/i.test(file.name);
+}
+
 async function extractVideoFrame(file: File, timeSeconds: number): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const video = document.createElement('video');
+  return new Promise((resolve) => {
+    const video = document.createElement("video");
     const url = URL.createObjectURL(file);
     video.src = url;
     video.muted = true;
-    video.crossOrigin = 'anonymous';
+    video.playsInline = true;
+    video.preload = "auto";
+
+    const drawAndResolve = () => {
+      try {
+        const canvas = document.createElement("canvas");
+        canvas.width = video.videoWidth || 640;
+        canvas.height = video.videoHeight || 360;
+        const ctx = canvas.getContext("2d");
+        if (ctx) ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        const data = canvas.toDataURL("image/jpeg", 0.9);
+        URL.revokeObjectURL(url);
+        resolve(data);
+      } catch {
+        URL.revokeObjectURL(url);
+        resolve("");
+      }
+    };
+
+    const timeout = setTimeout(() => {
+      drawAndResolve();
+    }, 3500);
+
     video.onloadeddata = () => {
-      video.currentTime = timeSeconds;
+      if (timeSeconds > 0) {
+        video.currentTime = timeSeconds;
+      } else {
+        clearTimeout(timeout);
+        drawAndResolve();
+      }
     };
+
     video.onseeked = () => {
-      const canvas = document.createElement('canvas');
-      canvas.width = video.videoWidth;
-      canvas.height = video.videoHeight;
-      const ctx = canvas.getContext('2d')!;
-      ctx.drawImage(video, 0, 0);
-      URL.revokeObjectURL(url);
-      resolve(canvas.toDataURL('image/jpeg', 0.92));
+      clearTimeout(timeout);
+      drawAndResolve();
     };
-    video.onerror = () => { URL.revokeObjectURL(url); reject(new Error('Gagal load video')); };
+
+    video.onerror = () => {
+      clearTimeout(timeout);
+      URL.revokeObjectURL(url);
+      resolve("");
+    };
+
     video.load();
   });
 }
 
 async function getVideoMetadata(file: File): Promise<{ width: number; height: number; duration: number }> {
-  return new Promise((resolve, reject) => {
-    const video = document.createElement('video');
+  return new Promise((resolve) => {
+    const video = document.createElement("video");
     const url = URL.createObjectURL(file);
     video.src = url;
     video.muted = true;
+    video.playsInline = true;
+    video.preload = "metadata";
+
+    const timeout = setTimeout(() => {
+      URL.revokeObjectURL(url);
+      resolve({ width: video.videoWidth || 1280, height: video.videoHeight || 720, duration: 5 });
+    }, 4000);
+
     video.onloadedmetadata = () => {
-      const w = video.videoWidth;
-      const h = video.videoHeight;
-      const d = video.duration;
+      clearTimeout(timeout);
+      const w = video.videoWidth || 1280;
+      const h = video.videoHeight || 720;
+      let d = video.duration;
+      if (!d || isNaN(d) || !isFinite(d) || d <= 0) d = 5;
       URL.revokeObjectURL(url);
       resolve({ width: w, height: h, duration: d });
     };
-    video.onerror = () => { URL.revokeObjectURL(url); reject(new Error('Gagal baca metadata video')); };
+
+    video.onerror = () => {
+      clearTimeout(timeout);
+      URL.revokeObjectURL(url);
+      resolve({ width: 1280, height: 720, duration: 5 });
+    };
+
     video.load();
   });
 }
@@ -560,7 +613,7 @@ export default function ImageUpscaler() {
   const addFiles = useCallback(async (files: FileList | File[]) => {
     setError("");
     const valid = Array.from(files).filter(
-      (f) => f.type.startsWith("image/") || f.type.startsWith("video/")
+      (f) => isImageFile(f) || isVideoFile(f)
     );
     if (!valid.length) {
       setError("Hanya file gambar dan video yang didukung.");
@@ -570,7 +623,7 @@ export default function ImageUpscaler() {
     const newMedia: MediaFile[] = [];
     for (const file of valid) {
       try {
-        if (file.type.startsWith("image/")) {
+        if (isImageFile(file)) {
           const dataUrl = await new Promise<string>((res, rej) => {
             const r = new FileReader();
             r.onload = (e) => res(e.target!.result as string);
@@ -589,10 +642,10 @@ export default function ImageUpscaler() {
             file,
             status: "idle",
           });
-        } else if (file.type.startsWith("video/")) {
+        } else if (isVideoFile(file)) {
           const meta = await getVideoMetadata(file);
           const thumb = await extractVideoFrame(file, 0);
-          const frameCount = Math.ceil(meta.duration * 30);
+          const frameCount = Math.max(30, Math.ceil(meta.duration * 30));
           newMedia.push({
             id: `${file.name}-${Date.now()}-${Math.random()}`,
             name: file.name,
@@ -607,7 +660,8 @@ export default function ImageUpscaler() {
             status: "idle",
           });
         }
-      } catch {
+      } catch (err) {
+        console.error("File load error:", err);
         setError(`Gagal memuat: ${file.name}`);
       }
     }

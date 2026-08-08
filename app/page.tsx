@@ -15,6 +15,7 @@ import StoragePanel from "@/components/StoragePanel";
 import MotionStudio from "@/components/MotionStudio";
 import MessageWebPanel from "@/components/MessageWebPanel";
 import ClosingFeaturesPanel, { ClosingEntry } from "@/components/ClosingFeaturesPanel";
+import FeatureClosedNotice from "@/components/FeatureClosedNotice";
 import UserInboxBanner from "@/components/UserInboxBanner";
 import { useDevice } from "@/lib/useDevice";
 import { useRouter } from "next/navigation";
@@ -447,44 +448,7 @@ export default function Home() {
         {/* Content */}
         <main className="workspace__content">
           {!isAdmin && closingMap[activeTab]?.closed ? (
-            <div style={{
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-              justifyContent: "center",
-              minHeight: "450px",
-              padding: "40px 24px",
-              background: "linear-gradient(135deg, rgba(239,68,68,0.06), rgba(15,23,42,0.8))",
-              border: "1.5px solid rgba(239,68,68,0.3)",
-              borderRadius: "20px",
-              textAlign: "center",
-              margin: "20px 0",
-              boxShadow: "0 20px 50px rgba(0,0,0,0.4)",
-            }}>
-              <div style={{
-                width: "72px",
-                height: "72px",
-                borderRadius: "50%",
-                background: "rgba(239,68,68,0.15)",
-                border: "2px solid #ef4444",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                fontSize: "32px",
-                marginBottom: "20px",
-              }}>
-                🔒
-              </div>
-              <h2 style={{ margin: "0 0 10px", fontSize: "22px", fontWeight: "800", color: "#f87171" }}>
-                Fitur Ditutup Sementara
-              </h2>
-              <p style={{ maxWidth: "520px", fontSize: "14px", color: "var(--text)", lineHeight: 1.7, marginBottom: "20px", background: "var(--surface)", padding: "18px 24px", borderRadius: "12px", border: "1px solid var(--border)" }}>
-                {closingMap[activeTab]?.message || "Fitur ini sedang ditutup sementara untuk pemeliharaan sistem. Silakan coba beberapa saat lagi."}
-              </p>
-              <div style={{ fontSize: "12px", color: "var(--text-muted)" }}>
-                Sistem Pemeliharaan Fitur · NixelStudio Admin Control
-              </div>
-            </div>
+            <FeatureClosedNotice featureName={currentTab?.label} message={closingMap[activeTab]?.message} />
           ) : isAdmin && monitorOpen ? (
             <ServerMonitor />
           ) : isAdmin && activeTab === "accounts" ? (
