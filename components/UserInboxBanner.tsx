@@ -581,12 +581,13 @@ export default function UserInboxBanner() {
         </div>
       )}
 
-      {/* ── Central Message Modal Popup ──────────────────────────────────────── */}
+      {/* ── Central Message Modal Popup (Ultra-Sleek Landscape Glassmorphic Design) ─── */}
       {showCenterPopup && activeMsg && (
         <div
           style={{
             position: "fixed", inset: 0, zIndex: 999997,
-            background: "rgba(15, 23, 42, 0.72)", backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)",
+            background: "rgba(15, 23, 42, 0.78)",
+            backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)",
             display: "flex", alignItems: "center", justifyContent: "center", padding: "20px",
             fontFamily: "'Inter', system-ui, -apple-system, sans-serif",
           }}
@@ -594,62 +595,133 @@ export default function UserInboxBanner() {
           <div
             key={activeMsg.id}
             style={{
-              maxWidth: "480px", width: "100%", background: "#ffffff", borderRadius: "20px", overflow: "hidden",
-              boxShadow: "0 25px 60px -15px rgba(15, 23, 42, 0.4), 0 0 0 1px rgba(37, 99, 235, 0.15)",
+              maxWidth: "780px", width: "100%", background: "#ffffff", borderRadius: "28px", overflow: "hidden",
+              boxShadow: "0 35px 90px -20px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(255, 255, 255, 0.25)",
+              display: "grid", gridTemplateColumns: "260px 1fr",
               animation: "centerModalIn 0.35s cubic-bezier(0.16, 1, 0.3, 1)",
             }}
           >
-            {/* Header */}
-            <div style={{ background: "linear-gradient(135deg, #0f172a, #1e293b)", padding: "24px 28px", borderBottom: "3px solid #2563eb" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: "14px" }}>
-                <div style={{ width: "44px", height: "44px", borderRadius: "12px", background: "#2563eb", color: "#ffffff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "20px", flexShrink: 0 }}>
-                  💬
+            {/* Left Column: Dark Obsidian Gradient Sidebar */}
+            <div style={{
+              background: "linear-gradient(145deg, #0b1329 0%, #1e293b 100%)",
+              padding: "36px 28px", display: "flex", flexDirection: "column", justifyContent: "space-between",
+              borderRight: "1px solid rgba(255, 255, 255, 0.08)", position: "relative", overflow: "hidden",
+            }}>
+              {/* Background Ambient Glow */}
+              <div style={{
+                position: "absolute", top: "-40px", left: "-40px", width: "160px", height: "160px",
+                borderRadius: "50%", background: activeMsg.type === "block" ? "rgba(239,68,68,0.25)" : activeMsg.type === "refresh" ? "rgba(16,185,129,0.25)" : "rgba(99,102,241,0.3)",
+                filter: "blur(40px)", pointerEvents: "none",
+              }} />
+
+              <div style={{ position: "relative", zIndex: 1 }}>
+                {/* Glowing Icon Badge */}
+                <div style={{
+                  width: "60px", height: "60px", borderRadius: "18px",
+                  background: activeMsg.type === "block"
+                    ? "linear-gradient(135deg, #dc2626, #991b1b)"
+                    : activeMsg.type === "refresh"
+                    ? "linear-gradient(135deg, #059669, #047857)"
+                    : "linear-gradient(135deg, #3b82f6, #6366f1)",
+                  color: "#ffffff", display: "flex", alignItems: "center", justifyContent: "center",
+                  fontSize: "28px", boxShadow: activeMsg.type === "block"
+                    ? "0 10px 25px rgba(220, 38, 38, 0.4)"
+                    : activeMsg.type === "refresh"
+                    ? "0 10px 25px rgba(5, 150, 105, 0.4)"
+                    : "0 10px 25px rgba(99, 102, 241, 0.45)",
+                  marginBottom: "22px",
+                }}>
+                  {activeMsg.type === "block" ? "🚫" : activeMsg.type === "refresh" ? "🔄" : "💬"}
                 </div>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "3px" }}>
-                    <span style={{ fontSize: "11px", fontWeight: "800", color: "#60a5fa", textTransform: "uppercase" }}>
-                      Notifikasi Admin
-                    </span>
-                    {unreadMessages.length > 1 && (
-                      <span style={{ fontSize: "10px", fontWeight: "800", background: "#2563eb", color: "#ffffff", padding: "1px 7px", borderRadius: "10px" }}>
-                        {safeIdx + 1}/{unreadMessages.length}
-                      </span>
-                    )}
+
+                <div style={{
+                  display: "inline-block", fontSize: "10px", fontWeight: "800",
+                  letterSpacing: "0.08em", textTransform: "uppercase", padding: "3px 10px", borderRadius: "6px",
+                  background: "rgba(255, 255, 255, 0.1)", color: "#93c5fd", border: "1px solid rgba(255, 255, 255, 0.15)",
+                  marginBottom: "10px",
+                }}>
+                  {activeMsg.type === "block" ? "🚫 Keamanan Akun" : activeMsg.type === "refresh" ? "🔄 Pembaruan Web" : "💬 Pesan Resmi Admin"}
+                </div>
+
+                <div style={{ fontSize: "20px", fontWeight: "900", color: "#ffffff", letterSpacing: "-0.02em", lineHeight: 1.25 }}>
+                  Stock AI Studio
+                </div>
+              </div>
+
+              <div style={{ position: "relative", zIndex: 1, marginTop: "24px" }}>
+                {unreadMessages.length > 1 && (
+                  <div style={{
+                    background: "rgba(99, 102, 241, 0.18)", border: "1px solid rgba(99, 102, 241, 0.35)",
+                    padding: "6px 12px", borderRadius: "8px", color: "#a5b4fc", fontSize: "11px", fontWeight: "700",
+                    marginBottom: "14px", display: "inline-flex", alignItems: "center", gap: "6px",
+                  }}>
+                    <span>📬</span> Pesan {safeIdx + 1} dari {unreadMessages.length}
                   </div>
-                  <h3 style={{ margin: 0, fontSize: "17px", fontWeight: "800", color: "#ffffff", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                    {activeMsg.title}
-                  </h3>
+                )}
+                <div style={{ fontSize: "11px", color: "#94a3b8", fontWeight: "500", display: "flex", alignItems: "center", gap: "6px" }}>
+                  <span>📅</span> {new Date(activeMsg.sentAt).toLocaleString("id-ID", { timeZone: "Asia/Jakarta", hour: "2-digit", minute: "2-digit", day: "2-digit", month: "short" })} WIB
                 </div>
-                <button
-                  onClick={() => handleDismiss(activeMsg)}
-                  style={{ width: "32px", height: "32px", borderRadius: "8px", border: "none", background: "rgba(255, 255, 255, 0.1)", color: "#94a3b8", cursor: "pointer", fontSize: "14px", display: "flex", alignItems: "center", justifyContent: "center" }}
-                >
-                  ✕
-                </button>
               </div>
             </div>
 
-            {/* Body */}
-            <div style={{ padding: "28px" }}>
-              <div style={{ fontSize: "14px", color: "#334155", lineHeight: 1.7, marginBottom: "24px", whiteSpace: "pre-wrap", background: "#f8fafc", padding: "18px 20px", borderRadius: "12px", border: "1px solid #e2e8f0" }}>
-                {activeMsg.body}
+            {/* Right Column: Clean White Content Area */}
+            <div style={{ padding: "36px", display: "flex", flexDirection: "column", justifyContent: "space-between", background: "#ffffff" }}>
+              <div>
+                {/* Header Title & Close Button */}
+                <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "16px", marginBottom: "18px" }}>
+                  <h3 style={{ margin: 0, fontSize: "20px", fontWeight: "800", color: "#0f172a", letterSpacing: "-0.02em", lineHeight: 1.35 }}>
+                    {activeMsg.title}
+                  </h3>
+                  <button
+                    onClick={() => handleDismiss(activeMsg)}
+                    title="Tutup & Tandai Dibaca"
+                    style={{
+                      width: "36px", height: "36px", borderRadius: "10px", border: "none",
+                      background: "#f1f5f9", color: "#64748b", cursor: "pointer", fontSize: "15px",
+                      fontWeight: "800", display: "flex", alignItems: "center", justifyContent: "center",
+                      flexShrink: 0, transition: "all 0.2s",
+                    }}
+                  >
+                    ✕
+                  </button>
+                </div>
+
+                {/* Styled Message Body Text Area */}
+                <div style={{
+                  fontSize: "14px", color: "#334155", lineHeight: 1.7, whiteSpace: "pre-wrap",
+                  background: "#f8fafc", padding: "20px 22px", borderRadius: "14px",
+                  border: "1px solid #e2e8f0", maxHeight: "250px", overflowY: "auto",
+                  marginBottom: "28px", boxShadow: "inset 0 2px 4px rgba(0,0,0,0.02)",
+                }}>
+                  {activeMsg.body}
+                </div>
               </div>
 
-              {/* Actions */}
-              <div style={{ display: "flex", gap: "10px", flexWrap: "wrap", alignItems: "center" }}>
+              {/* Bottom Action Toolbar */}
+              <div style={{ display: "flex", gap: "12px", flexWrap: "wrap", alignItems: "center" }}>
                 <button
                   className="inbox-btn-blue"
                   onClick={() => handleDismiss(activeMsg)}
-                  style={{ flex: 1, padding: "12px 20px", borderRadius: "10px", border: "none", background: "linear-gradient(135deg, #2563eb, #1d4ed8)", color: "#ffffff", fontWeight: "700", fontSize: "13px", cursor: "pointer" }}
+                  style={{
+                    flex: 1, padding: "14px 24px", borderRadius: "12px", border: "none",
+                    background: "linear-gradient(135deg, #2563eb, #4f46e5)", color: "#ffffff",
+                    fontWeight: "800", fontSize: "13.5px", cursor: "pointer",
+                    display: "flex", alignItems: "center", justifyContent: "center", gap: "8px",
+                    boxShadow: "0 6px 18px rgba(37, 99, 235, 0.35)", transition: "all 0.2s",
+                  }}
                 >
-                  ✓ Mengerti
+                  ✓ Tutup & Tandai Dibaca
                 </button>
 
                 {unreadMessages.length > 1 && safeIdx < unreadMessages.length - 1 && (
                   <button
                     className="inbox-btn-light"
                     onClick={() => { handleDismiss(activeMsg); setCurrentIdx(safeIdx + 1); }}
-                    style={{ padding: "12px 18px", borderRadius: "10px", border: "1px solid #cbd5e1", background: "#f1f5f9", color: "#0f172a", fontWeight: "600", fontSize: "13px", cursor: "pointer" }}
+                    style={{
+                      padding: "14px 20px", borderRadius: "12px", border: "1px solid #cbd5e1",
+                      background: "#ffffff", color: "#0f172a", fontWeight: "700",
+                      fontSize: "13px", cursor: "pointer", transition: "all 0.2s",
+                    }}
                   >
                     Berikutnya →
                   </button>
@@ -658,17 +730,15 @@ export default function UserInboxBanner() {
                 {unreadMessages.length > 1 && (
                   <button
                     onClick={handleDismissAll}
-                    style={{ padding: "12px 14px", borderRadius: "10px", border: "none", background: "transparent", color: "#64748b", fontWeight: "600", fontSize: "12px", cursor: "pointer" }}
+                    style={{
+                      padding: "14px 16px", borderRadius: "12px", border: "none",
+                      background: "transparent", color: "#64748b", fontWeight: "600",
+                      fontSize: "12.5px", cursor: "pointer",
+                    }}
                   >
                     Tutup Semua
                   </button>
                 )}
-              </div>
-
-              <div style={{ fontSize: "11px", color: "#94a3b8", marginTop: "14px", textAlign: "right" }}>
-                {new Date(activeMsg.sentAt).toLocaleString("id-ID", {
-                  timeZone: "Asia/Jakarta", hour: "2-digit", minute: "2-digit", day: "2-digit", month: "short",
-                })} WIB
               </div>
             </div>
           </div>
