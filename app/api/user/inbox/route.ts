@@ -71,11 +71,18 @@ export async function GET(request: NextRequest) {
           if (isAiMessage) continue;
 
           // Target check: Broadcast to everyone or specifically targeted to this user
-          const isBroadcast = msg.targetUserId === "all" || msg.targetEmail === "all" || msg.targetUsername === "all";
+          const isBroadcast =
+            msg.targetUserId === "all" ||
+            msg.targetEmail === "all" ||
+            msg.targetUsername === "all" ||
+            String(msg.targetUserId).toLowerCase() === "all" ||
+            String(msg.targetEmail).toLowerCase() === "all" ||
+            String(msg.targetUsername).toLowerCase() === "all";
+
           const isForMe =
-            (userId && String(msg.targetUserId) === String(userId)) ||
-            (userEmail && msg.targetEmail?.toLowerCase() === userEmail) ||
-            (userUsername && msg.targetUsername?.toLowerCase() === userUsername);
+            (userId && String(msg.targetUserId).toLowerCase() === String(userId).toLowerCase()) ||
+            (userEmail && msg.targetEmail && msg.targetEmail.toLowerCase() === userEmail.toLowerCase()) ||
+            (userUsername && msg.targetUsername && msg.targetUsername.toLowerCase() === userUsername.toLowerCase());
 
           if (!isBroadcast && !isForMe) continue;
 

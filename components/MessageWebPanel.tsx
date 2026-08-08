@@ -349,7 +349,9 @@ function ComposePanelForm({
   const [generatingAi, setGeneratingAi] = useState(false);
   const [result, setResult] = useState<{ ok: boolean; msg: string } | null>(null);
 
-  const selectedUser = users.find((u) => String(u.id) === String(target));
+  const selectedUser = users.find(
+    (u) => String(u.id) === String(target) || u.email.toLowerCase() === String(target).toLowerCase() || u.username.toLowerCase() === String(target).toLowerCase()
+  );
   const meta = TYPE_META[msgType];
 
   const handleAiDraft = async () => {
