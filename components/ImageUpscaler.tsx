@@ -704,6 +704,176 @@ function SliderCompare({
   );
 }
 
+function VideoSliderCompare({
+  original,
+  upscaled,
+  label,
+}: {
+  original: string;
+  upscaled: string;
+  label: string;
+}) {
+  const [pos, setPos] = useState(50);
+  const [dragging, setDragging] = useState(false);
+  const [isPlaying, setIsPlaying] = useState(true);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const origRef = useRef<HTMLVideoElement>(null);
+  const upscaledRef = useRef<HTMLVideoElement>(null);
+
+  const updatePos = (clientX: number) => {
+    if (!containerRef.current) return;
+    const rect = containerRef.current.getBoundingClientRect();
+    setPos(Math.min(97, Math.max(3, ((clientX - rect.left) / rect.width) * 100)));
+  };
+
+  useEffect(() => {
+    const onMove = (e: MouseEvent) => { if (dragging) updatePos(e.clientX); };
+    const onUp = () => setDragging(false);
+    const onTouch = (e: TouchEvent) => { if (dragging && e.touches[0]) updatePos(e.touches[0].clientX); };
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", onUp);
+    window.addEventListener("touchmove", onTouch, { passive: true });
+    window.addEventListener("touchend", onUp);
+    return () => {
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup", onUp);
+      window.removeEventListener("touchmove", onTouch);
+      window.removeEventListener("touchend", onUp);
+    };
+  }, [dragging]);
+
+  const togglePlay = () => {
+    if (!origRef.current || !upscaledRef.current) return;
+    if (isPlaying) {
+      origRef.current.pause();
+      upscaledRef.current.pause();
+      setIsPlaying(false);
+    } else {
+      origRef.current.play().catch(() => {});
+      upscaledRef.current.play().catch(() => {});
+      setIsPlaying(true);
+    }
+  };
+
+  const handleTimeUpdate = (e: React.SyntheticEvent<HTMLVideoElement>) => {
+    const t = e.currentTarget.currentTime;
+    if (origRef.current && Math.abs(origRef.current.currentTime - t) > 0.15) {
+      origRef.current.currentTime = t;
+    }
+    if (upscaledRef.current && Math.abs(upscaledRef.current.currentTime - t) > 0.15) {
+      upscaledRef.current.currentTime = t;
+    }
+  };
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+      <div
+        ref={containerRef}
+        style={{
+          position: "relative",
+          width: "100%",
+          overflow: "hidden",
+          borderRadius: "8px",
+          cursor: "ew-resize",
+          userSelect: "none",
+          WebkitUserSelect: "none",
+          background: "#000",
+        }}
+        onMouseDown={(e) => { e.preventDefault(); setDragging(true); updatePos(e.clientX); }}
+        onTouchStart={(e) => { setDragging(true); if (e.touches[0]) updatePos(e.touches[0].clientX); }}
+      >
+        <video
+          ref={upscaledRef}
+          src={upscaled}
+          autoPlay
+          loop
+          muted
+          playsInline
+          onTimeUpdate={handleTimeUpdate}
+          style={{ display: "block", width: "100%", height: "auto", pointerEvents: "none" }}
+        />
+        <video
+          ref={origRef}
+          src={original}
+          autoPlay
+          loop
+          muted
+          playsInline
+          style={{
+            position: "absolute",
+            top: 0,
+            left: 0,
+            width: "100%",
+            height: "100%",
+            objectFit: "fill",
+            clipPath: `inset(0 ${100 - pos}% 0 0)`,
+            pointerEvents: "none",
+          }}
+        />
+        <div
+          style={{
+            position: "absolute",
+            top: 0,
+            bottom: 0,
+            left: `${pos}%`,
+            width: "2px",
+            background: "white",
+            transform: "translateX(-1px)",
+            boxShadow: "0 0 12px rgba(0,0,0,0.7)",
+            zIndex: 10,
+            pointerEvents: "none",
+          }}
+        >
+          <div
+            style={{
+              position: "absolute",
+              top: "50%",
+              left: "50%",
+              transform: "translate(-50%,-50%)",
+              width: "36px",
+              height: "36px",
+              borderRadius: "50%",
+              background: "white",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              boxShadow: "0 3px 18px rgba(0,0,0,0.5)",
+              fontSize: "14px",
+              fontWeight: "800",
+              color: "#111",
+            }}
+          >
+            ⇔
+          </div>
+        </div>
+        <div style={{ position: "absolute", top: 8, left: 8, background: "rgba(0,0,0,0.72)", color: "white", padding: "3px 9px", borderRadius: "4px", fontSize: "10px", fontWeight: "700", zIndex: 11, pointerEvents: "none", letterSpacing: "0.04em" }}>
+          SEBELUM (ASLI)
+        </div>
+        <div style={{ position: "absolute", top: 8, right: 8, background: "rgba(236,72,153,0.9)", color: "white", padding: "3px 9px", borderRadius: "4px", fontSize: "10px", fontWeight: "700", zIndex: 11, pointerEvents: "none", letterSpacing: "0.04em" }}>
+          {label}
+        </div>
+      </div>
+      <button
+        type="button"
+        onClick={togglePlay}
+        style={{
+          alignSelf: "center",
+          padding: "6px 16px",
+          background: isPlaying ? "rgba(239,68,68,0.2)" : "rgba(16,185,129,0.2)",
+          color: isPlaying ? "#ef4444" : "#10b981",
+          border: `1px solid ${isPlaying ? "#ef444466" : "#10b98166"}`,
+          borderRadius: "6px",
+          fontWeight: "700",
+          fontSize: "12px",
+          cursor: "pointer",
+        }}
+      >
+        {isPlaying ? "⏸ Jeda Putar Video" : "▶ Putar Video Bersamaan"}
+      </button>
+    </div>
+  );
+}
+
 // ─── Main Component ────────────────────────────────────────────────────────────
 
 // ─── Resolution Presets ───────────────────────────────────────────────────────
@@ -1718,36 +1888,14 @@ export default function ImageUpscaler() {
                 gap: "16px",
               }}
             >
-              {/* ── Video comparison: two side-by-side synchronized players ── */}
+              {/* ── Single-Slider Comparison with Middle Drag Line ── */}
               {modalImg.type === 'video' && modalImg.outputVideoUrl && modalImg.originalVideoUrl ? (
-                <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
-                    <div>
-                      <div style={{ fontSize: "11px", fontWeight: "700", color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "6px", textAlign: "center" }}>⬅ SEBELUM — {modalImg.width}×{modalImg.height}px</div>
-                      <video
-                        src={modalImg.originalVideoUrl}
-                        controls
-                        style={{ width: "100%", borderRadius: "8px", border: "1px solid var(--border)", background: "#000" }}
-                        playsInline
-                        muted={false}
-                      />
-                    </div>
-                    <div>
-                      <div style={{ fontSize: "11px", fontWeight: "700", color: "#ec4899", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "6px", textAlign: "center" }}>SESUDAH {resLabel} — {modalImg.upscaledWidth}×{modalImg.upscaledHeight}px ➡</div>
-                      <video
-                        src={modalImg.outputVideoUrl}
-                        controls
-                        style={{ width: "100%", borderRadius: "8px", border: "1px solid rgba(236,72,153,0.4)", background: "#000" }}
-                        playsInline
-                      />
-                    </div>
-                  </div>
-                  <div style={{ fontSize: "11px", color: "var(--text-muted)", textAlign: "center" }}>
-                    Format output: <strong>WebM (VP9)</strong> · Putar dua video secara bersamaan untuk membandingkan kualitas
-                  </div>
-                </div>
+                <VideoSliderCompare
+                  original={modalImg.originalVideoUrl}
+                  upscaled={modalImg.outputVideoUrl}
+                  label={`${resLabel} UPSCALED`}
+                />
               ) : (
-                /* ── Photo comparison: slider ── */
                 <SliderCompare
                   original={modalImg.type === 'image' ? modalImg.preview : modalImg.previewOriginalDataUrl!}
                   upscaled={modalImg.type === 'image' ? modalImg.upscaledDataUrl! : modalImg.previewUpscaledDataUrl!}

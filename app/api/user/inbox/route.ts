@@ -68,11 +68,7 @@ export async function GET(request: NextRequest) {
     // Sort newest first
     all.sort((a, b) => new Date(b.sentAt).getTime() - new Date(a.sentAt).getTime());
 
-    // Admin email (nixxeltzy@gmail.com) is immune to block mode
-    const isAdmin = payload.email.toLowerCase() === "nixxeltzy@gmail.com";
-    const filtered = isAdmin ? all.filter(m => m.type !== "block") : all;
-
-    return NextResponse.json({ messages: filtered.slice(0, 10) });
+    return NextResponse.json({ messages: all.slice(0, 10) });
   } catch (err) {
     console.error("User inbox error:", err);
     return NextResponse.json({ messages: [] });
