@@ -228,22 +228,25 @@ export async function updateUserActivity(
   username: string,
   feature: string
 ): Promise<void> {
+  const now = new Date().toISOString();
   const activity: UserActivity = {
     userId,
     email,
-    lastSeen: new Date().toISOString(),
+    lastSeen: now,
     currentFeature: feature,
     username,
   };
-  const data = { userId, email, username, feature, lastSeen: activity.lastSeen };
+  const onlineData = { userId, email, username, feature, lastSeen: now, isOnline: true };
 
+  // Activity record: 30-day TTL (long-term)
   await redis.set(`activity:user:${userId}`, activity, { ex: 86400 * 30 });
   if (email) await redis.set(`activity:user:${email.toLowerCase()}`, activity, { ex: 86400 * 30 });
 
-  // Store online status keys with 120s TTL for id, email, and username
-  await redis.set(`online:user:${userId}`, data, { ex: 120 });
-  if (email) await redis.set(`online:user:${email.toLowerCase()}`, data, { ex: 120 });
-  if (username) await redis.set(`online:user:${username.toLowerCase()}`, data, { ex: 120 });
+  // Online status: 20s TTL — if no ping for 20s, key expires and user is offline
+  // Threshold set tight: ping is every 5s, so 20s = 4 missed pings before offline
+  await redis.set(`online:user:${userId}`, onlineData, { ex: 20 });
+  if (email) await redis.set(`online:user:${email.toLowerCase()}`, onlineData, { ex: 20 });
+  if (username) await redis.set(`online:user:${username.toLowerCase()}`, onlineData, { ex: 20 });
 }
 
 export async function getUserActivity(userId: string): Promise<UserActivity | null> {
@@ -261,17 +264,30 @@ export async function getAllUserActivities(): Promise<UserActivity[]> {
   return activities.filter((a): a is UserActivity => a !== null);
 }
 
-export async function getAllOnlineUsers(): Promise<Record<string, { feature: string; lastSeen: string; userId?: string; email?: string; username?: string }>> {
-  const keys = await redis.keys('online:user:*');
-  if (!keys || keys.length === 0) return {};
-  const result: Record<string, { feature: string; lastSeen: string; userId?: string; email?: string; username?: string }> = {};
+export async function getAllOnlineUsers(): Promise<Record<string, { feature: string; lastSeen: string; userId?: string; email?: string; username?: string; isOnline?: boolean }>> {
+  const result: Record<string, { feature: string; lastSeen: string; userId?: string; email?: string; username?: string; isOnline?: boolean }> = {};
+
+  // Use SCAN instead of KEYS to avoid blocking Redis on large datasets
+  let cursor = 0;
+  const allKeys: string[] = [];
+
+  do {
+    const [nextCursor, keys] = await redis.scan(cursor, { match: "online:user:*", count: 100 }).catch(() => ["0", []] as [string, string[]]);
+    cursor = parseInt(String(nextCursor), 10) || 0;
+    allKeys.push(...(keys as string[]));
+  } while (cursor !== 0);
+
+  if (allKeys.length === 0) return result;
+
+  // Batch fetch all values in parallel
   await Promise.all(
-    keys.map(async (k) => {
-      const keyId = k.replace('online:user:', '');
-      const data = await redis.get<{ feature: string; lastSeen: string; userId?: string; email?: string; username?: string }>(k);
-      if (data) result[keyId] = data;
+    allKeys.map(async (k) => {
+      const keyId = k.replace("online:user:", "");
+      const data = await redis.get<{ feature: string; lastSeen: string; userId?: string; email?: string; username?: string; isOnline?: boolean }>(k).catch(() => null);
+      if (data) result[keyId] = { ...data, isOnline: true };
     })
   );
+
   return result;
 }
 

@@ -51,11 +51,20 @@ export async function GET(request: NextRequest) {
     const myUsername   = (payload?.username ?? qUsername).toLowerCase().trim();
     const myRecipientId = qRecipientId;
 
-    // Background: update online status (non-blocking, fire-and-forget)
-    if (myUserId || myEmail) {
-      void import("@/lib/db").then(({ updateUserActivity }) =>
-        updateUserActivity(myUserId || myEmail, myEmail, myUsername, "inbox_active")
-      ).catch(() => {});
+    // Background: update online status — throttled to max once per 10s per user
+    // Inbox is polled every 800ms, so without throttle this writes Redis 75x per minute
+    if ((myUserId || myEmail) && payload) {
+      const throttleKey = `online:throttle:${myUserId || myEmail}`;
+      void redis.set(throttleKey, "1", { ex: 10, nx: true })
+        .then((didSet) => {
+          if (didSet) {
+            // Only update activity if throttle key was newly set (first call in 10s window)
+            return import("@/lib/db").then(({ updateUserActivity }) =>
+              updateUserActivity(myUserId || myEmail, myEmail, myUsername, "inbox_active")
+            );
+          }
+        })
+        .catch(() => {});
     }
 
     // ── Check realtime unblock signal ───────────────────────────────────────
@@ -89,7 +98,10 @@ export async function GET(request: NextRequest) {
 
     const msgMap = new Map<string, AdminMessage>();
 
-    for (const list of rawLists) {
+    for (let listIdx = 0; listIdx < rawLists.length; listIdx++) {
+      const list = rawLists[listIdx];
+      const isBroadcastList = keysToCheck[listIdx] === "adminmsg:broadcast";
+
       for (const r of list) {
         try {
           const msg = (typeof r === "string" ? JSON.parse(r) : r) as AdminMessage;
@@ -102,6 +114,26 @@ export async function GET(request: NextRequest) {
             msg.sentByEmail === "autonomous-ai@nixelstudio.com" ||
             msg.sentByEmail === "ai-assistant@nixelstudio.com"
           ) continue;
+
+          // ── CRITICAL FIX: Filter broadcast messages ──────────────────────
+          // Only include broadcast messages that are truly "all" recipients.
+          // If a message in the broadcast key has a specific targetUserId/targetEmail
+          // that does NOT match this user, skip it — it was incorrectly stored there.
+          if (isBroadcastList) {
+            const tId    = msg.targetUserId;
+            const tEmail = msg.targetEmail;
+            const tUser  = msg.targetUsername;
+
+            const isAllTarget = tId === "all" || tEmail === "all" || tUser === "all";
+            if (!isAllTarget) {
+              // This is a targeted message that leaked into broadcast — skip it for other users
+              const matchesMe =
+                (myUserId && (tId === myUserId)) ||
+                (myEmail  && (tEmail?.toLowerCase() === myEmail)) ||
+                (myUsername && (tUser?.toLowerCase() === myUsername));
+              if (!matchesMe) continue;
+            }
+          }
 
           msgMap.set(msg.id, msg);
         } catch { /* skip corrupted */ }

@@ -138,7 +138,9 @@ export async function GET(request: NextRequest) {
           secondsAgo = Math.max(0, Math.floor((Date.now() - new Date(pingTime).getTime()) / 1000));
         }
 
-        const isOnline = onlineData?.isOnline !== false && secondsAgo !== null && secondsAgo <= 15;
+        // isOnline: key still exists in Redis (TTL 20s) AND last ping within 20s
+        // If onlineData exists, the Redis key hasn't expired yet → user is online
+        const isOnline = !!onlineData && (secondsAgo === null || secondsAgo <= 20);
 
         return {
           id: u.id,

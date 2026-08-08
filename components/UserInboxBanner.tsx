@@ -193,6 +193,28 @@ export default function UserInboxBanner() {
         if (data?.user && mountedRef.current) {
           setAuthUser(data.user);
           authUserRef.current = data.user;
+          // ── Immediately poll once auth is ready so messages appear instantly ──
+          void (async () => {
+            try {
+              const u = data.user!;
+              const queryParams = new URLSearchParams();
+              if (u.email) queryParams.set("email", u.email);
+              if (u.userId) queryParams.set("userId", u.userId);
+              if (u.username) queryParams.set("username", u.username);
+              if (u.recipientId) queryParams.set("recipientId", u.recipientId);
+              const url = `/api/user/inbox${queryParams.toString() ? `?${queryParams.toString()}` : ""}`;
+              const res = await fetch(url, { credentials: "include" });
+              if (!res.ok || !mountedRef.current) return;
+              const d = await res.json() as { messages: AdminMessage[] };
+              const msgs: AdminMessage[] = d.messages ?? [];
+              if (mountedRef.current) {
+                setAllMessages(msgs);
+                const unreadIds = msgs.filter((m) => !loadDismissed().has(m.id)).map((m) => m.id).join(",");
+                if (unreadIds) { playNotificationSound(); setPopupAutoOpen(true); prevIdsRef.current = unreadIds; }
+                try { sessionStorage.setItem("adminmsg_latest_cache", JSON.stringify(msgs)); window.dispatchEvent(new CustomEvent("adminmsg_updated")); } catch {}
+              }
+            } catch { /* silent */ }
+          })();
         }
       })
       .catch(() => {});
@@ -224,24 +246,21 @@ export default function UserInboxBanner() {
     };
   }, [authUser]);
 
-  // ── 4-Second Real-Time Precision Online Heartbeat Ping ─────────────────────
+  // ── 5-Second Accurate Online Heartbeat Ping ────────────────────────────────
   useEffect(() => {
     const sendPing = async () => {
       try {
         const u = authUserRef.current || authUser;
-        const queryParams = new URLSearchParams();
-        if (u?.email) queryParams.set("email", u.email);
-        if (u?.userId) queryParams.set("userId", u.userId);
-        if (u?.username) queryParams.set("username", u.username);
+        if (!u) return; // Don't ping if not authenticated yet
 
-        await fetch(`/api/user/ping?${queryParams.toString()}`, {
+        await fetch("/api/user/ping", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           credentials: "include",
           body: JSON.stringify({
-            email: u?.email,
-            userId: u?.userId,
-            username: u?.username,
+            email: u.email,
+            userId: u.userId,
+            username: u.username,
             path: typeof window !== "undefined" ? window.location.pathname : "/",
             visibility: typeof document !== "undefined" ? document.visibilityState : "visible",
           }),
@@ -249,8 +268,9 @@ export default function UserInboxBanner() {
       } catch { /* silent */ }
     };
 
+    // Send immediately when auth is ready, then every 5s
     sendPing();
-    const pingInterval = setInterval(sendPing, 4000);
+    const pingInterval = setInterval(sendPing, 5000);
     return () => clearInterval(pingInterval);
   }, [authUser]);
 
@@ -299,7 +319,7 @@ export default function UserInboxBanner() {
 
   useEffect(() => {
     poll();
-    pollRef.current = setInterval(poll, 1500);
+    pollRef.current = setInterval(poll, 800);
 
     const handleTriggerPoll = () => void poll();
     const handleVisibility = () => {
@@ -465,6 +485,54 @@ export default function UserInboxBanner() {
         .inbox-appeal-input { transition: border-color 0.2s, box-shadow 0.2s; }
         .inbox-appeal-input:focus { border-color: #818cf8 !important; box-shadow: 0 0 0 3px rgba(129,140,248,0.2) !important; outline: none; }
         .inbox-drawer-item:hover { background: rgba(255,255,255,0.05) !important; }
+
+        /* ── Block modal responsive ── */
+        .block-modal-card {
+          display: grid;
+          grid-template-columns: 260px 1fr;
+          grid-template-rows: auto 1fr auto;
+        }
+        .block-modal-stripe-top    { grid-column: 1 / -1; }
+        .block-modal-stripe-bottom { grid-column: 1 / -1; }
+        .block-modal-left  { grid-column: 1; grid-row: 2; }
+        .block-modal-right {
+          grid-column: 2; grid-row: 2;
+          overflow-y: auto;
+          max-height: calc(90vh - 10px);
+        }
+
+        @media (max-width: 640px) {
+          .block-modal-card {
+            grid-template-columns: 1fr !important;
+            grid-template-rows: auto auto auto auto !important;
+            max-width: 100% !important;
+            border-radius: 20px !important;
+          }
+          .block-modal-left {
+            grid-column: 1 !important;
+            grid-row: 2 !important;
+            flex-direction: row !important;
+            justify-content: flex-start !important;
+            gap: 16px !important;
+            padding: 20px 20px !important;
+            border-right: none !important;
+            border-bottom: 1px solid rgba(239,68,68,0.18) !important;
+          }
+          .block-modal-right {
+            grid-column: 1 !important;
+            grid-row: 3 !important;
+            max-height: calc(70vh - 100px) !important;
+            padding: 20px 20px 20px !important;
+          }
+          .block-modal-icon-wrap {
+            width: 56px !important;
+            height: 56px !important;
+            font-size: 26px !important;
+            flex-shrink: 0;
+          }
+          .block-modal-left-text { text-align: left !important; }
+          .block-modal-glow-orb  { display: none !important; }
+        }
       `}</style>
 
       {/* ── Top-of-Screen Sticky Admin Announcement Notice Bar ──────────────── */}
@@ -535,6 +603,7 @@ export default function UserInboxBanner() {
 
           {/* ── LANDSCAPE CARD (max-width wide, 2 columns) ── */}
           <div
+            className="block-modal-card"
             style={{
               maxWidth: "880px", width: "100%", position: "relative",
               background: "linear-gradient(145deg, rgba(12,8,28,0.99) 0%, rgba(25,8,18,0.99) 100%)",
@@ -542,13 +611,10 @@ export default function UserInboxBanner() {
               border: "1px solid rgba(239,68,68,0.22)",
               boxShadow: "0 0 0 1px rgba(239,68,68,0.08), 0 40px 100px -20px rgba(0,0,0,0.9), 0 0 80px rgba(239,68,68,0.1)",
               animation: "centerModalIn 0.4s cubic-bezier(0.16, 1, 0.3, 1)",
-              display: "grid",
-              gridTemplateColumns: "260px 1fr",
             }}
           >
             {/* Top Danger Stripe — spans both cols */}
-            <div style={{
-              gridColumn: "1 / -1",
+            <div className="block-modal-stripe-top" style={{
               height: "4px",
               background: "linear-gradient(90deg, #dc2626, #ef4444, #f87171, #ef4444, #dc2626)",
               backgroundSize: "200% auto",
@@ -556,7 +622,7 @@ export default function UserInboxBanner() {
             }} />
 
             {/* ── LEFT COLUMN: Red sidebar panel ── */}
-            <div style={{
+            <div className="block-modal-left" style={{
               background: "linear-gradient(160deg, rgba(40,8,18,0.95) 0%, rgba(20,5,12,0.98) 100%)",
               borderRight: "1px solid rgba(239,68,68,0.18)",
               padding: "36px 28px",
@@ -569,7 +635,7 @@ export default function UserInboxBanner() {
               overflow: "hidden",
             }}>
               {/* Glow orb behind icon */}
-              <div style={{
+              <div className="block-modal-glow-orb" style={{
                 position: "absolute", top: "50%", left: "50%",
                 transform: "translate(-50%, -50%)",
                 width: "220px", height: "220px", borderRadius: "50%",
@@ -578,7 +644,7 @@ export default function UserInboxBanner() {
               }} />
 
               {/* Block icon */}
-              <div style={{
+              <div className="block-modal-icon-wrap" style={{
                 width: "90px", height: "90px", borderRadius: "50%",
                 background: "linear-gradient(135deg, rgba(239,68,68,0.25), rgba(185,28,28,0.15))",
                 border: "2px solid rgba(239,68,68,0.55)",
@@ -590,7 +656,7 @@ export default function UserInboxBanner() {
               </div>
 
               {/* Status badge */}
-              <div style={{ textAlign: "center", position: "relative", zIndex: 1 }}>
+              <div className="block-modal-left-text" style={{ textAlign: "center", position: "relative", zIndex: 1 }}>
                 <div style={{
                   display: "inline-block",
                   fontSize: "9px", fontWeight: "800", letterSpacing: "0.15em",
@@ -620,10 +686,8 @@ export default function UserInboxBanner() {
             </div>
 
             {/* ── RIGHT COLUMN: Content ── */}
-            <div style={{
+            <div className="block-modal-right" style={{
               padding: "32px 32px 28px",
-              overflowY: "auto",
-              maxHeight: "90vh",
               display: "flex",
               flexDirection: "column",
               gap: "0",
@@ -786,7 +850,7 @@ export default function UserInboxBanner() {
             </div>
 
             {/* Bottom stripe */}
-            <div style={{ gridColumn: "1 / -1", height: "3px", background: "linear-gradient(90deg, transparent, rgba(239,68,68,0.4), transparent)" }} />
+            <div className="block-modal-stripe-bottom" style={{ height: "3px", background: "linear-gradient(90deg, transparent, rgba(239,68,68,0.4), transparent)" }} />
           </div>
         </div>
       )}
