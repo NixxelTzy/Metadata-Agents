@@ -22,14 +22,21 @@ export interface AdminMessage {
 
 /**
  * GET /api/user/inbox
- * Returns active admin messages (targeted + broadcast).
- * Supports JWT cookie & query params for maximum delivery guarantee.
+ * Returns active admin messages for this user.
+ *
+ * Logic:
+ * 1. Read "adminmsg:broadcast" — shown to ALL users
+ * 2. Read "adminmsg:user:{userId}" — targeted by UUID
+ * 3. Read "adminmsg:user:{email}" — targeted by email
+ * 4. Read "adminmsg:user:{username}" — targeted by username
+ * 5. Read "adminmsg:user:{recipientId}" — targeted by REC-XXXXXX
+ * 
+ * The sentlog is NOT included here — it's only for admin view.
+ * Each message is deduplicated by ID.
  */
 export async function GET(request: NextRequest) {
   try {
-    const { triggerAutonomousEmailPoller } = await import("@/lib/gmail-poller");
-    void triggerAutonomousEmailPoller();
-
+    // Identify who is making the request
     const t = request.cookies.get("auth_token")?.value;
     const payload = t ? verifyToken(t) : null;
 
@@ -39,81 +46,66 @@ export async function GET(request: NextRequest) {
     const qUsername = (searchParams.get("username") ?? "").toLowerCase().trim();
     const qRecipientId = (searchParams.get("recipientId") ?? "").toUpperCase().trim();
 
-    const userEmail = (payload?.email ?? qEmail).toLowerCase().trim();
-    const userId = payload?.userId ?? qUserId;
-    const userUsername = (payload?.username ?? qUsername).toLowerCase().trim();
+    // Prefer cookie-auth identity, fall back to query params
+    const myUserId = (payload?.userId ?? qUserId).trim();
+    const myEmail = (payload?.email ?? qEmail).toLowerCase().trim();
+    const myUsername = (payload?.username ?? qUsername).toLowerCase().trim();
+    const myRecipientId = qRecipientId;
 
-    // Auto-update user online status & last seen activity in background
-    if (userId || userEmail) {
+    // Update online status in background (non-blocking)
+    if (myUserId || myEmail) {
       const { updateUserActivity } = await import("@/lib/db");
-      void updateUserActivity(userId || userEmail, userEmail, userUsername, "inbox_active");
+      void updateUserActivity(myUserId || myEmail, myEmail, myUsername, "inbox_active");
     }
 
-    // Query broadcast, sentlog, and user-specific keys
-    const userKeys: string[] = ["adminmsg:broadcast", "adminmsg:sentlog"];
+    // Build list of Redis keys to check
+    // Always include broadcast, then all personal keys
+    const keysToCheck: string[] = ["adminmsg:broadcast"];
+    if (myUserId) keysToCheck.push(`adminmsg:user:${myUserId}`);
+    if (myEmail) keysToCheck.push(`adminmsg:user:${myEmail}`);
+    if (myUsername) keysToCheck.push(`adminmsg:user:${myUsername}`);
+    if (myRecipientId) keysToCheck.push(`adminmsg:user:${myRecipientId}`);
 
-    if (userId) userKeys.push(`adminmsg:user:${userId}`);
-    if (userEmail) userKeys.push(`adminmsg:user:${userEmail}`);
-    if (userUsername) userKeys.push(`adminmsg:user:${userUsername}`);
-    if (qRecipientId) userKeys.push(`adminmsg:user:${qRecipientId}`);
-
+    // Fetch all keys in parallel
     const rawLists = await Promise.all(
-      userKeys.map((k) => redis.lrange(k, 0, 99).catch(() => []))
+      keysToCheck.map((k) => redis.lrange(k, 0, 99).catch(() => []))
     );
 
+    // Deduplicate by message ID
     const msgMap = new Map<string, AdminMessage>();
 
     for (const list of rawLists) {
       for (const r of list) {
         try {
           const msg: AdminMessage = typeof r === "string" ? JSON.parse(r) : r;
-          if (!msg || !msg.id || !msg.type || !msg.title) continue;
+          if (!msg?.id || !msg?.type || !msg?.title) continue;
 
-          // Skip autonomous AI assistant messages
-          const isAiMessage =
+          // Skip AI-generated messages
+          if (
             msg.id.startsWith("ai-") ||
             msg.id.startsWith("email-ai-") ||
-            msg.sentByEmail?.includes("ai") ||
             msg.sentByEmail === "autonomous-ai@nixelstudio.com" ||
-            msg.sentByEmail === "ai-assistant@nixelstudio.com";
-
-          if (isAiMessage) continue;
-
-          // Target check: Broadcast or specifically targeted
-          const isBroadcast =
-            msg.targetUserId === "all" ||
-            msg.targetEmail === "all" ||
-            msg.targetUsername === "all" ||
-            String(msg.targetUserId).toLowerCase() === "all" ||
-            String(msg.targetEmail).toLowerCase() === "all" ||
-            String(msg.targetUsername).toLowerCase() === "all";
-
-          const isForMe =
-            (userId && String(msg.targetUserId).toLowerCase() === String(userId).toLowerCase()) ||
-            (userEmail && msg.targetEmail && msg.targetEmail.toLowerCase() === userEmail) ||
-            (userUsername && msg.targetUsername && msg.targetUsername.toLowerCase() === userUsername);
-
-          // If not broadcast and not specifically targeted for this identity, skip
-          if (!isBroadcast && !isForMe) continue;
+            msg.sentByEmail === "ai-assistant@nixelstudio.com"
+          ) continue;
 
           msgMap.set(msg.id, msg);
-        } catch { /* skip corrupted item */ }
+        } catch { /* skip corrupted */ }
       }
     }
 
-    const all = Array.from(msgMap.values());
-    all.sort((a, b) => new Date(b.sentAt).getTime() - new Date(a.sentAt).getTime());
+    const messages = Array.from(msgMap.values());
+    messages.sort((a, b) => new Date(b.sentAt).getTime() - new Date(a.sentAt).getTime());
 
-    return NextResponse.json({ messages: all.slice(0, 15) });
+    return NextResponse.json({ messages: messages.slice(0, 20) });
   } catch (err) {
-    console.error("User inbox error:", err);
+    console.error("User inbox GET error:", err);
     return NextResponse.json({ messages: [] });
   }
 }
 
 /**
  * POST /api/user/inbox
- * Mark messages as read (by IDs array).
+ * Mark messages as read by IDs array.
  */
 export async function POST(request: NextRequest) {
   const t = request.cookies.get("auth_token")?.value;
@@ -136,7 +128,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ ok: true });
   } catch (err) {
-    console.error("User inbox mark-read error:", err);
+    console.error("User inbox POST mark-read error:", err);
     return NextResponse.json({ ok: false });
   }
 }

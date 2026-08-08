@@ -450,22 +450,7 @@ function ComposePanelForm({
         if (typeof window !== "undefined" && "BroadcastChannel" in window) {
           try {
             const bc = new BroadcastChannel("admin_inbox_system_channel");
-            bc.postMessage({
-              type: "NEW_MESSAGES",
-              messages: [{
-                id: data.messageId || `msg-${Date.now()}`,
-                type: msgType,
-                title: title.trim(),
-                body: body.trim(),
-                reason: reason.trim() || undefined,
-                targetUserId: calcTargetUserId,
-                targetEmail: calcTargetEmail,
-                targetUsername: calcTargetUsername,
-                sentAt: new Date().toISOString(),
-                sentByEmail: "admin@nixelstudio.com",
-                read: false,
-              }],
-            });
+            bc.postMessage({ type: "POLL_NOW" });
             bc.close();
           } catch { /* fallback */ }
         }

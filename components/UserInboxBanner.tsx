@@ -206,55 +206,11 @@ export default function UserInboxBanner() {
     if (typeof window !== "undefined" && "BroadcastChannel" in window) {
       try {
         channelRef.current = new BroadcastChannel("admin_inbox_system_channel");
-        channelRef.current.onmessage = (ev: MessageEvent<{ type: string; messages?: AdminMessage[] }>) => {
-          if (ev.data?.type === "NEW_MESSAGES" && Array.isArray(ev.data.messages)) {
-            const u = authUserRef.current || authUser;
-            const myEmail = u?.email?.toLowerCase().trim();
-            const myUserId = u?.userId?.trim();
-            const myUsername = u?.username?.toLowerCase().trim();
-            const myRecId = u?.recipientId?.toUpperCase().trim();
-
-            const forMe = ev.data.messages.filter((m) => {
-              const isTargetedToMe =
-                (myUserId && String(m.targetUserId).toLowerCase() === String(myUserId).toLowerCase()) ||
-                (myEmail && m.targetEmail && m.targetEmail.toLowerCase() === myEmail) ||
-                (myUsername && m.targetUsername && m.targetUsername.toLowerCase() === myUsername) ||
-                (myRecId && m.targetUserId && m.targetUserId.toUpperCase() === myRecId) ||
-                (myRecId && m.targetEmail && m.targetEmail.toUpperCase() === myRecId) ||
-                (myRecId && m.targetUsername && m.targetUsername.toUpperCase() === myRecId);
-
-              const isBroadcast =
-                m.targetUserId === "all" ||
-                m.targetEmail === "all" ||
-                m.targetUsername === "all" ||
-                String(m.targetUserId).toLowerCase() === "all" ||
-                String(m.targetEmail).toLowerCase() === "all" ||
-                String(m.targetUsername).toLowerCase() === "all";
-
-              // If admin sent a targeted message to someone else, do NOT pop up on admin's own screen
-              if (myEmail === "nixxeltzy@gmail.com" && !isBroadcast && !isTargetedToMe) {
-                return false;
-              }
-
-              return isBroadcast || isTargetedToMe;
-            });
-
-            if (forMe.length > 0) {
-              setAllMessages((prev) => {
-                const map = new Map<string, AdminMessage>();
-                for (const m of prev) {
-                  if (!dismissed.has(m.id)) map.set(m.id, m);
-                }
-                for (const m of forMe) {
-                  map.set(m.id, m);
-                }
-                const merged = Array.from(map.values());
-                merged.sort((a, b) => new Date(b.sentAt).getTime() - new Date(a.sentAt).getTime());
-                return merged;
-              });
-              playNotificationSound();
-              setPopupAutoOpen(true);
-            }
+        // When another tab sends a NEW_MESSAGE signal, just re-poll from server.
+        // The server is the single source of truth for what messages belong to this user.
+        channelRef.current.onmessage = (ev: MessageEvent<{ type: string }>) => {
+          if (ev.data?.type === "POLL_NOW") {
+            void poll();
           }
         };
       } catch { /* fallback */ }
@@ -343,9 +299,9 @@ export default function UserInboxBanner() {
           window.dispatchEvent(new CustomEvent("adminmsg_updated"));
         } catch {}
 
-        // Broadcast to other tabs
-        if (channelRef.current && msgs.length > 0) {
-          channelRef.current.postMessage({ type: "NEW_MESSAGES", messages: msgs });
+        // Signal other tabs to re-poll from server (don't send raw message data)
+        if (channelRef.current) {
+          try { channelRef.current.postMessage({ type: "POLL_NOW" }); } catch { /* ignore */ }
         }
       }
     } catch { /* silent background error recovery */ }
