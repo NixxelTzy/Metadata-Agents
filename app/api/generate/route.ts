@@ -142,7 +142,7 @@ CRITICAL MANDATE: YOU MUST DIRECTLY INSPECT AND READ THE VISUAL PIXELS OF THE IM
 Respond ONLY with valid JSON — no explanation, no markdown:
 {"title": "Exact descriptive title here", "keywords": ["keyword1", "keyword2", ...50 total...]}`;
 
-(text: string): string {
+function extractJsonFromText(text: string): string {
   const trimmed = text.trim();
   const codeBlock = trimmed.match(/```(?:json)?\s*([\s\S]*?)```/);
   if (codeBlock?.[1]) return codeBlock[1].trim();
