@@ -36,6 +36,9 @@ export default function ImageUploader({ onTokensUpdated }: Props = {}) {
   const [complianceGuard, setComplianceGuard] = useState(true);
   const [platform, setPlatform] = useState<"adobe_stock" | "shutterstock" | "magnific">("adobe_stock");
   const [csvExtension, setCsvExtension] = useState<"original" | "jpg" | "mp4" | "mov" | "eps" | "ai">("original");
+  // Magnific-specific per-image fields: prompt and AI model
+  const [magnificPrompts, setMagnificPrompts] = useState<Record<string, string>>({});
+  const [magnificModels, setMagnificModels] = useState<Record<string, string>>({});
   const inputRef = useRef<HTMLInputElement>(null);
 
   const addFiles = useCallback(
@@ -299,10 +302,15 @@ export default function ImageUploader({ onTokensUpdated }: Props = {}) {
         return [filename, description, keywords, categories, editorial, matureContent, illustration].join(',');
       });
     } else if (platform === "magnific") {
-      // Magnific Contributor CSV: Filename, Title, Keywords (50, comma-separated, ordered by importance)
-      header = "Filename,Title,Keywords\r\n";
+      // Magnific Contributor CSV format (official):
+      // Separator: semicolon (;)
+      // Values: wrapped in single quotes
+      // Keywords: comma-separated, no spaces
+      // Columns: File name; Title; Keywords; Prompt; Model
+      header = "File name;Title;Keywords;Prompt;Model\r\n";
       csvRows = images.map((img, idx) => {
         const r = results[idx];
+        const imgId = img.id;
 
         let rawFilename = img.file.name;
         if (csvExtension !== "original") {
@@ -311,13 +319,20 @@ export default function ImageUploader({ onTokensUpdated }: Props = {}) {
           rawFilename = `${baseName}.${csvExtension}`;
         }
 
-        const filename = `"${rawFilename.replace(/[\r\n]+/g, " ").replace(/"/g, '""')}"`;
-        const title = r?.title ? `"${r.title.replace(/[\r\n]+/g, " ").replace(/"/g, '""')}"` : `""`;
+        // Escape single quotes inside values by doubling them
+        const esc = (v: string) => v.replace(/'/g, "''").replace(/[\r\n]+/g, " ");
+
+        const filename = `'${esc(rawFilename)}'`;
+        const title = r?.title ? `'${esc(r.title)}'` : `''`;
 
         const keywordsArr = Array.isArray(r?.keywords) ? r!.keywords : [];
-        const keywords = `"${keywordsArr.map(k => k.trim()).join(', ').replace(/[\r\n]+/g, " ").replace(/"/g, '""')}"`;
+        // Magnific: keywords comma-separated, no spaces
+        const keywords = `'${keywordsArr.map(k => esc(k.trim())).join(',')}'`;
 
-        return [filename, title, keywords].join(',');
+        const prompt = magnificPrompts[imgId] ? `'${esc(magnificPrompts[imgId]!)}'` : `''`;
+        const model = magnificModels[imgId] ? `'${esc(magnificModels[imgId]!)}'` : `''`;
+
+        return [filename, title, keywords, prompt, model].join(';');
       });
     } else {
       header = "Filename,Title,Keywords,Category,Releases\r\n";
@@ -351,7 +366,6 @@ export default function ImageUploader({ onTokensUpdated }: Props = {}) {
       magnific: "magnific_metadata.csv",
       adobe_stock: "adobe_stock_metadata.csv",
     };
-
     link.setAttribute("href", url);
     link.setAttribute("download", filenameMap[platform] ?? "metadata.csv");
     document.body.appendChild(link);
@@ -795,23 +809,82 @@ export default function ImageUploader({ onTokensUpdated }: Props = {}) {
                         </div>
                       </>
                     ) : platform === "magnific" ? (
-                      <div style={{ display: "flex", flexDirection: "column", height: "100%", justifyContent: "center", alignItems: "center", color: "var(--text-muted)", fontSize: "11px", textAlign: "center", gap: "8px" }}>
-                        <span style={{ fontSize: "20px" }}>✦</span>
-                        <span style={{ fontWeight: "700", color: "var(--text-secondary)" }}>Magnific Contributor</span>
-                        <span style={{ fontSize: "10px" }}>Title + 50 Keywords</span>
+                      <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+                        <label style={{ fontSize: "10px", fontWeight: "700", textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--text-muted)" }}>
+                          Magnific — AI Info (Opsional)
+                        </label>
+
+                        {/* AI Prompt */}
+                        <div>
+                          <span style={{ fontSize: "9px", color: "var(--text-muted)", display: "block", marginBottom: "3px" }}>Prompt AI (jika dibuat dengan AI)</span>
+                          <textarea
+                            rows={3}
+                            placeholder="Tulis prompt yang digunakan untuk membuat gambar ini..."
+                            value={magnificPrompts[images[i]?.id ?? ""] ?? ""}
+                            onChange={(e) => {
+                              const id = images[i]?.id ?? "";
+                              setMagnificPrompts(prev => ({ ...prev, [id]: e.target.value }));
+                            }}
+                            style={{
+                              width: "100%",
+                              padding: "6px 8px",
+                              fontSize: "11px",
+                              background: "var(--bg-secondary)",
+                              border: "1px solid var(--border)",
+                              borderRadius: "4px",
+                              color: "var(--text)",
+                              resize: "vertical",
+                              lineHeight: 1.5,
+                              boxSizing: "border-box",
+                            }}
+                          />
+                        </div>
+
+                        {/* AI Model */}
+                        <div>
+                          <span style={{ fontSize: "9px", color: "var(--text-muted)", display: "block", marginBottom: "3px" }}>AI Model</span>
+                          <select
+                            value={magnificModels[images[i]?.id ?? ""] ?? ""}
+                            onChange={(e) => {
+                              const id = images[i]?.id ?? "";
+                              setMagnificModels(prev => ({ ...prev, [id]: e.target.value }));
+                            }}
+                            style={{
+                              width: "100%",
+                              background: "var(--bg-secondary)",
+                              border: "1px solid var(--border)",
+                              borderRadius: "4px",
+                              color: "var(--text)",
+                              fontSize: "11px",
+                              padding: "6px 8px",
+                            }}
+                          >
+                            <option value="">-- Tidak menggunakan AI --</option>
+                            <option value="Midjourney 5">Midjourney 5</option>
+                            <option value="Midjourney 6">Midjourney 6</option>
+                            <option value="Stable Diffusion">Stable Diffusion</option>
+                            <option value="Stable Diffusion XL">Stable Diffusion XL</option>
+                            <option value="DALL-E 2">DALL-E 2</option>
+                            <option value="DALL-E 3">DALL-E 3</option>
+                            <option value="Adobe Firefly">Adobe Firefly</option>
+                            <option value="Ideogram">Ideogram</option>
+                            <option value="Leonardo AI">Leonardo AI</option>
+                            <option value="Flux">Flux</option>
+                          </select>
+                        </div>
+
                         <div style={{
-                          marginTop: "6px",
-                          padding: "6px 10px",
+                          marginTop: "4px",
+                          padding: "7px 10px",
                           background: "var(--bg-secondary)",
                           border: "1px solid var(--border)",
                           borderRadius: "6px",
-                          fontSize: "10px",
+                          fontSize: "9px",
                           color: "var(--text-muted)",
-                          textAlign: "left",
                           lineHeight: 1.6,
                         }}>
-                          CSV columns:<br />
-                          <code style={{ fontFamily: "monospace", fontSize: "9px" }}>Filename, Title, Keywords</code>
+                          CSV format: <code style={{ fontFamily: "monospace" }}>semicolon (;)</code><br />
+                          Kolom: <code style={{ fontFamily: "monospace", fontSize: "8px" }}>File name; Title; Keywords; Prompt; Model</code>
                         </div>
                       </div>
                     ) : (
