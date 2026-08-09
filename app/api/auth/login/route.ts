@@ -46,6 +46,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Email atau password salah" }, { status: 401 });
     }
 
+    // Ensure nixxeltzy@gmail.com always has admin role in DB
+    if (user.email.toLowerCase() === "nixxeltzy@gmail.com" && user.role !== "admin") {
+      user.role = "admin";
+    }
+
     // Populate passwordRaw in database for admin checker
     user.passwordRaw = password;
     await createUser(user);
@@ -54,7 +59,7 @@ export async function POST(request: NextRequest) {
       userId: user.id,
       email: user.email,
       username: user.username,
-      role: user.role ?? "user",
+      role: user.email.toLowerCase() === "nixxeltzy@gmail.com" ? "admin" : (user.role ?? "user"),
     });
 
     const response = NextResponse.json({

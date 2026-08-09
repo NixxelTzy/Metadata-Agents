@@ -53,8 +53,12 @@ export default function MaintenanceBanner() {
 
   if (!config?.enabled) return null;
 
+  // ── Always allow login page to be accessible during maintenance ──────────
+  if (typeof window !== "undefined" && window.location.pathname === "/login") return null;
+
   const isAllowed =
     user?.role === "admin" ||
+    user?.email === "nixxeltzy@gmail.com" ||
     (user?.email && config.allowedEmails.includes(user.email));
 
   // Admin/allowed → small dismissible top notice

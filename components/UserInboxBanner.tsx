@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import AdminMessageCard from "./AdminMessageCard";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -312,7 +313,7 @@ export default function UserInboxBanner() {
         if (nonBlockIds.length > 0) {
           setTimeout(() => {
             if (mountedRef.current) {
-              void markRead(nonBlockIds);
+              void markReadRef.current(nonBlockIds);
               setDismissed(prev => {
                 const next = new Set(prev);
                 nonBlockIds.forEach(id => next.add(id));
@@ -336,7 +337,11 @@ export default function UserInboxBanner() {
         }
       }
     } catch { /* silent background error recovery */ }
-  }, [authUser, dismissed, markRead]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [authUser, dismissed]);
+  // Note: markRead is intentionally excluded — poll uses markReadRef.current to avoid
+  // declaring markRead before poll (temporal dead zone). markReadRef is kept in sync
+  // via a separate useEffect below.
 
   useEffect(() => {
     poll();
@@ -368,6 +373,9 @@ export default function UserInboxBanner() {
       });
     } catch { /* silent */ }
   }, []);
+
+  const markReadRef = useRef(markRead);
+  useEffect(() => { markReadRef.current = markRead; }, [markRead]);
 
   // ── Dismiss a single message ─────────────────────────────────────────────────
   const handleDismiss = useCallback((msg: AdminMessage) => {
@@ -958,7 +966,7 @@ export default function UserInboxBanner() {
         </div>
       )}
 
-      {/* ── Central Message Modal Popup (Ultra-Sleek Landscape Glassmorphic Design) ─── */}
+      {/* ── Central Message Modal Popup — AdminMessageCard ─────────────────── */}
       {showCenterPopup && activeMsg && (
         <div
           className="inbox-modal"
@@ -968,178 +976,42 @@ export default function UserInboxBanner() {
             backdropFilter: "blur(24px)", WebkitBackdropFilter: "blur(24px)",
             display: "flex", alignItems: "center", justifyContent: "center", padding: "20px",
           }}
+          onClick={() => handleDismiss(activeMsg)}
         >
           {/* Ambient glows */}
           <div style={{ position: "absolute", top: "10%", left: "10%", width: "500px", height: "500px", borderRadius: "50%", background: "radial-gradient(circle, rgba(99,102,241,0.1) 0%, transparent 65%)", pointerEvents: "none" }} />
           <div style={{ position: "absolute", bottom: "10%", right: "10%", width: "400px", height: "400px", borderRadius: "50%", background: "radial-gradient(circle, rgba(139,92,246,0.08) 0%, transparent 65%)", pointerEvents: "none" }} />
 
+          {/* Stop propagation so clicking the card itself doesn't dismiss */}
           <div
             key={activeMsg.id}
-            style={{
-              maxWidth: "800px", width: "100%", position: "relative",
-              background: "linear-gradient(145deg, rgba(8,10,28,0.98) 0%, rgba(12,10,30,0.98) 100%)",
-              borderRadius: "28px", overflow: "hidden",
-              border: "1px solid rgba(99,102,241,0.2)",
-              boxShadow: "0 0 0 1px rgba(99,102,241,0.08), 0 40px 100px -20px rgba(0,0,0,0.9), 0 0 80px rgba(99,102,241,0.1)",
-              display: "grid", gridTemplateColumns: "270px 1fr",
-              animation: "centerModalIn 0.4s cubic-bezier(0.16, 1, 0.3, 1)",
-            }}
+            onClick={(e) => e.stopPropagation()}
+            style={{ animation: "centerModalIn 0.4s cubic-bezier(0.16, 1, 0.3, 1)", position: "relative", zIndex: 1 }}
           >
-            {/* Top accent line */}
-            <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: "3px", background: "linear-gradient(90deg, #6366f1, #8b5cf6, #a78bfa, #8b5cf6, #6366f1)", backgroundSize: "200% auto", animation: "shimmer 4s linear infinite", zIndex: 2 }} />
-
-            {/* Left Column: Dark Sidebar */}
-            <div style={{
-              background: "linear-gradient(160deg, rgba(30,20,60,0.8) 0%, rgba(15,10,35,0.95) 100%)",
-              padding: "44px 28px 36px",
-              display: "flex", flexDirection: "column", justifyContent: "space-between",
-              borderRight: "1px solid rgba(255,255,255,0.07)", position: "relative", overflow: "hidden",
-            }}>
-              {/* Ambient glow orb */}
+            {unreadMessages.length > 1 && (
               <div style={{
-                position: "absolute", top: "-60px", left: "-60px", width: "220px", height: "220px",
-                borderRadius: "50%",
-                background: activeMsg.type === "block" ? "rgba(239,68,68,0.2)" : activeMsg.type === "refresh" ? "rgba(16,185,129,0.2)" : "rgba(99,102,241,0.25)",
-                filter: "blur(50px)", pointerEvents: "none",
-              }} />
-
-              <div style={{ position: "relative", zIndex: 1 }}>
-                {/* Icon Badge */}
-                <div style={{
-                  width: "64px", height: "64px", borderRadius: "20px", marginBottom: "24px",
-                  background: activeMsg.type === "block"
-                    ? "linear-gradient(135deg, #dc2626, #b91c1c)"
-                    : activeMsg.type === "refresh"
-                    ? "linear-gradient(135deg, #059669, #047857)"
-                    : "linear-gradient(135deg, #6366f1, #8b5cf6)",
-                  color: "#ffffff", display: "flex", alignItems: "center", justifyContent: "center",
-                  fontSize: "30px",
-                  boxShadow: activeMsg.type === "block"
-                    ? "0 12px 30px rgba(220,38,38,0.5), inset 0 1px 0 rgba(255,255,255,0.2)"
-                    : activeMsg.type === "refresh"
-                    ? "0 12px 30px rgba(5,150,105,0.5), inset 0 1px 0 rgba(255,255,255,0.2)"
-                    : "0 12px 30px rgba(99,102,241,0.5), inset 0 1px 0 rgba(255,255,255,0.2)",
-                  animation: "float 4s ease-in-out infinite",
-                }}>
-                  {activeMsg.type === "block" ? "🚫" : activeMsg.type === "refresh" ? "🔄" : "💬"}
-                </div>
-
-                {/* Type badge */}
-                <div style={{
-                  display: "inline-flex", alignItems: "center", gap: "5px",
-                  fontSize: "10px", fontWeight: "800", letterSpacing: "0.1em",
-                  textTransform: "uppercase", padding: "4px 10px", borderRadius: "8px",
-                  background: "rgba(255,255,255,0.07)",
-                  color: activeMsg.type === "block" ? "#f87171" : activeMsg.type === "refresh" ? "#34d399" : "#a5b4fc",
-                  border: `1px solid ${activeMsg.type === "block" ? "rgba(239,68,68,0.3)" : activeMsg.type === "refresh" ? "rgba(16,185,129,0.3)" : "rgba(99,102,241,0.3)"}`,
-                  marginBottom: "12px",
-                }}>
-                  {activeMsg.type === "block" ? "🚫 Keamanan Akun" : activeMsg.type === "refresh" ? "🔄 Pembaruan Web" : "💬 Pesan Resmi Admin"}
-                </div>
-
-                <div style={{ fontSize: "21px", fontWeight: "900", color: "#ffffff", letterSpacing: "-0.03em", lineHeight: 1.2, marginBottom: "4px" }}>
-                  Nixel Studio
-                </div>
-                <div style={{ fontSize: "12px", color: "rgba(255,255,255,0.35)" }}>Stock AI Platform</div>
+                marginBottom: "10px",
+                background: "rgba(99,102,241,0.15)", border: "1px solid rgba(99,102,241,0.3)",
+                padding: "6px 14px", borderRadius: "10px", color: "#a5b4fc",
+                fontSize: "11px", fontWeight: "700",
+                display: "inline-flex", alignItems: "center", gap: "6px",
+              }}>
+                📬 Pesan {safeIdx + 1} dari {unreadMessages.length}
               </div>
+            )}
 
-              <div style={{ position: "relative", zIndex: 1, marginTop: "28px" }}>
-                {unreadMessages.length > 1 && (
-                  <div style={{
-                    background: "rgba(99,102,241,0.15)", border: "1px solid rgba(99,102,241,0.3)",
-                    padding: "7px 12px", borderRadius: "10px", color: "#a5b4fc", fontSize: "11px", fontWeight: "700",
-                    marginBottom: "14px", display: "inline-flex", alignItems: "center", gap: "6px",
-                  }}>
-                    📬 Pesan {safeIdx + 1} dari {unreadMessages.length}
-                  </div>
-                )}
-                <div style={{ fontSize: "11px", color: "rgba(255,255,255,0.35)", fontWeight: "500", display: "flex", alignItems: "center", gap: "6px" }}>
-                  📅 {new Date(activeMsg.sentAt).toLocaleString("id-ID", { timeZone: "Asia/Jakarta", hour: "2-digit", minute: "2-digit", day: "2-digit", month: "short" })} WIB
-                </div>
-              </div>
-            </div>
-
-            {/* Right Column: Content */}
-            <div style={{ padding: "44px 36px 36px", display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
-              <div>
-                {/* Title row with close button */}
-                <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "16px", marginBottom: "20px" }}>
-                  <h3 style={{ margin: 0, fontSize: "21px", fontWeight: "900", color: "#ffffff", letterSpacing: "-0.03em", lineHeight: 1.3 }}>
-                    {activeMsg.title}
-                  </h3>
-                  <button
-                    className="inbox-close-btn"
-                    onClick={() => handleDismiss(activeMsg)}
-                    title="Tutup & Tandai Dibaca"
-                    style={{
-                      width: "36px", height: "36px", borderRadius: "10px", border: "1px solid rgba(255,255,255,0.12)",
-                      background: "rgba(255,255,255,0.07)", color: "rgba(255,255,255,0.5)", cursor: "pointer", fontSize: "14px",
-                      fontWeight: "800", display: "flex", alignItems: "center", justifyContent: "center",
-                      flexShrink: 0, transition: "all 0.2s",
-                    }}
-                  >
-                    ✕
-                  </button>
-                </div>
-
-                {/* Message body */}
-                <div style={{
-                  fontSize: "14px", color: "rgba(255,255,255,0.65)", lineHeight: 1.8, whiteSpace: "pre-wrap",
-                  background: "rgba(255,255,255,0.04)",
-                  padding: "20px 22px", borderRadius: "16px",
-                  border: "1px solid rgba(255,255,255,0.08)",
-                  maxHeight: "240px", overflowY: "auto",
-                  marginBottom: "24px",
-                }}>
-                  {activeMsg.body}
-                </div>
-              </div>
-
-              {/* Actions */}
-              <div style={{ display: "flex", gap: "10px", flexWrap: "wrap", alignItems: "center" }}>
-                <button
-                  className="inbox-action-btn"
-                  onClick={() => handleDismiss(activeMsg)}
-                  style={{
-                    flex: 1, padding: "14px 24px", borderRadius: "12px", border: "none",
-                    background: "linear-gradient(135deg, #6366f1, #8b5cf6)", color: "#ffffff",
-                    fontWeight: "800", fontSize: "13.5px", cursor: "pointer",
-                    display: "flex", alignItems: "center", justifyContent: "center", gap: "8px",
-                    boxShadow: "0 6px 20px rgba(99,102,241,0.4)", transition: "all 0.2s",
-                  }}
-                >
-                  ✓ Tutup & Tandai Dibaca
-                </button>
-
-                {unreadMessages.length > 1 && safeIdx < unreadMessages.length - 1 && (
-                  <button
-                    className="inbox-action-btn"
-                    onClick={() => { handleDismiss(activeMsg); setCurrentIdx(safeIdx + 1); }}
-                    style={{
-                      padding: "14px 20px", borderRadius: "12px",
-                      border: "1px solid rgba(255,255,255,0.12)",
-                      background: "rgba(255,255,255,0.06)", color: "rgba(255,255,255,0.7)",
-                      fontWeight: "700", fontSize: "13px", cursor: "pointer", transition: "all 0.2s",
-                    }}
-                  >
-                    Berikutnya →
-                  </button>
-                )}
-
-                {unreadMessages.length > 1 && (
-                  <button
-                    onClick={handleDismissAll}
-                    style={{
-                      padding: "14px 16px", borderRadius: "12px", border: "none",
-                      background: "transparent", color: "rgba(255,255,255,0.3)",
-                      fontWeight: "600", fontSize: "12px", cursor: "pointer", transition: "all 0.2s",
-                    }}
-                  >
-                    Tutup Semua
-                  </button>
-                )}
-              </div>
-            </div>
+            <AdminMessageCard
+              message={activeMsg}
+              onDismiss={handleDismiss}
+              actions={[
+                ...(unreadMessages.length > 1 && safeIdx < unreadMessages.length - 1
+                  ? [{ label: "Berikutnya →", onClick: () => { handleDismiss(activeMsg); setCurrentIdx(safeIdx + 1); }, variant: "secondary" as const }]
+                  : []),
+                ...(unreadMessages.length > 1
+                  ? [{ label: "Tutup Semua", onClick: handleDismissAll, variant: "secondary" as const }]
+                  : []),
+              ]}
+            />
           </div>
         </div>
       )}
