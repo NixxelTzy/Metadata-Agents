@@ -31,7 +31,9 @@ interface UserAuth {
 function loadDismissed(): Set<string> {
   if (typeof window === "undefined") return new Set();
   try {
-    const raw = sessionStorage.getItem("adminmsg_dismissed_session");
+    // Prefer localStorage (persists across browser restarts)
+    const raw = localStorage.getItem("adminmsg_dismissed") ??
+                sessionStorage.getItem("adminmsg_dismissed_session");
     const arr: string[] = raw ? JSON.parse(raw) : [];
     return new Set(arr);
   } catch {
@@ -41,7 +43,9 @@ function loadDismissed(): Set<string> {
 
 function saveDismissed(set: Set<string>) {
   try {
-    sessionStorage.setItem("adminmsg_dismissed_session", JSON.stringify(Array.from(set)));
+    const arr = JSON.stringify(Array.from(set));
+    localStorage.setItem("adminmsg_dismissed", arr);
+    sessionStorage.setItem("adminmsg_dismissed_session", arr);
   } catch {}
 }
 
@@ -304,27 +308,6 @@ export default function UserInboxBanner() {
 
         setAllMessages(msgs);
 
-        // ── Auto-mark-read: mark non-block messages as seen after 5s ──────────
-        // Prevents messages from reappearing when user closes/reopens the browser
-        const nonBlockIds = msgs
-          .filter(m => m.type !== "block")
-          .map(m => m.id)
-          .filter(id => !dismissed.has(id));
-        if (nonBlockIds.length > 0) {
-          setTimeout(() => {
-            if (mountedRef.current) {
-              void markReadRef.current(nonBlockIds);
-              setDismissed(prev => {
-                const next = new Set(prev);
-                nonBlockIds.forEach(id => next.add(id));
-                saveDismissed(next);
-                return next;
-              });
-              window.dispatchEvent(new CustomEvent("adminmsg_updated"));
-            }
-          }, 5000);
-        }
-
         // Cache in sessionStorage for bell counter
         try {
           sessionStorage.setItem("adminmsg_latest_cache", JSON.stringify(msgs));
@@ -409,7 +392,10 @@ export default function UserInboxBanner() {
   // ── Restore / Clear Dismissed ────────────────────────────────────────────────
   const handleRestoreAll = useCallback(() => {
     setDismissed(new Set());
-    try { sessionStorage.removeItem("adminmsg_dismissed_session"); } catch {}
+    try {
+      sessionStorage.removeItem("adminmsg_dismissed_session");
+      localStorage.removeItem("adminmsg_dismissed");
+    } catch {}
     setPopupAutoOpen(true);
     window.dispatchEvent(new CustomEvent("adminmsg_updated"));
   }, []);
@@ -974,7 +960,8 @@ export default function UserInboxBanner() {
             position: "fixed", inset: 0, zIndex: 999997,
             background: "rgba(2, 4, 18, 0.88)",
             backdropFilter: "blur(24px)", WebkitBackdropFilter: "blur(24px)",
-            display: "flex", alignItems: "center", justifyContent: "center", padding: "20px",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            padding: "clamp(12px, 4vw, 24px)",
           }}
           onClick={() => handleDismiss(activeMsg)}
         >
@@ -986,26 +973,15 @@ export default function UserInboxBanner() {
           <div
             key={activeMsg.id}
             onClick={(e) => e.stopPropagation()}
-            style={{ animation: "centerModalIn 0.4s cubic-bezier(0.16, 1, 0.3, 1)", position: "relative", zIndex: 1 }}
+            style={{ position: "relative", zIndex: 1, width: "100%", maxWidth: "860px" }}
           >
-            {unreadMessages.length > 1 && (
-              <div style={{
-                marginBottom: "10px",
-                background: "rgba(99,102,241,0.15)", border: "1px solid rgba(99,102,241,0.3)",
-                padding: "6px 14px", borderRadius: "10px", color: "#a5b4fc",
-                fontSize: "11px", fontWeight: "700",
-                display: "inline-flex", alignItems: "center", gap: "6px",
-              }}>
-                📬 Pesan {safeIdx + 1} dari {unreadMessages.length}
-              </div>
-            )}
-
             <AdminMessageCard
               message={activeMsg}
               onDismiss={handleDismiss}
+              counterLabel={unreadMessages.length > 1 ? `Pesan ${safeIdx + 1} dari ${unreadMessages.length}` : undefined}
               actions={[
                 ...(unreadMessages.length > 1 && safeIdx < unreadMessages.length - 1
-                  ? [{ label: "Berikutnya →", onClick: () => { handleDismiss(activeMsg); setCurrentIdx(safeIdx + 1); }, variant: "secondary" as const }]
+                  ? [{ label: "Berikutnya →", onClick: () => { handleDismiss(activeMsg); setCurrentIdx(safeIdx + 1); }, variant: "primary" as const }]
                   : []),
                 ...(unreadMessages.length > 1
                   ? [{ label: "Tutup Semua", onClick: handleDismissAll, variant: "secondary" as const }]
