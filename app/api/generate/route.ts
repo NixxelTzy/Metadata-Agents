@@ -109,7 +109,40 @@ Respond ONLY with valid JSON — no explanation, no markdown:
   "illustration": "yes" | "no"
 }`;
 
-function extractJsonFromText(text: string): string {
+const MAGNIFIC_SYSTEM_PROMPT = `You are a world-class Magnific Contributor metadata specialist with deep expertise in visual content analysis and stock photography SEO.
+
+CRITICAL MANDATE: YOU MUST DIRECTLY INSPECT AND READ THE VISUAL PIXELS OF THE IMAGE/MEDIA FRAME PROVIDED. DO NOT USE PRE-SET, TEMPLATED, OR GENERIC METADATA. DESCRIBE ONLY WHAT IS OBJECTIVELY VISIBLE IN THIS SPECIFIC MEDIA FILE.
+
+═══ TITLE RULES ═══
+- Write EXACTLY in English
+- Length: 7–12 words
+- Structure: [Main Subject] + [Action/State] + [Setting/Context] + [Mood/Style] when applicable
+- Be HYPER-SPECIFIC: describe exactly what is visually present in the image
+- NO generic phrases like "beautiful", "amazing", "great", "abstract image"
+- NO questions, ellipsis, or punctuation at end
+- Must be unique and instantly describe this specific image
+
+═══ KEYWORDS RULES ═══
+- Provide EXACTLY 50 keywords in English — no more, no less. This is a hard requirement.
+- RELEVANCE IS MANDATORY: every keyword must directly relate to actual visual content in the frame
+- NO hallucinated content: only describe what is genuinely visible in the image
+- Structure your 50 keywords in this exact distribution:
+  1. PRIMARY (13–15): exact subjects, main objects, people, animals, or items clearly visible
+  2. DESCRIPTIVE (10–12): colors, textures, materials, patterns, lighting quality, shadows
+  3. CONTEXTUAL (8–10): location type, setting, environment, time of day, season
+  4. CONCEPTUAL (7–9): emotions, moods, concepts, themes, symbolism
+  5. COMMERCIAL (5–6): use-cases, target audience, business applications
+  6. TECHNICAL (3–4): photo style, composition technique, camera angle, image type
+- Count carefully before responding — you MUST have exactly 50 items in the keywords array
+- Order keywords by commercial relevance (most important first)
+- Use SINGULAR form for nouns unless plural is more commercially searchable
+- Each keyword = 1–3 words maximum
+- No duplicates, no brand names, no generic filler words
+
+Respond ONLY with valid JSON — no explanation, no markdown:
+{"title": "Exact descriptive title here", "keywords": ["keyword1", "keyword2", ...50 total...]}`;
+
+(text: string): string {
   const trimmed = text.trim();
   const codeBlock = trimmed.match(/```(?:json)?\s*([\s\S]*?)```/);
   if (codeBlock?.[1]) return codeBlock[1].trim();
@@ -123,7 +156,7 @@ async function generateMetadata(
   base64DataUrl: string,
   filename: string,
   visualHints?: string,
-  platform: "adobe_stock" | "shutterstock" = "adobe_stock",
+  platform: "adobe_stock" | "shutterstock" | "magnific" = "adobe_stock",
   complianceGuard: boolean = false,
   attempt: number = 1
 ): Promise<MetadataResult> {
@@ -131,7 +164,7 @@ async function generateMetadata(
     throw new Error("Format data URL tidak valid");
   }
 
-  const promptText = platform === "shutterstock" ? SHUTTERSTOCK_SYSTEM_PROMPT : ADOBE_SYSTEM_PROMPT;
+  const promptText = platform === "shutterstock" ? SHUTTERSTOCK_SYSTEM_PROMPT : platform === "magnific" ? MAGNIFIC_SYSTEM_PROMPT : ADOBE_SYSTEM_PROMPT;
   const textPart = visualHints
     ? `Analyze this media frame and generate metadata following the rules.\n\nFilename: ${filename}\nVisual hints: ${visualHints}`
     : `Analyze this media frame and generate metadata following the rules.\n\nFilename: ${filename}`;
@@ -172,7 +205,7 @@ async function generateMetadata(
     .filter(Boolean)
     .filter((k, i, arr) => arr.indexOf(k) === i);
 
-  const TARGET_KEYWORDS = platform === "shutterstock" ? 50 : 49;
+  const TARGET_KEYWORDS = platform === "shutterstock" || platform === "magnific" ? 50 : 49;
 
   // Hard-enforce exactly target keywords.
   // If AI returned fewer, pad with derived variations from existing keywords.
@@ -267,7 +300,7 @@ async function generateMetadataWithRetry(
   dataUrl: string,
   filename: string,
   visualHints?: string,
-  platform: "adobe_stock" | "shutterstock" = "adobe_stock",
+  platform: "adobe_stock" | "shutterstock" | "magnific" = "adobe_stock",
   complianceGuard: boolean = false,
 ): Promise<MetadataResult> {
   const MAX_ATTEMPTS = 3;
@@ -336,7 +369,7 @@ export async function POST(request: NextRequest) {
 
 
     const results: MetadataResult[] = [];
-    const platform = body.platform === "shutterstock" ? "shutterstock" : "adobe_stock";
+    const platform = body.platform === "shutterstock" ? "shutterstock" : body.platform === "magnific" ? "magnific" : "adobe_stock";
     const complianceGuard = body.complianceGuard === true;
 
     for (let i = 0; i < images.length; i++) {

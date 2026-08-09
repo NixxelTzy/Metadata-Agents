@@ -34,7 +34,7 @@ export default function ImageUploader({ onTokensUpdated }: Props = {}) {
   const [dragOver, setDragOver] = useState(false);
   const [stabilized, setStabilized] = useState(true);
   const [complianceGuard, setComplianceGuard] = useState(true);
-  const [platform, setPlatform] = useState<"adobe_stock" | "shutterstock">("adobe_stock");
+  const [platform, setPlatform] = useState<"adobe_stock" | "shutterstock" | "magnific">("adobe_stock");
   const [csvExtension, setCsvExtension] = useState<"original" | "jpg" | "mp4" | "mov" | "eps" | "ai">("original");
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -298,6 +298,27 @@ export default function ImageUploader({ onTokensUpdated }: Props = {}) {
 
         return [filename, description, keywords, categories, editorial, matureContent, illustration].join(',');
       });
+    } else if (platform === "magnific") {
+      // Magnific Contributor CSV: Filename, Title, Keywords (50, comma-separated, ordered by importance)
+      header = "Filename,Title,Keywords\r\n";
+      csvRows = images.map((img, idx) => {
+        const r = results[idx];
+
+        let rawFilename = img.file.name;
+        if (csvExtension !== "original") {
+          const dotIdx = rawFilename.lastIndexOf(".");
+          const baseName = dotIdx !== -1 ? rawFilename.substring(0, dotIdx) : rawFilename;
+          rawFilename = `${baseName}.${csvExtension}`;
+        }
+
+        const filename = `"${rawFilename.replace(/[\r\n]+/g, " ").replace(/"/g, '""')}"`;
+        const title = r?.title ? `"${r.title.replace(/[\r\n]+/g, " ").replace(/"/g, '""')}"` : `""`;
+
+        const keywordsArr = Array.isArray(r?.keywords) ? r!.keywords : [];
+        const keywords = `"${keywordsArr.map(k => k.trim()).join(', ').replace(/[\r\n]+/g, " ").replace(/"/g, '""')}"`;
+
+        return [filename, title, keywords].join(',');
+      });
     } else {
       header = "Filename,Title,Keywords,Category,Releases\r\n";
       csvRows = images.map((img, idx) => {
@@ -325,8 +346,14 @@ export default function ImageUploader({ onTokensUpdated }: Props = {}) {
     const link = document.createElement("a");
     const url = URL.createObjectURL(blob);
 
+    const filenameMap: Record<string, string> = {
+      shutterstock: "shutterstock_metadata.csv",
+      magnific: "magnific_metadata.csv",
+      adobe_stock: "adobe_stock_metadata.csv",
+    };
+
     link.setAttribute("href", url);
-    link.setAttribute("download", platform === "shutterstock" ? "shutterstock_metadata.csv" : "adobe_stock_metadata.csv");
+    link.setAttribute("download", filenameMap[platform] ?? "metadata.csv");
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -355,6 +382,13 @@ export default function ImageUploader({ onTokensUpdated }: Props = {}) {
           onClick={() => { setPlatform("shutterstock"); setResults([]); }}
         >
           <span className="platform-icon">📸</span> Shutterstock (50 Keywords)
+        </button>
+        <button
+          type="button"
+          className={`platform-btn ${platform === "magnific" ? "platform-btn--active" : ""}`}
+          onClick={() => { setPlatform("magnific"); setResults([]); }}
+        >
+          <span className="platform-icon">✦</span> Magnific (50 Keywords)
         </button>
       </div>
 
@@ -683,7 +717,7 @@ export default function ImageUploader({ onTokensUpdated }: Props = {}) {
                     </div>
                   </div>
 
-                  {/* Shutterstock Options or Adobe Stock categories */}
+                  {/* Shutterstock Options or Adobe Stock / Magnific categories */}
                   <div style={{ display: "flex", flexDirection: "column", gap: "10px", borderLeft: "1px solid var(--border)", paddingLeft: "20px" }}>
                     {platform === "shutterstock" ? (
                       <>
@@ -760,6 +794,26 @@ export default function ImageUploader({ onTokensUpdated }: Props = {}) {
                           </div>
                         </div>
                       </>
+                    ) : platform === "magnific" ? (
+                      <div style={{ display: "flex", flexDirection: "column", height: "100%", justifyContent: "center", alignItems: "center", color: "var(--text-muted)", fontSize: "11px", textAlign: "center", gap: "8px" }}>
+                        <span style={{ fontSize: "20px" }}>✦</span>
+                        <span style={{ fontWeight: "700", color: "var(--text-secondary)" }}>Magnific Contributor</span>
+                        <span style={{ fontSize: "10px" }}>Title + 50 Keywords</span>
+                        <div style={{
+                          marginTop: "6px",
+                          padding: "6px 10px",
+                          background: "var(--bg-secondary)",
+                          border: "1px solid var(--border)",
+                          borderRadius: "6px",
+                          fontSize: "10px",
+                          color: "var(--text-muted)",
+                          textAlign: "left",
+                          lineHeight: 1.6,
+                        }}>
+                          CSV columns:<br />
+                          <code style={{ fontFamily: "monospace", fontSize: "9px" }}>Filename, Title, Keywords</code>
+                        </div>
+                      </div>
                     ) : (
                       <div style={{ display: "flex", flexDirection: "column", height: "100%", justifyContent: "center", alignItems: "center", color: "var(--text-muted)", fontSize: "11px", textAlign: "center" }}>
                         <span>Platform: Adobe Stock</span>
