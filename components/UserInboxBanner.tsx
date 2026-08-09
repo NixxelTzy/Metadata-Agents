@@ -462,7 +462,7 @@ export default function UserInboxBanner() {
   const safeIdx = unreadMessages.length > 0 ? Math.min(currentIdx, unreadMessages.length - 1) : 0;
   const activeMsg = unreadMessages[safeIdx] ?? unreadMessages[0] ?? null;
 
-  // Show modal popup continuously for any active unread message until explicitly closed by user
+  // Show modal popup for any active unread message until explicitly dismissed by user
   const showCenterPopup = activeMsg !== null && !dismissed.has(activeMsg.id);
 
   return (
@@ -559,42 +559,54 @@ export default function UserInboxBanner() {
             left: 0,
             right: 0,
             zIndex: 999980,
-            background: "linear-gradient(135deg, #0f172a, #1e3a8a)",
-            borderBottom: "2px solid #2563eb",
-            padding: "10px 20px",
+            background: "linear-gradient(135deg, #0f172a, #1e1b4b)",
+            borderBottom: "2px solid #6366f1",
+            padding: "9px 20px",
             color: "#ffffff",
             fontFamily: "'Inter', system-ui, -apple-system, sans-serif",
             display: "flex",
             alignItems: "center",
             justifyContent: "space-between",
-            gap: "16px",
-            boxShadow: "0 4px 20px rgba(0,0,0,0.3)",
-            animation: "topBannerSlide 0.3s cubic-bezier(0.16, 1, 0.3, 1)",
+            gap: "12px",
+            boxShadow: "0 4px 20px rgba(0,0,0,0.4)",
           }}
         >
           <div style={{ display: "flex", alignItems: "center", gap: "10px", flex: 1, minWidth: 0 }}>
-            <span style={{ fontSize: "18px" }}>💬</span>
-            <div style={{ minWidth: 0 }}>
-              <div style={{ fontSize: "11px", fontWeight: "800", color: "#60a5fa", textTransform: "uppercase" }}>
-                Pesan dari Admin
+            <span style={{ fontSize: "16px", flexShrink: 0 }}>💬</span>
+            <div style={{ minWidth: 0, overflow: "hidden" }}>
+              <div style={{ fontSize: "9px", fontWeight: "800", color: "#a5b4fc", textTransform: "uppercase", letterSpacing: "0.08em" }}>
+                NixelStudio · Pesan Resmi
               </div>
-              <div style={{ fontSize: "13px", fontWeight: "700", color: "#ffffff", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                {activeMsg.title}: <span style={{ fontWeight: "400", color: "#cbd5e1" }}>{activeMsg.body}</span>
+              <div style={{
+                fontSize: "12px", fontWeight: "700", color: "#e2e8f0",
+                overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                maxWidth: "100%",
+              }}>
+                {activeMsg.title}
               </div>
             </div>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: "8px", flexShrink: 0 }}>
             <button
               onClick={() => setPopupAutoOpen(true)}
-              style={{ padding: "6px 12px", borderRadius: "6px", border: "none", background: "#2563eb", color: "#ffffff", fontWeight: "700", fontSize: "12px", cursor: "pointer" }}
+              style={{
+                padding: "5px 12px", borderRadius: "6px", border: "none",
+                background: "linear-gradient(135deg, #6366f1, #8b5cf6)",
+                color: "#ffffff", fontWeight: "700", fontSize: "11px", cursor: "pointer",
+              }}
             >
-              🔍 Buka Detail
+              Buka
             </button>
             <button
               onClick={() => handleDismiss(activeMsg)}
-              style={{ padding: "6px 10px", borderRadius: "6px", border: "1px solid #475569", background: "transparent", color: "#94a3b8", fontWeight: "600", fontSize: "12px", cursor: "pointer" }}
+              style={{
+                padding: "5px 10px", borderRadius: "6px",
+                border: "1px solid rgba(255,255,255,0.15)",
+                background: "transparent", color: "rgba(255,255,255,0.5)",
+                fontWeight: "600", fontSize: "11px", cursor: "pointer",
+              }}
             >
-              ✕ Tutup
+              ✕
             </button>
           </div>
         </div>
