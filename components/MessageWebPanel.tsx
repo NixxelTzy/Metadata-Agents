@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { showToast } from "./UserInboxBanner";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -389,7 +390,7 @@ function ComposePanelForm({
         }
       }
     } catch {
-      alert("Gagal membuat draf AI");
+      showToast("error", "Gagal Membuat Draf AI", "Terjadi kesalahan saat generate teks");
     } finally {
       setGeneratingAi(false);
     }
@@ -1181,7 +1182,7 @@ function SystemErrorAlertsPanel() {
   };
 
   const handleClear = async () => {
-    if (!confirm("Hapus semua log error system?")) return;
+    if (!window.confirm("Hapus semua log error system?")) return;
     try {
       await fetch("/api/admin/system-errors", {
         method: "POST",
@@ -1189,6 +1190,7 @@ function SystemErrorAlertsPanel() {
         body: JSON.stringify({ action: "clear" }),
       });
       void fetchLogs();
+      showToast("success", "Log Dihapus", "Semua log error system berhasil dibersihkan");
     } catch { /* silent */ }
   };
 
@@ -1199,7 +1201,7 @@ function SystemErrorAlertsPanel() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action: "test" }),
       });
-      alert("⚡ Notifikasi error tes berhasil dikirim ke Admin Inbox!");
+      showToast("info", "⚡ Tes Terkirim", "Notifikasi error tes berhasil dikirim ke Admin Inbox!");
       void fetchLogs();
     } catch { /* silent */ }
   };
@@ -1493,12 +1495,13 @@ function TemplatesPanel({ onUseTemplate }: { onUseTemplate?: (t: MsgTemplate) =>
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm("Hapus template ini?")) return;
+    if (!window.confirm("Hapus template ini?")) return;
     await fetch("/api/admin/message-templates", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ action: "delete", id }),
     });
+    showToast("success", "Template Dihapus");
     void fetch_();
   };
 

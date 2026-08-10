@@ -52,6 +52,32 @@ interface UserInfo {
   role: "user" | "premium" | "admin";
 }
 
+// ── NavBtn: isolated component so useState isn't called inside .map() ─────────
+function NavBtn({
+  icon, label, isActive, danger, onClick,
+}: {
+  icon: string; label: string; isActive: boolean; danger?: boolean; onClick: () => void;
+}) {
+  const [showTip, setShowTip] = useState(false);
+  return (
+    <button
+      type="button"
+      className={`nav-pill-btn${isActive ? " active" : ""}`}
+      onClick={onClick}
+      onMouseEnter={() => setShowTip(true)}
+      onMouseLeave={() => setShowTip(false)}
+      style={danger ? { color: "rgba(248,113,113,0.7)" } : {}}
+      title={label}
+    >
+      {icon}
+      {showTip && <span className="nav-pill-tooltip">{label}</span>}
+    </button>
+  );
+}
+  username: string;
+  role: "user" | "premium" | "admin";
+}
+
 export default function Home() {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<Tab>("metadata");
@@ -161,45 +187,352 @@ export default function Home() {
   const currentTab = TAB_CONFIG.find((t) => t.id === activeTab);
 
   return (
-    <div className="workspace">
-      {sidebarOpen && !device.isDesktop && (
-        <div className="sidebar-overlay" onClick={() => setSidebarOpen(false)} aria-hidden="true" />
-      )}
+    <>
+      <style>{`
+        @keyframes navItemIn {
+          from { opacity: 0; transform: translateY(-8px); }
+          to   { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes tooltipFade {
+          from { opacity: 0; transform: translateX(-50%) translateY(-4px); }
+          to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+        }
+        @keyframes contentFadeIn {
+          from { opacity: 0; transform: translateY(10px); }
+          to   { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes profileDropIn {
+          from { opacity: 0; transform: translateY(-8px) scale(0.97); }
+          to   { opacity: 1; transform: translateY(0) scale(1); }
+        }
+        .nav-pill-btn {
+          position: relative;
+          width: 44px; height: 44px;
+          border-radius: 14px;
+          border: none;
+          background: transparent;
+          display: flex; align-items: center; justify-content: center;
+          font-size: 20px;
+          cursor: pointer;
+          transition: background 0.18s, transform 0.15s;
+          color: rgba(255,255,255,0.55);
+          flex-shrink: 0;
+        }
+        .nav-pill-btn:hover {
+          background: rgba(255,255,255,0.1);
+          color: rgba(255,255,255,0.95);
+          transform: scale(1.08);
+        }
+        .nav-pill-btn.active {
+          background: rgba(99,102,241,0.25);
+          color: #a5b4fc;
+          box-shadow: 0 0 0 1px rgba(99,102,241,0.35);
+        }
+        .nav-pill-tooltip {
+          position: absolute;
+          bottom: -36px;
+          left: 50%;
+          transform: translateX(-50%);
+          background: rgba(15,15,25,0.95);
+          border: 1px solid rgba(255,255,255,0.1);
+          color: #f1f5f9;
+          font-size: 11px;
+          font-weight: 600;
+          padding: 5px 10px;
+          border-radius: 8px;
+          white-space: nowrap;
+          pointer-events: none;
+          animation: tooltipFade 0.18s ease forwards;
+          z-index: 100;
+          backdrop-filter: blur(12px);
+          box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+        }
+        .nav-pill-btn:hover .nav-pill-tooltip,
+        .nav-pill-btn:focus .nav-pill-tooltip { display: block !important; }
+        .workspace-new {
+          min-height: 100vh;
+          background: linear-gradient(135deg, #06060f 0%, #0a0a1a 50%, #06060f 100%);
+          display: flex;
+          flex-direction: column;
+          overflow: hidden;
+          position: relative;
+        }
+        .workspace-new::before {
+          content: '';
+          position: fixed;
+          inset: 0;
+          background:
+            radial-gradient(ellipse 60% 40% at 20% 10%, rgba(99,102,241,0.08) 0%, transparent 60%),
+            radial-gradient(ellipse 40% 30% at 80% 80%, rgba(139,92,246,0.06) 0%, transparent 55%);
+          pointer-events: none;
+          z-index: 0;
+        }
+        .top-navbar {
+          position: fixed;
+          top: 12px;
+          left: 50%;
+          transform: translateX(-50%);
+          z-index: 1000;
+          display: flex;
+          align-items: center;
+          gap: 4px;
+          padding: 6px 10px;
+          background: rgba(12,12,24,0.82);
+          backdrop-filter: blur(24px);
+          -webkit-backdrop-filter: blur(24px);
+          border: 1px solid rgba(255,255,255,0.1);
+          border-radius: 999px;
+          box-shadow: 0 8px 32px rgba(0,0,0,0.5), 0 1px 0 rgba(255,255,255,0.06) inset;
+          animation: navItemIn 0.4s cubic-bezier(0.16,1,0.3,1);
+          max-width: calc(100vw - 24px);
+        }
+        .top-navbar__divider {
+          width: 1px; height: 24px;
+          background: rgba(255,255,255,0.1);
+          margin: 0 4px;
+          flex-shrink: 0;
+        }
+        .top-navbar__section {
+          display: flex; align-items: center; gap: 2px;
+        }
+        .main-content-area {
+          flex: 1;
+          padding-top: 76px;
+          overflow: auto;
+          position: relative;
+          z-index: 1;
+          animation: contentFadeIn 0.3s ease;
+        }
+        .profile-dropdown-new {
+          position: fixed;
+          top: 70px;
+          right: 12px;
+          width: 280px;
+          background: rgba(12,12,24,0.97);
+          backdrop-filter: blur(24px);
+          border: 1px solid rgba(255,255,255,0.1);
+          border-radius: 18px;
+          box-shadow: 0 20px 60px rgba(0,0,0,0.6);
+          animation: profileDropIn 0.22s cubic-bezier(0.16,1,0.3,1);
+          z-index: 2000;
+          overflow: hidden;
+        }
+      `}</style>
 
-      {/* ══════════════════════════════════════════════════════
-          PREMIUM SIDEBAR
-      ══════════════════════════════════════════════════════ */}
-      <aside className={["sidebar", device.isDesktop ? "sidebar--desktop" : sidebarOpen ? "sidebar--open" : ""].join(" ")}>
+      <div className="workspace-new">
+        {/* ── TOP NAVBAR ── */}
+        <nav className="top-navbar" ref={profileRef}>
+          {/* Brand */}
+          <div style={{
+            width: 36, height: 36, borderRadius: 12,
+            background: "linear-gradient(135deg, #6366f1, #8b5cf6)",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            fontSize: 18, flexShrink: 0,
+            boxShadow: "0 4px 12px rgba(99,102,241,0.4)",
+          }}>✨</div>
 
-        {/* Logo */}
-        <div className="sidebar__logo">
-          <div className="sidebar__logo-icon">✨</div>
-          <div>
-            <div className="sidebar__logo-text">Stock AI Studio</div>
-            <div className="sidebar__logo-sub">Powered by Groq AI</div>
+          <div className="top-navbar__divider" />
+
+          {/* Main nav tabs */}
+          <div className="top-navbar__section">
+            {TAB_CONFIG.filter((t) => !["accounts","admin-messages","storage","messageweb","closing"].includes(t.id)).map((tab) => (
+              <NavBtn
+                key={tab.id}
+                icon={tab.icon}
+                label={tab.label}
+                isActive={activeTab === tab.id && !monitorOpen}
+                onClick={() => handleTabChange(tab.id)}
+              />
+            ))}
           </div>
-          {!device.isDesktop && (
-            <button type="button" className="sidebar__close" onClick={() => setSidebarOpen(false)} aria-label="Tutup">✕</button>
-          )}
-        </div>
 
-        {/* Nav */}
-        <div className="sidebar__section-label">Navigation</div>
-        <nav className="sidebar__nav">
-          {TAB_CONFIG.filter((t) => t.id !== "accounts" && t.id !== "admin-messages" && t.id !== "storage" && t.id !== "messageweb" && t.id !== "closing").map((tab) => (
-            <button key={tab.id} type="button"
-              className={`sidebar__item ${activeTab === tab.id && !monitorOpen ? "sidebar__item--active" : ""}`}
-              onClick={() => handleTabChange(tab.id)}
-              style={{ "--tab-color": tab.color } as React.CSSProperties}
+          {/* Admin tabs */}
+          {isAdmin && (
+            <>
+              <div className="top-navbar__divider" />
+              <div className="top-navbar__section">
+                {[
+                  { id: "monitor", icon: "📡", label: "Server Monitor", isMonitor: true },
+                  { id: "accounts", icon: "🛡️", label: "Accounts" },
+                  { id: "messageweb", icon: "📨", label: "Message Web" },
+                  { id: "closing", icon: "🔒", label: "Closing" },
+                  { id: "admin-messages", icon: "📬", label: "Broadcasts" },
+                  { id: "storage", icon: "🗄️", label: "Storage" },
+                  { id: "shutdown", icon: "🔌", label: "Shutdown", danger: true },
+                ].map((item) => (
+                  <NavBtn
+                    key={item.id}
+                    icon={item.icon}
+                    label={item.label}
+                    isActive={item.isMonitor ? monitorOpen : (activeTab === item.id as Tab && !monitorOpen)}
+                    danger={item.danger}
+                    onClick={() => {
+                      if (item.isMonitor) { setMonitorOpen(true); setActiveTab("metadata"); }
+                      else handleTabChange(item.id as Tab);
+                    }}
+                  />
+                ))}
+              </div>
+            </>
+          )}
+
+          <div className="top-navbar__divider" />
+
+          {/* Right side */}
+          <div className="top-navbar__section" style={{ gap: "6px" }}>
+            {/* Token pill */}
+            <div style={{
+              display: "flex", alignItems: "center", gap: 5,
+              padding: "4px 10px",
+              background: "rgba(255,255,255,0.05)",
+              border: "1px solid rgba(255,255,255,0.08)",
+              borderRadius: "999px",
+              fontSize: 10, fontWeight: 700, color: pctColor,
+              fontFamily: "monospace",
+              flexShrink: 0,
+            }}>
+              <span style={{ width: 6, height: 6, borderRadius: "50%", background: pctColor, boxShadow: `0 0 6px ${pctColor}` }} />
+              {tokenPct}%
+            </div>
+
+            <NotificationBellButton />
+
+            {/* User avatar */}
+            <button
+              type="button"
+              onClick={() => setProfileOpen(v => !v)}
+              style={{
+                width: 36, height: 36, borderRadius: 12,
+                background: "linear-gradient(135deg, #4f46e5, #7c3aed)",
+                color: "white", fontSize: 13, fontWeight: 800,
+                border: profileOpen ? "2px solid rgba(99,102,241,0.6)" : "2px solid transparent",
+                cursor: "pointer",
+                display: "flex", alignItems: "center", justifyContent: "center",
+                transition: "all 0.2s", flexShrink: 0,
+                boxShadow: profileOpen ? "0 0 0 3px rgba(99,102,241,0.25)" : "none",
+              }}
             >
-              <span className="sidebar__icon">{tab.icon}</span>
-              <span className="sidebar__item-content">
-                <span className="sidebar__item-label">{tab.label}</span>
-                <span className="sidebar__item-desc">{tab.desc}</span>
-              </span>
+              {userInitial}
             </button>
-          ))}
+          </div>
         </nav>
+
+        {/* Profile Dropdown */}
+        {profileOpen && (
+          <div className="profile-dropdown-new" onClick={e => e.stopPropagation()}>
+            {/* Header */}
+            <div style={{
+              padding: "16px",
+              background: "linear-gradient(135deg, rgba(99,102,241,0.12), rgba(139,92,246,0.06))",
+              borderBottom: "1px solid rgba(255,255,255,0.07)",
+              display: "flex", alignItems: "center", gap: 12,
+            }}>
+              <div style={{
+                width: 42, height: 42, borderRadius: 12,
+                background: "linear-gradient(135deg, #4f46e5, #7c3aed)",
+                color: "white", fontSize: 18, fontWeight: 800,
+                display: "flex", alignItems: "center", justifyContent: "center",
+                flexShrink: 0,
+              }}>{userInitial}</div>
+              <div>
+                <div style={{ fontSize: 13, fontWeight: 700, color: "#f1f5f9" }}>{user?.username}</div>
+                <div style={{ fontSize: 10, color: "rgba(255,255,255,0.4)", marginTop: 2 }}>{user?.email}</div>
+              </div>
+            </div>
+
+            {/* Token section */}
+            <div style={{ padding: "12px 16px", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
+                <span style={{ fontSize: 10, fontWeight: 700, color: "rgba(255,255,255,0.4)", textTransform: "uppercase", letterSpacing: "0.06em" }}>⚡ Token Hari Ini</span>
+                <span style={{ fontSize: 11, fontWeight: 800, color: pctColor }}>{tokenPct}%</span>
+              </div>
+              <div style={{ height: 4, background: "rgba(255,255,255,0.06)", borderRadius: 999, overflow: "hidden", display: "flex", marginBottom: 8 }}>
+                {(["metadata", "chat", "vector", "motion"] as Platform[]).map(p => {
+                  const pu = tokenUsage.byPlatform?.[p];
+                  const w = tokenUsage.totalTokens > 0 && pu ? (pu.totalTokens / tokenUsage.totalTokens) * tokenPct : 0;
+                  const colors: Record<Platform, string> = { metadata: "#4a90e2", chat: "#7b5ae0", vector: "#22c55e", motion: "#a78bfa" };
+                  return <div key={p} style={{ width: `${w}%`, height: "100%", background: colors[p] }} />;
+                })}
+              </div>
+              <div style={{ display: "flex", justifyContent: "space-between", fontSize: 10, color: "rgba(255,255,255,0.35)", fontFamily: "monospace" }}>
+                <span>{formatTokens(tokenUsage.totalTokens)}</span>
+                <span>/ {formatTokens(getDailyLimit())}</span>
+              </div>
+            </div>
+
+            {/* Logout */}
+            <button
+              type="button"
+              onClick={handleLogout}
+              disabled={loggingOut}
+              style={{
+                width: "100%", padding: "13px",
+                background: "transparent", border: "none",
+                color: "#f87171", fontSize: 13, fontWeight: 700,
+                cursor: loggingOut ? "not-allowed" : "pointer",
+                opacity: loggingOut ? 0.5 : 1,
+                transition: "background 0.15s",
+                borderTop: "1px solid rgba(255,255,255,0.06)",
+              }}
+              onMouseEnter={e => (e.currentTarget.style.background = "rgba(239,68,68,0.08)")}
+              onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
+            >
+              {loggingOut ? "⏳ Keluar..." : "→ Keluar"}
+            </button>
+          </div>
+        )}
+
+        {/* Click outside to close profile */}
+        {profileOpen && (
+          <div
+            style={{ position: "fixed", inset: 0, zIndex: 1999 }}
+            onClick={() => setProfileOpen(false)}
+          />
+        )}
+
+        {/* ── MAIN CONTENT ── */}
+        <main className="main-content-area">
+          {!isAdmin && closingMap[activeTab]?.closed ? (
+            <FeatureClosedNotice featureName={currentTab?.label} message={closingMap[activeTab]?.message} />
+          ) : isAdmin && monitorOpen ? (
+            <ServerMonitor />
+          ) : isAdmin && activeTab === "accounts" ? (
+            <AdminAccountChecker />
+          ) : isAdmin && activeTab === "messageweb" ? (
+            <MessageWebPanel />
+          ) : isAdmin && activeTab === "closing" ? (
+            <ClosingFeaturesPanel />
+          ) : isAdmin && activeTab === "admin-messages" ? (
+            <AdminMessagesPanel />
+          ) : isAdmin && activeTab === "storage" ? (
+            <StoragePanel />
+          ) : isAdmin && activeTab === "shutdown" ? (
+            <ServerShutdownPanel />
+          ) : activeTab === "feedback" ? (
+            <FeedbackPanel />
+          ) : activeTab === "metadata" ? (
+            <ImageUploader onTokensUpdated={refreshTokens} />
+          ) : activeTab === "upscale" ? (
+            <ImageUpscaler />
+          ) : activeTab === "watermark" ? (
+            <WatermarkRemover />
+          ) : activeTab === "motion" ? (
+            <MotionStudio onTokensUpdated={refreshTokens} />
+          ) : activeTab === "research" ? (
+            <ResearchPanel />
+          ) : activeTab === "vector" ? (
+            <div className="vector-content-wrap">
+              <VectorCreator onTokensUpdated={refreshTokens} />
+            </div>
+          ) : (
+            <AIChat onTokensUpdated={refreshTokens} />
+          )}
+        </main>
+      </div>
+    </>
+  );
+}
+
 
         {/* Admin */}
         {isAdmin && (

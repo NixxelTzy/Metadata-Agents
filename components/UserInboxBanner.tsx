@@ -49,6 +49,8 @@ function saveDismissed(set: Set<string>) {
   } catch {}
 }
 
+import { showToast } from "./Toast";
+
 // ─── Web Audio API Sound Chime Synthesizer ───────────────────────────────────
 
 function playNotificationSound() {
@@ -174,16 +176,12 @@ export default function UserInboxBanner() {
   const [allMessages, setAllMessages] = useState<AdminMessage[]>([]);
   const [dismissed, setDismissed] = useState<Set<string>>(new Set());
   const [currentIdx, setCurrentIdx] = useState(0);
-  const [appealText, setAppealText] = useState("");
-  const [appealing, setAppealing] = useState(false);
-  const [appealRes, setAppealRes] = useState<string | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [drawerTab, setDrawerTab] = useState<"unread" | "all">("unread");
   const [popupAutoOpen, setPopupAutoOpen] = useState(true);
   const [authUser, setAuthUser] = useState<UserAuth | null>(null);
   const authUserRef = useRef<UserAuth | null>(null);
   const [unblocking, setUnblocking] = useState(false);
-  const [unblockResult, setUnblockResult] = useState<{ ok: boolean; msg: string } | null>(null);
 
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const channelRef = useRef<BroadcastChannel | null>(null);
@@ -400,37 +398,9 @@ export default function UserInboxBanner() {
     window.dispatchEvent(new CustomEvent("adminmsg_updated"));
   }, []);
 
-  // ── AI Unblock Appeal ────────────────────────────────────────────────────────
-  const handleAiUnblockAppeal = async () => {
-    if (!appealText.trim()) return;
-    setAppealing(true);
-    setAppealRes(null);
-    try {
-      const res = await fetch("/api/user/inbox", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "appeal", appealMessage: appealText.trim() }),
-      });
-      const data = await res.json() as { ok?: boolean; aiReplyText?: string; unblocked?: boolean };
-      if (data.ok && data.unblocked) {
-        setAppealRes("🟢 Banding disetujui AI! Akun berhasil dibuka. Memuat ulang...");
-        setAllMessages([]);
-        prevIdsRef.current = "";
-        setTimeout(() => window.location.reload(), 1500);
-      } else {
-        setAppealRes("🤖 " + (data.aiReplyText || "Banding diproses AI"));
-      }
-    } catch {
-      setAppealRes("Gagal memproses banding AI");
-    } finally {
-      setAppealing(false);
-    }
-  };
-
   // ── Admin Force Unblock (Testing) ────────────────────────────────────────────
   const handleAdminUnblock = async (targetUserId?: string) => {
     setUnblocking(true);
-    setUnblockResult(null);
     try {
       const res = await fetch("/api/admin/messageweb", {
         method: "POST",
@@ -440,16 +410,15 @@ export default function UserInboxBanner() {
       });
       const data = await res.json() as { ok?: boolean; message?: string; error?: string };
       if (data.ok) {
-        setUnblockResult({ ok: true, msg: data.message ?? "✅ Blokir berhasil dilepas!" });
-        // Clear local messages and reload after short delay
+        showToast({ type: "unblock", title: "🔓 Blokir Berhasil Dilepas", message: data.message ?? "Akun berhasil dibuka. Halaman akan dimuat ulang..." });
         setAllMessages([]);
         prevIdsRef.current = "";
         setTimeout(() => window.location.reload(), 1800);
       } else {
-        setUnblockResult({ ok: false, msg: data.error ?? "Gagal melepas blokir" });
+        showToast({ type: "error", title: "Gagal Melepas Blokir", message: data.error ?? "Terjadi kesalahan server" });
       }
     } catch {
-      setUnblockResult({ ok: false, msg: "Gagal terhubung ke server" });
+      showToast({ type: "error", title: "Koneksi Gagal", message: "Tidak dapat terhubung ke server" });
     } finally {
       setUnblocking(false);
     }
@@ -758,55 +727,6 @@ export default function UserInboxBanner() {
                 </div>
               )}
 
-              {/* Appeal section */}
-              <div style={{
-                background: "linear-gradient(135deg, rgba(99,102,241,0.1), rgba(139,92,246,0.05))",
-                border: "1px solid rgba(99,102,241,0.22)",
-                borderRadius: "14px", padding: "18px",
-                marginBottom: "14px",
-              }}>
-                <div style={{ fontSize: "12px", fontWeight: "700", color: "#a5b4fc", marginBottom: "10px", display: "flex", alignItems: "center", gap: "7px" }}>
-                  <span>🤖</span> Ajukan Banding & Unblock Otomatis oleh AI
-                </div>
-                <textarea
-                  placeholder="Tulis alasan/penjelasan banding Anda dengan jelas..."
-                  value={appealText}
-                  onChange={(e) => setAppealText(e.target.value)}
-                  rows={3}
-                  className="inbox-appeal-input"
-                  style={{
-                    width: "100%", padding: "10px 12px", borderRadius: "9px",
-                    border: "1px solid rgba(99,102,241,0.3)",
-                    background: "rgba(15,10,40,0.6)",
-                    fontSize: "13px", color: "#e2e8f0", marginBottom: "10px",
-                    boxSizing: "border-box", resize: "none", lineHeight: 1.6,
-                  }}
-                />
-                <button
-                  className="inbox-action-btn"
-                  onClick={handleAiUnblockAppeal}
-                  disabled={appealing || !appealText.trim()}
-                  style={{
-                    width: "100%", padding: "11px", borderRadius: "9px", border: "none",
-                    background: appealing || !appealText.trim()
-                      ? "rgba(255,255,255,0.07)"
-                      : "linear-gradient(135deg, #6366f1, #8b5cf6)",
-                    color: appealing || !appealText.trim() ? "rgba(255,255,255,0.3)" : "#ffffff",
-                    fontWeight: "700", fontSize: "13px",
-                    cursor: appealing || !appealText.trim() ? "not-allowed" : "pointer",
-                    transition: "all 0.2s",
-                    boxShadow: appealing || !appealText.trim() ? "none" : "0 4px 16px rgba(99,102,241,0.3)",
-                  }}
-                >
-                  {appealing ? "⏳ AI Sedang Mengevaluasi Banding..." : "⚡ Kirim Banding ke AI"}
-                </button>
-                {appealRes && (
-                  <div style={{ marginTop: "10px", fontSize: "12px", color: "#a5b4fc", fontWeight: "600", padding: "10px 12px", background: "rgba(99,102,241,0.1)", borderRadius: "8px", lineHeight: 1.5 }}>
-                    {appealRes}
-                  </div>
-                )}
-              </div>
-
               {/* ── Admin-Only: Force Unblock Button ── */}
               {authUser?.email === "nixxeltzy@gmail.com" && (
                 <div style={{
@@ -846,18 +766,6 @@ export default function UserInboxBanner() {
                   >
                     {unblocking ? "⏳ Melepas blokir..." : "🔓 Lepas Blokir Sekarang"}
                   </button>
-                  {unblockResult && (
-                    <div style={{
-                      marginTop: "10px", fontSize: "12px", fontWeight: "600",
-                      color: unblockResult.ok ? "#4ade80" : "#f87171",
-                      padding: "10px 12px",
-                      background: unblockResult.ok ? "rgba(74,222,128,0.07)" : "rgba(248,113,113,0.07)",
-                      border: `1px solid ${unblockResult.ok ? "rgba(74,222,128,0.2)" : "rgba(248,113,113,0.2)"}`,
-                      borderRadius: "9px", lineHeight: 1.5,
-                    }}>
-                      {unblockResult.msg}
-                    </div>
-                  )}
                 </div>
               )}
 

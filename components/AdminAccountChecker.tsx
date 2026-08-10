@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import { showToast } from "./Toast";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -645,7 +646,7 @@ export default function AdminAccountChecker() {
       }
       await fetchUsers();
     } catch (err) {
-      alert(err instanceof Error ? err.message : "Gagal memperbarui role");
+      showToast({ type: "error", title: "Gagal update role", message: err instanceof Error ? err.message : "Gagal memperbarui role" });
     } finally {
       setActionLoading(null);
     }
@@ -653,7 +654,7 @@ export default function AdminAccountChecker() {
 
   const handleResetPassword = async (email: string) => {
     if (newPasswordVal.length < 8) {
-      alert("Password baru minimal harus 8 karakter!");
+      showToast({ type: "warning", title: "Password terlalu pendek", message: "Password baru minimal harus 8 karakter!" });
       return;
     }
     setActionLoading(`pass-${email}`);
@@ -669,10 +670,10 @@ export default function AdminAccountChecker() {
       }
       setEditingUserId(null);
       setNewPasswordVal("");
-      alert("Password berhasil diubah!");
+      showToast({ type: "success", title: "Password diubah!", message: `Password ${email} berhasil direset` });
       await fetchUsers();
     } catch (err) {
-      alert(err instanceof Error ? err.message : "Gagal mereset password");
+      showToast({ type: "error", title: "Gagal reset password", message: err instanceof Error ? err.message : "Gagal mereset password" });
     } finally {
       setActionLoading(null);
     }
@@ -693,7 +694,7 @@ export default function AdminAccountChecker() {
       setShowConfirmDelete(null);
       await fetchUsers();
     } catch (err) {
-      alert(err instanceof Error ? err.message : "Gagal menghapus user");
+      showToast({ type: "error", title: "Gagal hapus user", message: err instanceof Error ? err.message : "Gagal menghapus user" });
     } finally {
       setActionLoading(null);
     }
@@ -1153,9 +1154,9 @@ export default function AdminAccountChecker() {
                                     }),
                                   });
                                   const d = await res.json() as { ok?: boolean; actionResult?: string };
-                                  if (d.ok) alert(d.actionResult ?? "Unblocked");
-                                  else alert("Gagal unblock");
-                                } catch { alert("Error"); }
+                                  if (d.ok) showToast({ type: "unblock", title: "User Berhasil Di-unblock!", message: d.actionResult ?? `${u.email} telah dibebaskan`, duration: 6000 });
+                                  else showToast({ type: "error", title: "Gagal Unblock", message: "Coba lagi atau cek log server" });
+                                } catch { showToast({ type: "error", title: "Error", message: "Koneksi gagal" }); }
                                 finally { setActionLoading(null); fetchUsers(); }
                               }}
                               disabled={actionLoading === `ctrl-${u.email}`}
@@ -1191,8 +1192,8 @@ export default function AdminAccountChecker() {
                                     }),
                                   });
                                   const d = await res.json() as { ok?: boolean; actionResult?: string };
-                                  if (d.ok) alert(d.actionResult ?? "Token boosted");
-                                } catch { alert("Error"); }
+                                  if (d.ok) showToast({ type: "success", title: "Token Boosted! ⚡", message: d.actionResult ?? `Token ${u.email} berhasil di-boost` });
+                                } catch { showToast({ type: "error", title: "Error", message: "Koneksi gagal" }); }
                                 finally { setActionLoading(null); }
                               }}
                               disabled={actionLoading === `ctrl-${u.email}`}

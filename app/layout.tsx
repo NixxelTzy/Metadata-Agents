@@ -3,6 +3,7 @@ import { Inter } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
 import FirewallProvider from "@/components/FirewallProvider";
 import UserInboxBanner from "@/components/UserInboxBanner";
+import ToastContainer from "@/components/Toast";
 import SystemErrorSentinel from "@/components/SystemErrorSentinel";
 import MaintenanceBanner from "@/components/MaintenanceBanner";
 import "./globals.css";
@@ -90,8 +91,10 @@ export default function RootLayout({
             {children}
             <Analytics />
             <UserInboxBanner />
+            <ToastContainer />
             <SystemErrorSentinel />
             <MaintenanceBanner />
+            <ToastContainer />
           </div>
         </FirewallProvider>
       </body>
