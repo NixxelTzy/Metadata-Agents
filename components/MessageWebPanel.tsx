@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { showToast } from "./UserInboxBanner";
+import { showToast } from "./Toast";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -390,7 +390,7 @@ function ComposePanelForm({
         }
       }
     } catch {
-      showToast("error", "Gagal Membuat Draf AI", "Terjadi kesalahan saat generate teks");
+      showToast({ type: "error", title: "Gagal Membuat Draf AI", message: "Terjadi kesalahan saat generate teks" });
     } finally {
       setGeneratingAi(false);
     }
@@ -1190,7 +1190,7 @@ function SystemErrorAlertsPanel() {
         body: JSON.stringify({ action: "clear" }),
       });
       void fetchLogs();
-      showToast("success", "Log Dihapus", "Semua log error system berhasil dibersihkan");
+      showToast({ type: "success", title: "Log Dihapus", message: "Semua log error system berhasil dibersihkan" });
     } catch { /* silent */ }
   };
 
@@ -1201,7 +1201,7 @@ function SystemErrorAlertsPanel() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action: "test" }),
       });
-      showToast("info", "⚡ Tes Terkirim", "Notifikasi error tes berhasil dikirim ke Admin Inbox!");
+      showToast({ type: "info", title: "⚡ Tes Terkirim", message: "Notifikasi error tes berhasil dikirim ke Admin Inbox!" });
       void fetchLogs();
     } catch { /* silent */ }
   };
@@ -1501,7 +1501,7 @@ function TemplatesPanel({ onUseTemplate }: { onUseTemplate?: (t: MsgTemplate) =>
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ action: "delete", id }),
     });
-    showToast("success", "Template Dihapus");
+    showToast({ type: "success", title: "Template Dihapus" });
     void fetch_();
   };
 
