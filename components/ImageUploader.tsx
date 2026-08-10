@@ -617,6 +617,7 @@ export default function ImageUploader({ onTokensUpdated }: Props = {}) {
               return (
                 <div
                   key={`${result.filename}-${i}`}
+                  className="uploader-result-card"
                   style={{
                     display: "grid",
                     gridTemplateColumns: "100px 1fr 1fr",
@@ -625,7 +626,7 @@ export default function ImageUploader({ onTokensUpdated }: Props = {}) {
                     background: "var(--surface)",
                     border: "1px solid var(--border)",
                     borderRadius: "var(--radius)",
-                    transition: "border-color 0.15s"
+                    transition: "border-color 0.15s",
                   }}
                 >
                   {/* Thumbnail & Info */}

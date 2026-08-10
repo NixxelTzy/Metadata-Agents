@@ -1161,18 +1161,7 @@ export default function ImageUpscaler() {
         </p>
       </div>
 
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "1fr 1fr",
-          gap: "20px",
-          background: "var(--surface)",
-          border: "1px solid var(--border)",
-          padding: "20px",
-          borderRadius: "var(--radius)",
-          marginBottom: "24px",
-        }}
-      >
+      <div className="upscaler-config-grid">
         <div>
           <label
             style={{
@@ -1187,7 +1176,7 @@ export default function ImageUpscaler() {
           >
             Target Resolution (Fixed Pixel)
           </label>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "6px" }}>
+          <div className="upscaler-preset-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "6px" }}>
             {RESOLUTION_PRESETS.map((preset) => {
               const active = selectedPreset.label === preset.label;
               return (

@@ -518,6 +518,59 @@ export default function WatermarkRemover() {
     };
   };
 
+  const getTouchCoords = (touch: React.Touch) => {
+    const c = maskCanvasRef.current!;
+    const rect = c.getBoundingClientRect();
+    return {
+      x: Math.round((touch.clientX - rect.left) * (c.width / rect.width)),
+      y: Math.round((touch.clientY - rect.top) * (c.height / rect.height)),
+    };
+  };
+
+  const handleTouchStart = (e: React.TouchEvent<HTMLCanvasElement>) => {
+    e.preventDefault();
+    const touch = e.touches[0];
+    if (!touch) return;
+    const { x, y } = getTouchCoords(touch);
+    setIsDrawing(true);
+    if (tool === "rect") setRectStart({ x, y });
+    else if (tool === "brush") paintOnMask(x, y, false);
+    else if (tool === "eraser") paintOnMask(x, y, true);
+    else if (tool === "clone") cloneStamp(x, y);
+  };
+
+  const handleTouchMove = (e: React.TouchEvent<HTMLCanvasElement>) => {
+    e.preventDefault();
+    if (!isDrawing) return;
+    const touch = e.touches[0];
+    if (!touch) return;
+    const { x, y } = getTouchCoords(touch);
+    if (tool === "brush") paintOnMask(x, y, false);
+    else if (tool === "eraser") paintOnMask(x, y, true);
+    else if (tool === "clone") cloneStamp(x, y);
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent<HTMLCanvasElement>) => {
+    e.preventDefault();
+    setIsDrawing(false);
+    if (tool === "rect" && rectStart) {
+      const touch = e.changedTouches[0];
+      if (!touch) return;
+      const { x, y } = getTouchCoords(touch);
+      const c = maskCanvasRef.current!;
+      const ctx = c.getContext("2d")!;
+      ctx.globalCompositeOperation = "source-over";
+      ctx.fillStyle = "rgba(239, 68, 68, 0.85)";
+      const rx = Math.min(rectStart.x, x);
+      const ry = Math.min(rectStart.y, y);
+      const rw = Math.abs(x - rectStart.x);
+      const rh = Math.abs(y - rectStart.y);
+      if (rw > 1 && rh > 1) ctx.fillRect(rx, ry, rw, rh);
+      setRectStart(null);
+      setHasMaskPixels(true);
+    }
+  };
+
   const paintOnMask = (x: number, y: number, erase = false) => {
     const c = maskCanvasRef.current!;
     const ctx = c.getContext("2d")!;
@@ -820,7 +873,7 @@ export default function WatermarkRemover() {
 
       {/* Main workspace */}
       {hasCanvas && (
-        <div style={{ display: "grid", gridTemplateColumns: "240px 1fr", gap: "24px", marginTop: "20px" }}>
+        <div className="wm-workspace-grid">
           {/* ── Side Controls Panel ── */}
           <aside
             style={{
@@ -1085,19 +1138,23 @@ export default function WatermarkRemover() {
                 {/* Background image canvas */}
                 <canvas ref={imageCanvasRef} style={{ display: "block" }} />
 
-                {/* Draw mask canvas */}
                 <canvas
                   ref={maskCanvasRef}
+                  className="wm-canvas-wrapper"
                   style={{
                     position: "absolute",
                     top: 0,
                     left: 0,
                     cursor: tool === "brush" ? "crosshair" : "default",
+                    touchAction: "none",
                   }}
                   onMouseDown={handleMouseDown}
                   onMouseMove={handleMouseMove}
                   onMouseUp={handleMouseUp}
                   onMouseLeave={() => setIsDrawing(false)}
+                  onTouchStart={handleTouchStart}
+                  onTouchMove={handleTouchMove}
+                  onTouchEnd={handleTouchEnd}
                 />
 
                 {/* Invisible output canvas */}
