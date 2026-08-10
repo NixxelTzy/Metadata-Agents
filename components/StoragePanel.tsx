@@ -2,174 +2,41 @@
 
 import { useEffect, useState, useCallback } from "react";
 
-// ── Types ─────────────────────────────────────────────────────────────────────
-interface KeyBreakdown {
-  prefix: string;
-  label: string;
-  emoji: string;
-  count: number;
-}
-
+interface KeyBreakdown { prefix: string; label: string; emoji: string; count: number; }
 interface DbStats {
-  name: string;
-  online: boolean;
-  error?: string;
-  dbSize: number;
-  totalKeys: number;
-  usedMemoryBytes: number;
-  usedMemoryHuman: string;
-  maxMemoryBytes: number;
-  maxMemoryHuman: string;
-  peakMemoryHuman: string;
-  usedPercent: number | null;
-  hitRate: number | null;
-  connectedClients: number;
-  totalCommands: number;
-  uptimeSeconds: number;
-  redisVersion: string;
-  keyBreakdown: KeyBreakdown[];
+  name: string; online: boolean; error?: string;
+  dbSize: number; totalKeys: number;
+  usedMemoryBytes: number; usedMemoryHuman: string;
+  maxMemoryBytes: number; maxMemoryHuman: string; peakMemoryHuman: string;
+  usedPercent: number | null; hitRate: number | null;
+  connectedClients: number; totalCommands: number; uptimeSeconds: number;
+  redisVersion: string; keyBreakdown: KeyBreakdown[];
 }
+interface StorageData { timestamp: string; databases: DbStats[]; }
 
-interface StorageData {
-  timestamp: string;
-  databases: DbStats[];
+function fmtUptime(s: number) {
+  if (s < 60) return `${s}s`;
+  if (s < 3600) return `${Math.floor(s / 60)}m`;
+  return `${Math.floor(s / 3600)}j ${Math.floor((s % 3600) / 60)}m`;
 }
-
-// ── Helpers ───────────────────────────────────────────────────────────────────
-function formatUptime(seconds: number): string {
-  if (seconds < 60) return `${seconds}s`;
-  if (seconds < 3600) return `${Math.floor(seconds / 60)}m ${seconds % 60}s`;
-  const h = Math.floor(seconds / 3600);
-  const m = Math.floor((seconds % 3600) / 60);
-  return `${h}j ${m}m`;
-}
-
-function formatNumber(n: number): string {
+function fmtNum(n: number) {
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
   if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`;
   return String(n);
 }
-
-function pctColor(pct: number | null): string {
+function memColor(pct: number | null) {
   if (pct === null) return "#64748b";
   if (pct >= 90) return "#ef4444";
   if (pct >= 70) return "#f59e0b";
   return "#10b981";
 }
 
-// ── Sub-components ────────────────────────────────────────────────────────────
-function ProgressBar({ value, color }: { value: number | null; color: string }) {
-  const pct = Math.min(value ?? 0, 100);
-  return (
-    <div className="stor-bar-track">
-      <div
-        className="stor-bar-fill"
-        style={{ width: `${pct}%`, background: color }}
-      />
-    </div>
-  );
-}
-
-function StatBadge({ label, value, sub }: { label: string; value: string | number; sub?: string }) {
-  return (
-    <div className="stor-stat-badge">
-      <div className="stor-stat-badge__val">{value}</div>
-      <div className="stor-stat-badge__lbl">{label}</div>
-      {sub && <div className="stor-stat-badge__sub">{sub}</div>}
-    </div>
-  );
-}
-
-function DbCard({ db }: { db: DbStats }) {
-  const memColor = pctColor(db.usedPercent);
-  const isDb2 = db.name.includes("#2");
-
-  return (
-    <div className={`stor-card ${isDb2 ? "stor-card--secondary" : "stor-card--primary"}`}>
-      {/* Header */}
-      <div className="stor-card__header">
-        <div className="stor-card__header-left">
-          <span className="stor-card__db-icon">{isDb2 ? "🗄️" : "💾"}</span>
-          <div>
-            <div className="stor-card__name">{db.name}</div>
-            <div className="stor-card__version">Redis v{db.redisVersion}</div>
-          </div>
-        </div>
-        <div className={`stor-card__status ${db.online ? "stor-card__status--ok" : "stor-card__status--err"}`}>
-          <span className="stor-card__status-dot" />
-          {db.online ? "Online" : "Offline"}
-        </div>
-      </div>
-
-      {!db.online && db.error && (
-        <div className="stor-error-box">⚠️ {db.error}</div>
-      )}
-
-      {db.online && (
-        <>
-          {/* Memory Section */}
-          <div className="stor-section">
-            <div className="stor-section__title">💽 Memory Usage</div>
-            <div className="stor-mem-row">
-              <span className="stor-mem-used" style={{ color: memColor }}>{db.usedMemoryHuman}</span>
-              <span className="stor-mem-sep">of</span>
-              <span className="stor-mem-max">{db.maxMemoryHuman !== "0B" ? db.maxMemoryHuman : "Unlimited"}</span>
-              {db.usedPercent !== null && (
-                <span className="stor-mem-pct" style={{ color: memColor }}>({db.usedPercent}%)</span>
-              )}
-            </div>
-            <ProgressBar value={db.usedPercent} color={memColor} />
-            <div className="stor-mem-peak">Peak: {db.peakMemoryHuman}</div>
-          </div>
-
-          {/* Stats Grid */}
-          <div className="stor-stats-grid">
-            <StatBadge label="Total Keys" value={formatNumber(db.totalKeys)} />
-            <StatBadge label="Hit Rate" value={db.hitRate !== null ? `${db.hitRate}%` : "—"} />
-            <StatBadge label="Commands" value={formatNumber(db.totalCommands)} />
-            <StatBadge label="Uptime" value={formatUptime(db.uptimeSeconds)} />
-          </div>
-
-          {/* Key Breakdown */}
-          {db.keyBreakdown.length > 0 && (
-            <div className="stor-section">
-              <div className="stor-section__title">🔑 Key Breakdown</div>
-              <div className="stor-keys-list">
-                {db.keyBreakdown.map((cat) => {
-                  const barPct = db.totalKeys > 0 ? (cat.count / db.totalKeys) * 100 : 0;
-                  return (
-                    <div key={cat.prefix} className="stor-key-row">
-                      <span className="stor-key-emoji">{cat.emoji}</span>
-                      <span className="stor-key-label">{cat.label}</span>
-                      <div className="stor-key-bar-wrap">
-                        <div className="stor-key-bar" style={{ width: `${barPct}%` }} />
-                      </div>
-                      <span className="stor-key-count">{cat.count}</span>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-
-          {db.totalKeys === 0 && (
-            <div className="stor-empty">
-              <span>📭</span>
-              <p>Database kosong — belum ada data yang tersimpan</p>
-            </div>
-          )}
-        </>
-      )}
-    </div>
-  );
-}
-
-// ── Main Component ────────────────────────────────────────────────────────────
 export default function StoragePanel() {
   const [data, setData] = useState<StorageData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [lastRefresh, setLastRefresh] = useState<Date | null>(null);
+  const [selectedDb, setSelectedDb] = useState<string | null>(null);
 
   const fetchStats = useCallback(async (silent = false) => {
     try {
@@ -180,118 +47,223 @@ export default function StoragePanel() {
       const json = await res.json() as StorageData;
       setData(json);
       setLastRefresh(new Date());
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Gagal mengambil data storage");
+      if (!selectedDb && json.databases[0]) setSelectedDb(json.databases[0].name);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Gagal mengambil data");
     } finally {
       if (!silent) setLoading(false);
     }
-  }, []);
+  }, [selectedDb]);
 
-  useEffect(() => { fetchStats(false); }, [fetchStats]);
-
-  // Auto-refresh every 500ms
+  useEffect(() => { fetchStats(false); }, []);
   useEffect(() => {
-    const interval = setInterval(() => {
-      fetchStats(true);
-    }, 500);
-    return () => clearInterval(interval);
+    const id = setInterval(() => fetchStats(true), 1500);
+    return () => clearInterval(id);
   }, [fetchStats]);
 
-  const totalKeys = data?.databases.reduce((sum, db) => sum + db.totalKeys, 0) ?? 0;
-  const totalMemBytes = data?.databases.reduce((sum, db) => sum + db.usedMemoryBytes, 0) ?? 0;
-  const totalMemHuman = totalMemBytes > 1_048_576
+  const totalKeys = data?.databases.reduce((s, d) => s + d.totalKeys, 0) ?? 0;
+  const totalMemBytes = data?.databases.reduce((s, d) => s + d.usedMemoryBytes, 0) ?? 0;
+  const totalMem = totalMemBytes >= 1_048_576
     ? `${(totalMemBytes / 1_048_576).toFixed(2)} MB`
     : `${(totalMemBytes / 1_024).toFixed(1)} KB`;
 
+  const activeDb = data?.databases.find(d => d.name === selectedDb) ?? data?.databases[0] ?? null;
+
   return (
-    <div className="stor-panel">
-      {/* Page Header */}
-      <div className="stor-header">
-        <div className="stor-header__left">
-          <h1 className="stor-header__title">🗄️ Storage Monitor</h1>
-          <p className="stor-header__sub">Real-time monitoring untuk semua Upstash Redis database</p>
+    <div className="pl-root">
+      {/* Header */}
+      <div className="pl-header">
+        <div className="pl-header__left">
+          <div className="pl-header__icon">🗄️</div>
+          <div>
+            <div className="pl-header__title">Storage Monitor</div>
+            <div className="pl-header__sub">Real-time monitoring Upstash Redis database</div>
+          </div>
         </div>
-        <div className="stor-header__right">
-          <button className="stor-refresh-btn" onClick={() => fetchStats(false)} disabled={loading}>
-            <span className={loading ? "stor-spin" : ""}>🔄</span>
-            {loading ? "Loading…" : "Refresh"}
-          </button>
+        <div className="pl-header__right">
           {lastRefresh && (
-            <div className="stor-refresh-info">
-              <span>Auto-refresh: <strong>500ms</strong></span>
-              <span className="stor-refresh-time">
-                Last: {lastRefresh.toLocaleTimeString("id-ID")}.{String(lastRefresh.getMilliseconds()).padStart(3, "0")}
-              </span>
-            </div>
+            <span style={{ fontSize: 11, color: "rgba(255,255,255,0.25)", fontFamily: "monospace" }}>
+              {lastRefresh.toLocaleTimeString("id-ID")}.{String(lastRefresh.getMilliseconds()).padStart(3, "0")}
+            </span>
           )}
+          <span className="pl-badge pl-badge--green">
+            <span className="pl-badge__dot" style={{ animation: "pl-pulse-green 1.5s ease-in-out infinite" }} />
+            Auto-refresh 1.5s
+          </span>
+          <button className="pl-btn pl-btn--ghost" onClick={() => fetchStats(false)} disabled={loading}>
+            {loading ? <span className="pl-spinner" /> : "Refresh"}
+          </button>
         </div>
       </div>
 
-      {/* Summary Strip */}
-      {data && !loading && (
-        <div className="stor-summary">
-          <div className="stor-summary__item">
-            <span className="stor-summary__icon">🗃️</span>
-            <div>
-              <div className="stor-summary__val">{data.databases.filter(d => d.online).length}/{data.databases.length}</div>
-              <div className="stor-summary__lbl">DB Online</div>
-            </div>
-          </div>
-          <div className="stor-summary__item">
-            <span className="stor-summary__icon">🔑</span>
-            <div>
-              <div className="stor-summary__val">{formatNumber(totalKeys)}</div>
-              <div className="stor-summary__lbl">Total Keys</div>
-            </div>
-          </div>
-          <div className="stor-summary__item">
-            <span className="stor-summary__icon">💽</span>
-            <div>
-              <div className="stor-summary__val">{totalMemHuman}</div>
-              <div className="stor-summary__lbl">Total Memory</div>
-            </div>
-          </div>
-          <div className="stor-summary__item">
-            <span className="stor-summary__icon">🕐</span>
-            <div>
-              <div className="stor-summary__val">{new Date(data.timestamp).toLocaleTimeString("id-ID")}</div>
-              <div className="stor-summary__lbl">Snapshot At</div>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Sidebar */}
+      <div className="pl-sidebar">
+        <div className="pl-sidebar__section-label">Database</div>
+        {(data?.databases ?? []).map(db => (
+          <button
+            key={db.name}
+            className={`pl-sidebar__item${selectedDb === db.name ? " active" : ""}`}
+            onClick={() => setSelectedDb(db.name)}
+          >
+            <span className="pl-sidebar__item-icon">{db.name.includes("#2") ? "🗄️" : "💾"}</span>
+            <span style={{ flex: 1, textAlign: "left", fontSize: 12 }}>{db.name}</span>
+            <span style={{
+              width: 7, height: 7, borderRadius: "50%", flexShrink: 0,
+              background: db.online ? "#4ade80" : "#ef4444",
+            }} />
+          </button>
+        ))}
 
-      {/* Error */}
-      {error && !loading && (
-        <div className="stor-error-global">
-          ⚠️ {error}
-          <button onClick={() => fetchStats(false)} className="stor-retry-btn">Coba Lagi</button>
-        </div>
-      )}
+        <div className="pl-sidebar__spacer" />
 
-      {/* Skeleton */}
-      {loading && !data && (
-        <div className="stor-grid">
-          {[0, 1].map((i) => (
-            <div key={i} className="stor-card stor-card--skeleton">
-              <div className="stor-skel stor-skel--title" />
-              <div className="stor-skel stor-skel--bar" />
-              <div className="stor-skel stor-skel--row" />
-              <div className="stor-skel stor-skel--row" />
-              <div className="stor-skel stor-skel--row stor-skel--short" />
+        {/* Mini summary */}
+        {data && (
+          <div style={{ display: "flex", flexDirection: "column", gap: 8, padding: "0 4px" }}>
+            {[
+              { label: "Total Keys", value: fmtNum(totalKeys) },
+              { label: "Total Memory", value: totalMem },
+              { label: "DB Online", value: `${data.databases.filter(d => d.online).length}/${data.databases.length}` },
+            ].map(s => (
+              <div key={s.label} style={{ display: "flex", justifyContent: "space-between", fontSize: 11 }}>
+                <span style={{ color: "rgba(255,255,255,0.3)" }}>{s.label}</span>
+                <span style={{ color: "#e2e8f0", fontWeight: 700, fontFamily: "monospace" }}>{s.value}</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Content */}
+      <div className="pl-content">
+        {error && (
+          <div className="pl-alert pl-alert--err">⚠ {error}</div>
+        )}
+
+        {loading && !data && (
+          <div className="pl-empty" style={{ height: 200 }}>
+            <span className="pl-spinner" style={{ width: 24, height: 24 }} />
+            <span className="pl-empty__text">Memuat data storage...</span>
+          </div>
+        )}
+
+        {activeDb && (
+          <>
+            {/* DB status card */}
+            <div className="pl-card">
+              <div className="pl-card__head">
+                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                  <span style={{ fontSize: 20 }}>{activeDb.name.includes("#2") ? "🗄️" : "💾"}</span>
+                  <div>
+                    <div className="pl-card__title">{activeDb.name}</div>
+                    <div className="pl-card__desc">Redis v{activeDb.redisVersion}</div>
+                  </div>
+                </div>
+                <span className={`pl-badge ${activeDb.online ? "pl-badge--green" : "pl-badge--red"}`}>
+                  <span className="pl-badge__dot" />
+                  {activeDb.online ? "Online" : "Offline"}
+                </span>
+              </div>
+
+              {activeDb.online && (
+                <div className="pl-card__body">
+                  {/* Memory */}
+                  <div>
+                    <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6, alignItems: "baseline" }}>
+                      <label className="pl-label" style={{ margin: 0 }}>Memory Usage</label>
+                      <span style={{ fontSize: 12, fontFamily: "monospace" }}>
+                        <span style={{ color: memColor(activeDb.usedPercent), fontWeight: 700 }}>{activeDb.usedMemoryHuman}</span>
+                        <span style={{ color: "rgba(255,255,255,0.3)" }}> / {activeDb.maxMemoryHuman !== "0B" ? activeDb.maxMemoryHuman : "Unlimited"}</span>
+                        {activeDb.usedPercent !== null && (
+                          <span style={{ color: memColor(activeDb.usedPercent), marginLeft: 6 }}>({activeDb.usedPercent}%)</span>
+                        )}
+                      </span>
+                    </div>
+                    <div className="pl-progress-track">
+                      <div className="pl-progress-fill" style={{ width: `${Math.min(activeDb.usedPercent ?? 0, 100)}%`, background: memColor(activeDb.usedPercent) }} />
+                    </div>
+                    <div style={{ fontSize: 11, color: "rgba(255,255,255,0.25)", marginTop: 4 }}>Peak: {activeDb.peakMemoryHuman}</div>
+                  </div>
+
+                  {/* Stats grid */}
+                  <div className="pl-cols pl-cols--3" style={{ gap: 10 }}>
+                    {[
+                      { label: "Total Keys",  value: fmtNum(activeDb.totalKeys) },
+                      { label: "Hit Rate",    value: activeDb.hitRate !== null ? `${activeDb.hitRate}%` : "—" },
+                      { label: "Commands",    value: fmtNum(activeDb.totalCommands) },
+                      { label: "Clients",     value: activeDb.connectedClients },
+                      { label: "Uptime",      value: fmtUptime(activeDb.uptimeSeconds) },
+                      { label: "DB Size",     value: activeDb.dbSize },
+                    ].map(s => (
+                      <div key={s.label} style={{
+                        padding: "12px 14px", borderRadius: 9,
+                        background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.06)",
+                      }}>
+                        <div style={{ fontSize: 10, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.07em", color: "rgba(255,255,255,0.28)", marginBottom: 4 }}>{s.label}</div>
+                        <div style={{ fontSize: 17, fontWeight: 800, color: "#e2e8f0", fontFamily: "monospace" }}>{s.value}</div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Key breakdown */}
+                  {activeDb.keyBreakdown.length > 0 && (
+                    <div>
+                      <label className="pl-label">Key Breakdown</label>
+                      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                        {activeDb.keyBreakdown.map(cat => {
+                          const pct = activeDb.totalKeys > 0 ? (cat.count / activeDb.totalKeys) * 100 : 0;
+                          return (
+                            <div key={cat.prefix} style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                              <span style={{ fontSize: 14, width: 20, flexShrink: 0 }}>{cat.emoji}</span>
+                              <span style={{ fontSize: 12, color: "rgba(255,255,255,0.55)", width: 140, flexShrink: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{cat.label}</span>
+                              <div style={{ flex: 1, height: 5, background: "rgba(255,255,255,0.06)", borderRadius: 999, overflow: "hidden" }}>
+                                <div style={{ height: "100%", width: `${pct}%`, background: "rgba(99,102,241,0.7)", borderRadius: 999, transition: "width 0.3s" }} />
+                              </div>
+                              <span style={{ fontSize: 12, fontWeight: 700, fontFamily: "monospace", color: "#e2e8f0", width: 30, textAlign: "right", flexShrink: 0 }}>{cat.count}</span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+
+                  {activeDb.totalKeys === 0 && (
+                    <div className="pl-empty" style={{ padding: "24px" }}>
+                      <span className="pl-empty__icon" style={{ fontSize: 24 }}>📭</span>
+                      <span className="pl-empty__text">Database kosong</span>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {!activeDb.online && activeDb.error && (
+                <div style={{ padding: "14px 20px" }}>
+                  <div className="pl-alert pl-alert--err">⚠ {activeDb.error}</div>
+                </div>
+              )}
             </div>
-          ))}
-        </div>
-      )}
 
-      {/* DB Cards */}
-      {data && (
-        <div className="stor-grid">
-          {data.databases.map((db) => (
-            <DbCard key={db.name} db={db} />
-          ))}
-        </div>
-      )}
+            {/* All DBs summary strip */}
+            {data && data.databases.length > 1 && (
+              <div className="pl-stat-row">
+                {data.databases.map(db => (
+                  <div
+                    key={db.name}
+                    className="pl-stat-item"
+                    style={{ cursor: "pointer", border: selectedDb === db.name ? "1px solid rgba(99,102,241,0.3)" : undefined }}
+                    onClick={() => setSelectedDb(db.name)}
+                  >
+                    <div className="pl-stat-item__label">{db.name}</div>
+                    <div className="pl-stat-item__value" style={{ fontSize: 16, color: db.online ? "#86efac" : "#fca5a5" }}>
+                      {fmtNum(db.totalKeys)} keys
+                    </div>
+                    <div className="pl-stat-item__sub">{db.usedMemoryHuman} used</div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </>
+        )}
+      </div>
     </div>
   );
 }

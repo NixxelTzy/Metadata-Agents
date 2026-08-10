@@ -727,7 +727,7 @@ export default function AdminAccountChecker() {
   const adminCount = users.filter((u) => u.role === "admin").length;
 
   return (
-    <div className="uploader">
+    <div style={{ position: "fixed", inset: 0, top: 56, overflowY: "auto", background: "#07070f", padding: "24px 32px" }}>
       <style>{`
         @keyframes pulse {
           0%, 100% { opacity: 1; box-shadow: 0 0 6px #4ade80; }
@@ -751,12 +751,11 @@ export default function AdminAccountChecker() {
       {showGlobalFeed && <GlobalActivityFeed onClose={() => setShowGlobalFeed(false)} />}
 
       {/* Header */}
-      <div className="uploader__hero" style={{ marginBottom: "20px" }}>
-        <h2>🛡️ Admin Control Center</h2>
-        <p>
-          Dashboard komprehensif untuk memantau, menganalisis, dan mengelola semua akun pengguna
-          secara real-time. Notifikasi email otomatis ke{" "}
-          <strong>nixxeltzy@gmail.com</strong> saat ada login.
+      <div style={{ marginBottom: "20px", paddingBottom: "16px", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+        <h2 style={{ fontSize: 18, fontWeight: 800, color: "#e2e8f0", letterSpacing: "-0.02em", marginBottom: 4 }}>Admin Control Center</h2>
+        <p style={{ fontSize: 12, color: "rgba(255,255,255,0.35)", lineHeight: 1.5 }}>
+          Dashboard untuk memantau dan mengelola semua akun pengguna secara real-time.
+          Notifikasi email otomatis ke <strong style={{ color: "#a5b4fc" }}>nixxeltzy@gmail.com</strong> saat ada login.
         </p>
       </div>
 
