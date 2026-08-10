@@ -3,28 +3,28 @@
    ═══════════════════════════════════════════════════════════ */
 
 :root {
-  /* ── Dark Glassmorphism Core ── */
-  --bg:            #0a0a0f;
-  --bg-secondary:  #111118;
-  --sidebar-bg:    rgba(15,15,25,0.95);
-  --surface:       rgba(255,255,255,0.05);
-  --surface-2:     rgba(255,255,255,0.08);
-  --surface-3:     rgba(255,255,255,0.12);
-  --border:        rgba(255,255,255,0.08);
-  --border-hover:  rgba(255,255,255,0.15);
-  --text:          #f1f5f9;
-  --text-secondary:#94a3b8;
-  --text-muted:    #475569;
+  /* ── Blue/White/Black Core ── */
+  --bg:            #000814;
+  --bg-secondary:  #00111f;
+  --sidebar-bg:    rgba(0,20,50,0.97);
+  --surface:       rgba(0, 60, 120, 0.08);
+  --surface-2:     rgba(0, 80, 160, 0.12);
+  --surface-3:     rgba(0, 100, 200, 0.18);
+  --border:        rgba(0, 120, 255, 0.15);
+  --border-hover:  rgba(0, 150, 255, 0.3);
+  --text:          #f0f8ff;
+  --text-secondary:#93c5fd;
+  --text-muted:    #4a7aa8;
 
   /* ── Accent System ── */
-  --accent:        #6366f1;
-  --accent-2:      #818cf8;
-  --accent-3:      #10b981;
+  --accent:        #0ea5e9;
+  --accent-2:      #38bdf8;
+  --accent-3:      #0284c7;
   --accent-4:      #f59e0b;
-  --accent-hover:  #4f46e5;
-  --accent-light:  rgba(99, 102, 241, 0.12);
-  --glow:          rgba(99, 102, 241, 0.25);
-  --glow-blue:     rgba(129, 140, 248, 0.15);
+  --accent-hover:  #0369a1;
+  --accent-light:  rgba(14, 165, 233, 0.12);
+  --glow:          rgba(14, 165, 233, 0.25);
+  --glow-blue:     rgba(56, 189, 248, 0.2);
   --glow-green:    rgba(16, 185, 129, 0.15);
 
   /* ── Semantic ── */
@@ -54,7 +54,7 @@ html, body { height: 100%; }
 
 body {
   font-family: var(--font);
-  background: linear-gradient(135deg, #0a0a0f 0%, #0f0f1a 100%);
+  background: linear-gradient(160deg, #000814 0%, #001a35 50%, #000814 100%);
   background-attachment: fixed;
   color: var(--text);
   line-height: 1.5;
@@ -90,20 +90,20 @@ body {
 
 .top-navbar {
   position: fixed;
-  top: 14px;
+  top: 12px;
   left: 50%;
   transform: translateX(-50%);
   z-index: 1000;
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 6px 10px;
-  background: rgba(255, 255, 255, 0.08);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  gap: 3px;
+  padding: 5px 9px;
+  background: rgba(0, 30, 80, 0.5);
+  backdrop-filter: blur(28px) saturate(180%);
+  -webkit-backdrop-filter: blur(28px) saturate(180%);
+  border: 1px solid rgba(56, 189, 248, 0.2);
   border-radius: 999px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255,255,255,0.04) inset;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.6), 0 0 0 1px rgba(56,189,248,0.06) inset, 0 1px 0 rgba(255,255,255,0.08) inset;
   white-space: nowrap;
 }
 
@@ -3479,7 +3479,7 @@ body {
   display: grid;
   grid-template-rows: 64px 1fr;
   grid-template-columns: 200px 1fr;
-  background: #07070f;
+  background: #000814;
   font-family: var(--font);
   overflow: hidden;
 }
@@ -3491,9 +3491,9 @@ body {
   align-items: center;
   justify-content: space-between;
   padding: 0 28px;
-  border-bottom: 1px solid rgba(255,255,255,0.06);
-  background: rgba(255,255,255,0.018);
-  backdrop-filter: blur(8px);
+  border-bottom: 1px solid rgba(0, 120, 255, 0.12);
+  background: rgba(0, 25, 65, 0.6);
+  backdrop-filter: blur(20px);
   gap: 16px;
 }
 
@@ -3541,13 +3541,13 @@ body {
 
 /* Sidebar */
 .pl-sidebar {
-  border-right: 1px solid rgba(255,255,255,0.06);
+  border-right: 1px solid rgba(0, 120, 255, 0.1);
   padding: 20px 14px;
   display: flex;
   flex-direction: column;
   gap: 4px;
   overflow-y: auto;
-  background: rgba(255,255,255,0.01);
+  background: rgba(0, 15, 45, 0.4);
 }
 
 .pl-sidebar__section-label {
@@ -3585,8 +3585,8 @@ body {
 }
 
 .pl-sidebar__item.active {
-  background: rgba(99,102,241,0.14);
-  color: #a5b4fc;
+  background: rgba(14, 165, 233, 0.15);
+  color: #38bdf8;
   font-weight: 600;
 }
 
@@ -3619,8 +3619,8 @@ body {
 
 /* Card */
 .pl-card {
-  background: rgba(255,255,255,0.025);
-  border: 1px solid rgba(255,255,255,0.07);
+  background: rgba(0, 30, 75, 0.25);
+  border: 1px solid rgba(0, 120, 255, 0.12);
   border-radius: 14px;
   overflow: hidden;
 }

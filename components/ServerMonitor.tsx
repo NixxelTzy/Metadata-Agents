@@ -203,9 +203,163 @@ function timeAgo(ts: number): string {
   return `${Math.round(diff / 86400)}d ago`;
 }
 
+// ── Stats Tab Component ────────────────────────────────────────────────────────
+
+type ActivityEvent = { userId: string; email: string; feature: string; timestamp: string };
+
+function StatsTab({
+  statsPeriod, setStatsPeriod, activityEvents, statsLoading, onRefresh,
+}: {
+  statsPeriod: "1d" | "7d" | "30d";
+  setStatsPeriod: (p: "1d" | "7d" | "30d") => void;
+  activityEvents: ActivityEvent[];
+  statsLoading: boolean;
+  onRefresh: () => void;
+}) {
+  const msMap = { "1d": 86400000, "7d": 7 * 86400000, "30d": 30 * 86400000 };
+  const cutoff = Date.now() - msMap[statsPeriod];
+  const filtered = activityEvents.filter(e => new Date(e.timestamp).getTime() >= cutoff);
+
+  const dayMap: Record<string, number> = {};
+  filtered.forEach(e => {
+    const d = new Date(e.timestamp);
+    const key = `${String(d.getDate()).padStart(2,"0")}/${String(d.getMonth()+1).padStart(2,"0")}`;
+    dayMap[key] = (dayMap[key] ?? 0) + 1;
+  });
+  const days = Object.keys(dayMap).slice(-14);
+  const counts = days.map(d => dayMap[d] ?? 0);
+  const maxCount = Math.max(...counts, 1);
+
+  const uniqueUsers = new Set(filtered.map(e => e.userId)).size;
+  const featureMap: Record<string, number> = {};
+  filtered.forEach(e => { featureMap[e.feature] = (featureMap[e.feature] ?? 0) + 1; });
+  const topFeature = Object.entries(featureMap).sort((a,b) => b[1]-a[1])[0]?.[0] ?? "—";
+  const hourMap: Record<number, number> = {};
+  filtered.forEach(e => { const h = new Date(e.timestamp).getHours(); hourMap[h] = (hourMap[h] ?? 0) + 1; });
+  const peakHour = Object.entries(hourMap).sort((a,b) => b[1]-a[1])[0]?.[0] ?? "—";
+
+  const chartW = 280;
+  const chartH = 110;
+  const padL = 28;
+  const padB = 20;
+  const plotW = chartW - padL;
+  const plotH = chartH - padB;
+
+  return (
+    <>
+      {/* Period selector + chart */}
+      <div className="mon-section">
+        <div className="mon-section__title" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <span>📈 Grafik Penggunaan</span>
+          <div style={{ display: "flex", gap: 5 }}>
+            {(["1d","7d","30d"] as const).map(p => (
+              <button key={p} type="button" onClick={() => setStatsPeriod(p)}
+                style={{
+                  padding: "3px 9px", borderRadius: 5, border: "none", cursor: "pointer",
+                  background: statsPeriod === p ? "#0ea5e9" : "rgba(14,165,233,0.1)",
+                  color: statsPeriod === p ? "#fff" : "#38bdf8",
+                  fontSize: 10, fontWeight: 700, fontFamily: "inherit", transition: "all 0.15s",
+                }}>
+                {p === "1d" ? "1H" : p === "7d" ? "7H" : "30H"}
+              </button>
+            ))}
+            <button type="button" onClick={onRefresh}
+              style={{ padding: "3px 9px", borderRadius: 5, border: "1px solid rgba(14,165,233,0.2)", background: "transparent", color: "#38bdf8", fontSize: 10, fontWeight: 700, fontFamily: "inherit", cursor: "pointer" }}>
+              ↺
+            </button>
+          </div>
+        </div>
+
+        {statsLoading ? (
+          <div style={{ textAlign: "center", padding: "20px", color: "var(--text-muted)", fontSize: 12 }}>Memuat data...</div>
+        ) : days.length === 0 ? (
+          <div className="mon-empty">Belum ada data aktivitas di periode ini.</div>
+        ) : (
+          <svg viewBox={`0 0 ${chartW} ${chartH}`} width="100%" style={{ display: "block", overflow: "visible" }}>
+            <defs>
+              <linearGradient id="statBarGrad" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="#0ea5e9" />
+                <stop offset="100%" stopColor="#0369a1" stopOpacity="0.6" />
+              </linearGradient>
+            </defs>
+            {[0,0.25,0.5,0.75,1].map((r,i) => (
+              <line key={i} x1={padL} y1={r * plotH} x2={chartW} y2={r * plotH}
+                stroke="rgba(14,165,233,0.07)" strokeWidth="0.5" />
+            ))}
+            {days.map((day, i) => {
+              const barW = Math.max(3, (plotW / days.length) - 3);
+              const x = padL + i * (plotW / days.length);
+              const h = (counts[i]! / maxCount) * plotH;
+              const y = plotH - h;
+              return (
+                <g key={day}>
+                  <rect x={x + 1} y={y} width={barW} height={h} rx="2" fill="url(#statBarGrad)" opacity="0.9" />
+                  <text x={x + barW / 2 + 1} y={plotH + 14} textAnchor="middle" fontSize="6" fill="rgba(148,197,253,0.45)">{day}</text>
+                  {counts[i]! > 0 && <text x={x + barW / 2 + 1} y={y - 2} textAnchor="middle" fontSize="6.5" fill="#38bdf8" fontWeight="700">{counts[i]}</text>}
+                </g>
+              );
+            })}
+          </svg>
+        )}
+      </div>
+
+      {/* Stats cards */}
+      <div className="mon-section">
+        <div className="mon-section__title">📊 Statistik Periode</div>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+          {[
+            { label: "Total Events", val: filtered.length, icon: "⚡" },
+            { label: "User Aktif", val: uniqueUsers, icon: "👥" },
+            { label: "Fitur Terpopuler", val: topFeature, icon: "🏆" },
+            { label: "Jam Puncak", val: peakHour !== "—" ? `${peakHour}:00` : "—", icon: "⏰" },
+          ].map(s => (
+            <div key={s.label} style={{ background: "rgba(14,165,233,0.07)", border: "1px solid rgba(14,165,233,0.14)", borderRadius: 8, padding: "10px 12px" }}>
+              <div style={{ fontSize: 9, color: "rgba(148,197,253,0.5)", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 4 }}>
+                {s.icon} {s.label}
+              </div>
+              <div style={{ fontSize: 17, fontWeight: 800, color: "#f0f8ff", fontFamily: "monospace" }}>{s.val}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Realtime feed */}
+      <div className="mon-section">
+        <div className="mon-section__title">
+          🔴 Realtime Feed
+          <span className="mon-badge" style={{ background: "rgba(14,165,233,0.15)", color: "#38bdf8", marginLeft: 8, fontSize: 9 }}>
+            5s
+          </span>
+        </div>
+        {activityEvents.length === 0 && !statsLoading ? (
+          <div className="mon-empty">Belum ada aktivitas.</div>
+        ) : (
+          <div className="mon-attack-list">
+            {activityEvents.slice(0, 15).map((e, i) => (
+              <div key={i} className="mon-attack-item">
+                <div className="mon-attack-item__header">
+                  <span style={{ color: "#38bdf8", fontSize: 11, fontFamily: "monospace" }}>
+                    {e.email?.split("@")[0] ?? e.userId?.slice(0,10)}
+                  </span>
+                  <span className="mon-attack-item__time">{new Date(e.timestamp).toLocaleTimeString("id-ID")}</span>
+                </div>
+                <div className="mon-attack-item__detail">
+                  <span style={{ background: "rgba(14,165,233,0.12)", color: "#38bdf8", padding: "1px 7px", borderRadius: 4, fontSize: 10, fontWeight: 700, border: "1px solid rgba(14,165,233,0.2)" }}>
+                    {e.feature}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </>
+  );
+}
+
 // ── Main Component ────────────────────────────────────────────────────────────
 
-type Tab = "overview" | "vercel" | "security" | "attacks";
+type Tab = "overview" | "vercel" | "security" | "attacks" | "stats";
 
 export default function ServerMonitor() {
   const { data, connected, reconnectStatus, failed, manualRetry } = useSse("/api/monitor");
@@ -214,6 +368,12 @@ export default function ServerMonitor() {
   const [vercelLoading, setVercelLoading] = useState(false);
   const [tab, setTab] = useState<Tab>("overview");
   const vercelIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // ── Stats tab state ──────────────────────────────────────────────────────
+  const [statsPeriod, setStatsPeriod] = useState<"1d" | "7d" | "30d">("7d");
+  const [activityEvents, setActivityEvents] = useState<{userId: string; email: string; feature: string; timestamp: string}[]>([]);
+  const [statsLoading, setStatsLoading] = useState(false);
+  const statsIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const fetchVercel = useCallback(async () => {
     setVercelLoading(true);
@@ -232,6 +392,26 @@ export default function ServerMonitor() {
     vercelIntervalRef.current = setInterval(fetchVercel, 30_000);
     return () => { if (vercelIntervalRef.current) clearInterval(vercelIntervalRef.current); };
   }, [fetchVercel]);
+
+  // ── Stats: fetch activity when tab === "stats" ────────────────────────────
+  const fetchActivity = useCallback(async () => {
+    setStatsLoading(true);
+    try {
+      const res = await fetch("/api/admin/activity");
+      if (res.ok) {
+        const d = await res.json() as { events?: typeof activityEvents };
+        if (d.events) setActivityEvents(d.events);
+      }
+    } catch { /* silent */ }
+    finally { setStatsLoading(false); }
+  }, []);
+
+  useEffect(() => {
+    if (tab !== "stats") return;
+    fetchActivity();
+    statsIntervalRef.current = setInterval(fetchActivity, 5_000);
+    return () => { if (statsIntervalRef.current) clearInterval(statsIntervalRef.current); };
+  }, [tab, fetchActivity]);
 
   // Loading / error state
   if (!data) {
@@ -278,12 +458,12 @@ export default function ServerMonitor() {
 
       {/* Tabs */}
       <div className="mon-tabs">
-        {(["overview", "vercel", "security", "attacks"] as Tab[]).map((t) => (
+        {(["overview", "vercel", "security", "attacks", "stats"] as Tab[]).map((t) => (
           <button key={t} type="button"
             className={`mon-tab ${tab === t ? "mon-tab--active" : ""}`}
             onClick={() => setTab(t)}
           >
-            {t === "overview" ? "📊 Overview" : t === "vercel" ? "▲ Vercel" : t === "security" ? "🛡️ Defence" : "⚠️ Attacks"}
+            {t === "overview" ? "📊 Overview" : t === "vercel" ? "▲ Vercel" : t === "security" ? "🛡️ Defence" : t === "stats" ? "📈 Stats" : "⚠️ Attacks"}
           </button>
         ))}
       </div>
@@ -646,7 +826,18 @@ export default function ServerMonitor() {
               )}
           </div>
         )}
-  
+
+        {/* ── STATS TAB ── */}
+        {tab === "stats" && (
+          <StatsTab
+            statsPeriod={statsPeriod}
+            setStatsPeriod={setStatsPeriod}
+            activityEvents={activityEvents}
+            statsLoading={statsLoading}
+            onRefresh={fetchActivity}
+          />
+        )}
+
       </div>
     </div>
   );

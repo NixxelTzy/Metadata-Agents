@@ -150,10 +150,12 @@ export default function Home() {
     setLoggingOut(true);
     try {
       await fetch("/api/auth/logout", { method: "POST" });
-      router.push("/login");
-      router.refresh();
-    } catch { setLoggingOut(false); }
-  }, [router]);
+      // Hard redirect — ensures cookie cleared before any new request
+      window.location.href = "/login";
+    } catch {
+      setLoggingOut(false);
+    }
+  }, []);
 
   const pctColor = tokenPct >= 85 ? "#f87171" : tokenPct >= 60 ? "#fbbf24" : "#4ade80";
   const userInitial = user?.username?.charAt(0)?.toUpperCase() ?? "?";
@@ -179,7 +181,7 @@ export default function Home() {
           color:rgba(255,255,255,0.5); flex-shrink:0;
         }
         .nav-pill-btn:hover { background:rgba(255,255,255,0.09); color:rgba(255,255,255,0.9); transform:scale(1.07); }
-        .nav-pill-btn.active { background:rgba(99,102,241,0.22); color:#a5b4fc; box-shadow:0 0 0 1px rgba(99,102,241,0.32); }
+        .nav-pill-btn.active { background:rgba(14,165,233,0.2); color:#38bdf8; box-shadow:0 0 0 1px rgba(14,165,233,0.3); }
         .nav-pill-tooltip {
           position:absolute; bottom:-34px; left:50%; transform:translateX(-50%);
           background:rgba(10,10,20,0.96); border:1px solid rgba(255,255,255,0.1);
@@ -191,13 +193,13 @@ export default function Home() {
 
         .workspace-root {
           min-height:100dvh;
-          background:linear-gradient(135deg,#06060f 0%,#0a0a1a 50%,#06060f 100%);
+          background:linear-gradient(160deg,#000814 0%,#001a35 50%,#000814 100%);
           display:flex; flex-direction:column; overflow:hidden; position:relative;
         }
         .workspace-root::before {
           content:''; position:fixed; inset:0; pointer-events:none; z-index:0;
-          background:radial-gradient(ellipse 60% 40% at 20% 10%,rgba(99,102,241,0.07) 0%,transparent 60%),
-                     radial-gradient(ellipse 40% 30% at 80% 80%,rgba(139,92,246,0.05) 0%,transparent 55%);
+          background:radial-gradient(ellipse 60% 40% at 20% 10%,rgba(14,165,233,0.07) 0%,transparent 60%),
+                     radial-gradient(ellipse 40% 30% at 80% 80%,rgba(56,189,248,0.05) 0%,transparent 55%);
         }
 
         /* ── Desktop top navbar ── */
@@ -220,8 +222,8 @@ export default function Home() {
         /* ── Profile dropdown ── */
         .profile-drop {
           position:fixed; top:66px; right:12px; width:272px;
-          background:rgba(10,10,20,0.97); backdrop-filter:blur(24px);
-          border:1px solid rgba(255,255,255,0.1); border-radius:16px;
+          background:rgba(0,15,45,0.97); backdrop-filter:blur(28px) saturate(180%);
+          border:1px solid rgba(0,120,255,0.2); border-radius:16px;
           box-shadow:0 20px 55px rgba(0,0,0,0.6);
           animation:profileIn 0.2s cubic-bezier(0.16,1,0.3,1);
           z-index:2000; overflow:hidden;
@@ -231,9 +233,9 @@ export default function Home() {
         .mobile-bottom-nav {
           display:none;
           position:fixed; bottom:0; left:0; right:0; z-index:900;
-          background:rgba(10,10,20,0.96); backdrop-filter:blur(20px);
-          -webkit-backdrop-filter:blur(20px);
-          border-top:1px solid rgba(255,255,255,0.08);
+          background:rgba(0,15,40,0.88); backdrop-filter:blur(24px) saturate(180%);
+          -webkit-backdrop-filter:blur(24px) saturate(180%);
+          border-top:1px solid rgba(0,120,255,0.18);
           padding:6px 0 calc(6px + env(safe-area-inset-bottom));
           box-shadow:0 -4px 24px rgba(0,0,0,0.4);
         }
@@ -250,17 +252,17 @@ export default function Home() {
         }
         .mbn-tab__icon { font-size:20px; line-height:1; }
         .mbn-tab__label { font-size:9.5px; font-weight:600; color:rgba(255,255,255,0.4); letter-spacing:0.01em; }
-        .mbn-tab.active .mbn-tab__label { color:#a5b4fc; }
-        .mbn-tab.active { background:rgba(99,102,241,0.14); }
+        .mbn-tab.active .mbn-tab__label { color:#38bdf8; }
+        .mbn-tab.active { background:rgba(14,165,233,0.15); }
         .mbn-tab__dot {
-          width:4px; height:4px; border-radius:50%; background:#6366f1;
+          width:4px; height:4px; border-radius:50%; background:#0ea5e9;
           margin-top:2px;
         }
 
         /* ── Mobile header (top bar on mobile) ── */
         .mobile-header {
           display:none; position:fixed; top:0; left:0; right:0; z-index:900;
-          height:52px; background:rgba(10,10,20,0.92); backdrop-filter:blur(20px);
+          height:52px; background:rgba(0,25,60,0.85); backdrop-filter:blur(24px) saturate(180%);
           -webkit-backdrop-filter:blur(20px); border-bottom:1px solid rgba(255,255,255,0.07);
           align-items:center; justify-content:space-between; padding:0 14px;
           box-shadow:0 2px 12px rgba(0,0,0,0.3);
@@ -279,8 +281,8 @@ export default function Home() {
         }
         .more-drawer {
           position:fixed; bottom:0; left:0; right:0; z-index:1900;
-          background:rgba(10,10,20,0.98); backdrop-filter:blur(24px);
-          border-top:1px solid rgba(255,255,255,0.1);
+          background:rgba(0,15,45,0.98); backdrop-filter:blur(24px);
+          border-top:1px solid rgba(0,120,255,0.2);
           border-radius:20px 20px 0 0;
           padding:16px 16px calc(16px + env(safe-area-inset-bottom));
           animation:drawerUp 0.22s cubic-bezier(0.16,1,0.3,1);
@@ -307,15 +309,15 @@ export default function Home() {
           font-family:system-ui,sans-serif;
         }
         .more-drawer__item.active {
-          background:rgba(99,102,241,0.15);
-          border-color:rgba(99,102,241,0.3);
+          background:rgba(14,165,233,0.15);
+          border-color:rgba(14,165,233,0.3);
         }
         .more-drawer__item__icon { font-size:22px; }
         .more-drawer__item__label {
           font-size:10px; font-weight:600; color:rgba(255,255,255,0.55);
           text-align:center; line-height:1.3;
         }
-        .more-drawer__item.active .more-drawer__item__label { color:#a5b4fc; }
+        .more-drawer__item.active .more-drawer__item__label { color:#38bdf8; }
 
         /* ── Responsive switching ── */
         @media (max-width: 768px) {
@@ -336,7 +338,7 @@ export default function Home() {
 
         {/* ── DESKTOP: Top Navbar ── */}
         <nav className="top-navbar" ref={profileRef}>
-          <div style={{width:32,height:32,borderRadius:10,background:"linear-gradient(135deg,#6366f1,#8b5cf6)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:16,flexShrink:0,boxShadow:"0 3px 10px rgba(99,102,241,0.4)"}}>✨</div>
+          <div style={{width:32,height:32,borderRadius:10,background:"linear-gradient(135deg,#0ea5e9,#0369a1)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:16,flexShrink:0,boxShadow:"0 3px 10px rgba(14,165,233,0.4)"}}>✨</div>
           <div className="top-navbar__div" />
           <div className="top-navbar__section">
             {TAB_CONFIG.filter(t => !["accounts","admin-messages","storage","messageweb","closing","shutdown"].includes(t.id)).map(tab => (
