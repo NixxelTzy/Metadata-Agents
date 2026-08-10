@@ -74,6 +74,10 @@ function NavBtn({
     </button>
   );
 }
+
+interface UserInfo {
+  userId: string;
+  email: string;
   username: string;
   role: "user" | "premium" | "admin";
 }
