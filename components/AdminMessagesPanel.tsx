@@ -80,8 +80,40 @@ export default function AdminMessagesPanel() {
 
   const filtered = reports.filter(r => filterType === "all" || r.type === filterType);
 
+  const NAV_ITEMS = [
+    { key: "inbox",     icon: "📥", label: "Inbox" },
+    { key: "broadcast", icon: "📢", label: "Broadcast" },
+  ] as const;
+
   return (
     <div className="pl-root">
+      <style>{`
+        /* Mobile tab bar for panels */
+        @media (max-width: 768px) {
+          .pl-root { grid-template-columns: 1fr !important; grid-template-rows: 64px 1fr 56px !important; }
+          .pl-sidebar { display: none !important; }
+          .panel-mobile-tabs { display: flex !important; }
+        }
+        .panel-mobile-tabs {
+          display: none;
+          grid-column: 1 / -1;
+          grid-row: 3;
+          border-top: 1px solid rgba(0,120,255,0.15);
+          background: rgba(0,15,40,0.88);
+          backdrop-filter: blur(20px);
+        }
+        .panel-mobile-tab {
+          flex: 1; display: flex; flex-direction: column; align-items: center;
+          justify-content: center; gap: 3px; padding: 8px 4px;
+          border: none; background: transparent; cursor: pointer;
+          font-family: inherit;
+        }
+        .panel-mobile-tab__icon { font-size: 18px; }
+        .panel-mobile-tab__label { font-size: 10px; font-weight: 600; color: rgba(255,255,255,0.4); }
+        .panel-mobile-tab.active .panel-mobile-tab__label { color: #38bdf8; }
+        .panel-mobile-tab.active { background: rgba(14,165,233,0.1); }
+      `}</style>
+
       {/* Header */}
       <div className="pl-header">
         <div className="pl-header__left">
@@ -94,7 +126,7 @@ export default function AdminMessagesPanel() {
         <div className="pl-header__right">
           <span className="pl-badge pl-badge--blue">
             <span className="pl-badge__dot" />
-            {reports.length} pesan masuk
+            {reports.length} pesan
           </span>
           <button className="pl-btn pl-btn--ghost" onClick={fetchReports} disabled={loadingReports}>
             {loadingReports ? <span className="pl-spinner" /> : "Refresh"}
@@ -102,20 +134,17 @@ export default function AdminMessagesPanel() {
         </div>
       </div>
 
-      {/* Sidebar */}
+      {/* Desktop Sidebar */}
       <div className="pl-sidebar">
         <div className="pl-sidebar__section-label">Menu</div>
-        {[
-          { key: "inbox",     icon: "📥", label: "Inbox Feedback" },
-          { key: "broadcast", icon: "📢", label: "Broadcast Email" },
-        ].map(item => (
+        {NAV_ITEMS.map(item => (
           <button
             key={item.key}
             className={`pl-sidebar__item${activeTab === item.key ? " active" : ""}`}
-            onClick={() => setActiveTab(item.key as "inbox" | "broadcast")}
+            onClick={() => setActiveTab(item.key)}
           >
             <span className="pl-sidebar__item-icon">{item.icon}</span>
-            {item.label}
+            {item.label === "Inbox" ? `Inbox (${reports.length})` : item.label}
           </button>
         ))}
 
@@ -149,16 +178,30 @@ export default function AdminMessagesPanel() {
         </div>
       </div>
 
-      {/* Content */}
+      {/* Main Content */}
       <div className="pl-content">
         {activeTab === "inbox" ? (
           <>
-            {/* Stats */}
+            {/* Mobile filter chips */}
+            <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+              {TYPE_FILTERS.map(f => (
+                <button
+                  key={f.value}
+                  className={`pl-chip${filterType === f.value ? " active" : ""}`}
+                  onClick={() => setFilterType(f.value)}
+                  style={{ fontSize: 11 }}
+                >
+                  {f.value === "all" ? f.label : `${typeIcon(f.value)} ${f.label} (${reports.filter(r => r.type === f.value).length})`}
+                </button>
+              ))}
+            </div>
+
+            {/* Stats strip */}
             <div className="pl-stat-row">
               {[
-                { label: "Total Pesan",  value: reports.length,                                    sub: "Semua tipe" },
-                { label: "Bug Report",   value: reports.filter(r => r.type === "bug").length,     sub: "Masalah ditemukan" },
-                { label: "Usulan Fitur", value: reports.filter(r => r.type === "feature").length, sub: "Dari pengguna" },
+                { label: "Total",   value: reports.length,                                    sub: "Semua" },
+                { label: "Bug",     value: reports.filter(r => r.type === "bug").length,     sub: "Laporan bug" },
+                { label: "Fitur",   value: reports.filter(r => r.type === "feature").length, sub: "Usulan" },
               ].map(s => (
                 <div key={s.label} className="pl-stat-item">
                   <div className="pl-stat-item__label">{s.label}</div>
@@ -176,7 +219,7 @@ export default function AdminMessagesPanel() {
                 </div>
                 <span style={{ fontSize: 12, color: "rgba(255,255,255,0.3)" }}>{filtered.length} item</span>
               </div>
-              <div style={{ padding: "12px 16px" }}>
+              <div style={{ padding: "10px 14px" }}>
                 {loadingReports ? (
                   <div className="pl-empty"><span className="pl-spinner" style={{ width: 20, height: 20 }} /></div>
                 ) : filtered.length === 0 ? (
@@ -188,12 +231,9 @@ export default function AdminMessagesPanel() {
                   <div className="pl-list">
                     {filtered.map(item => (
                       <div key={item.id} className="pl-list-item">
-                        <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 10, marginBottom: 8 }}>
-                          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                            <span style={{
-                              padding: "2px 9px", borderRadius: 20, fontSize: 11, fontWeight: 700,
-                              background: typeBg(item.type), border: `1px solid ${typeBorder(item.type)}`, color: typeColor(item.type),
-                            }}>
+                        <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 8, marginBottom: 8, flexWrap: "wrap" }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+                            <span style={{ padding: "2px 8px", borderRadius: 20, fontSize: 11, fontWeight: 700, background: typeBg(item.type), border: `1px solid ${typeBorder(item.type)}`, color: typeColor(item.type) }}>
                               {typeIcon(item.type)} {item.type === "bug" ? "Bug" : item.type === "feature" ? "Fitur" : "Lainnya"}
                             </span>
                             <span style={{ fontSize: 12, fontWeight: 600, color: "#e2e8f0" }}>{item.username}</span>
@@ -234,25 +274,20 @@ export default function AdminMessagesPanel() {
                     <label className="pl-label">Isi Pesan</label>
                     <textarea className="pl-input" value={broadcastMessage}
                       onChange={e => setBroadcastMessage(e.target.value)}
-                      placeholder="Tuliskan detail pengumuman yang ingin disampaikan..."
-                      rows={7} style={{ resize: "vertical" }} />
+                      placeholder="Tuliskan detail pengumuman..."
+                      rows={6} style={{ resize: "vertical" }} />
                   </div>
-
                   {broadcastError && <div className="pl-alert pl-alert--err">{broadcastError}</div>}
-
                   {broadcastResult && (
                     <div className="pl-alert pl-alert--ok">
-                      <div style={{ fontWeight: 700, marginBottom: 6 }}>Broadcast selesai dikirim</div>
-                      <div style={{ display: "flex", gap: 16, fontSize: 12 }}>
+                      <div style={{ fontWeight: 700, marginBottom: 5 }}>Broadcast selesai</div>
+                      <div style={{ display: "flex", gap: 14, fontSize: 12 }}>
                         <span>Total: <strong>{broadcastResult.totalCount}</strong></span>
                         <span style={{ color: "#86efac" }}>Berhasil: <strong>{broadcastResult.successCount}</strong></span>
-                        {broadcastResult.failureCount > 0 && (
-                          <span style={{ color: "#fca5a5" }}>Gagal: <strong>{broadcastResult.failureCount}</strong></span>
-                        )}
+                        {broadcastResult.failureCount > 0 && <span style={{ color: "#fca5a5" }}>Gagal: <strong>{broadcastResult.failureCount}</strong></span>}
                       </div>
                     </div>
                   )}
-
                   <button type="submit" className="pl-btn pl-btn--primary pl-btn--full"
                     disabled={sendingBroadcast}
                     style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
@@ -264,33 +299,24 @@ export default function AdminMessagesPanel() {
 
             {/* Live preview */}
             <div className="pl-card">
-              <div className="pl-card__head">
-                <div className="pl-card__title">Preview Email</div>
-              </div>
-              <div style={{ padding: 16 }}>
-                <div style={{ fontSize: 11, color: "rgba(255,255,255,0.3)", marginBottom: 12, display: "flex", flexDirection: "column", gap: 3 }}>
-                  <span><strong style={{ color: "rgba(255,255,255,0.5)" }}>Dari:</strong> Stock AI Studio &lt;system@stockaistudio.com&gt;</span>
-                  <span><strong style={{ color: "rgba(255,255,255,0.5)" }}>Ke:</strong> Semua pengguna terdaftar</span>
+              <div className="pl-card__head"><div className="pl-card__title">Preview Email</div></div>
+              <div style={{ padding: 14 }}>
+                <div style={{ fontSize: 11, color: "rgba(255,255,255,0.3)", marginBottom: 10, display: "flex", flexDirection: "column", gap: 3 }}>
+                  <span><strong style={{ color: "rgba(255,255,255,0.5)" }}>Dari:</strong> Stock AI Studio</span>
                   <span><strong style={{ color: "rgba(255,255,255,0.5)" }}>Subjek:</strong> {subject || <em style={{ opacity: 0.4 }}>tulis subjek...</em>}</span>
                 </div>
-                <div style={{
-                  borderRadius: 10, overflow: "hidden",
-                  border: "1px solid rgba(255,255,255,0.07)",
-                  background: "#0b0f19",
-                  fontFamily: "'Segoe UI', system-ui, sans-serif",
-                }}>
-                  <div style={{ padding: "16px 20px", borderBottom: "1px solid rgba(255,255,255,0.06)", textAlign: "center" }}>
-                    <div style={{ width: 36, height: 36, borderRadius: 9, background: "linear-gradient(135deg,#6366f1,#8b5cf6)", display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 18, marginBottom: 6 }}>✨</div>
-                    <div style={{ fontSize: 15, fontWeight: 800, color: "#fff" }}>Stock AI Studio</div>
+                <div style={{ borderRadius: 8, overflow: "hidden", border: "1px solid rgba(255,255,255,0.07)", background: "#0b0f19", fontFamily: "system-ui, sans-serif" }}>
+                  <div style={{ padding: "12px 16px", borderBottom: "1px solid rgba(255,255,255,0.06)", textAlign: "center" }}>
+                    <div style={{ fontSize: 15, fontWeight: 800, color: "#fff" }}>✨ Stock AI Studio</div>
                     <div style={{ fontSize: 10, color: "#6b7280", marginTop: 2 }}>Pengumuman Resmi</div>
                   </div>
-                  <div style={{ padding: "16px 20px", fontSize: 13, color: "#d1d5db", lineHeight: 1.7 }}>
-                    <p style={{ fontWeight: 600, color: "#fff", marginBottom: 10 }}>Halo Pengguna,</p>
-                    <div style={{ background: "#111827", borderRadius: 8, padding: 14, minHeight: 60, whiteSpace: "pre-wrap", color: "#e5e7eb", fontSize: 12.5 }}>
-                      {broadcastMessage || <span style={{ opacity: 0.3 }}>Ketik isi pesan untuk melihat preview...</span>}
+                  <div style={{ padding: "14px 16px", fontSize: 12.5, color: "#d1d5db", lineHeight: 1.7 }}>
+                    <p style={{ fontWeight: 600, color: "#fff", marginBottom: 8 }}>Halo Pengguna,</p>
+                    <div style={{ background: "#111827", borderRadius: 6, padding: 12, minHeight: 50, whiteSpace: "pre-wrap", color: "#e5e7eb", fontSize: 12 }}>
+                      {broadcastMessage || <span style={{ opacity: 0.3 }}>Ketik isi pesan...</span>}
                     </div>
                   </div>
-                  <div style={{ padding: "12px 20px", borderTop: "1px solid rgba(255,255,255,0.06)", textAlign: "center", fontSize: 10, color: "#4b5563" }}>
+                  <div style={{ padding: "10px 16px", borderTop: "1px solid rgba(255,255,255,0.06)", textAlign: "center", fontSize: 10, color: "#4b5563" }}>
                     © {new Date().getFullYear()} Stock AI Studio
                   </div>
                 </div>
@@ -298,6 +324,18 @@ export default function AdminMessagesPanel() {
             </div>
           </div>
         )}
+      </div>
+
+      {/* Mobile Bottom Tab Bar */}
+      <div className="panel-mobile-tabs">
+        {NAV_ITEMS.map(item => (
+          <button key={item.key} type="button"
+            className={`panel-mobile-tab${activeTab === item.key ? " active" : ""}`}
+            onClick={() => setActiveTab(item.key)}>
+            <span className="panel-mobile-tab__icon">{item.icon}</span>
+            <span className="panel-mobile-tab__label">{item.label}</span>
+          </button>
+        ))}
       </div>
     </div>
   );

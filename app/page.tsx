@@ -149,21 +149,21 @@ export default function Home() {
   const handleLogout = useCallback(async () => {
     setLoggingOut(true);
     try {
-      const res = await fetch("/api/auth/logout", {
+      // Hapus cookie dari browser-side dulu (document.cookie tidak bisa hapus httpOnly,
+      // tapi ini sebagai safety measure)
+      document.cookie = "auth_token=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/; SameSite=Lax";
+
+      // Panggil logout API
+      await fetch("/api/auth/logout", {
         method: "POST",
         credentials: "include",
-      });
-      if (res.ok || res.status === 401) {
-        // Cookie cleared — hard redirect regardless of response
-        window.location.replace("/login");
-      } else {
-        // Fallback: force redirect anyway
-        window.location.replace("/login");
-      }
-    } catch {
-      // Network error — still redirect
-      window.location.replace("/login");
-    }
+        headers: { "Content-Type": "application/json" },
+      }).catch(() => {}); // ignore network errors
+
+    } catch { /* ignore */ }
+
+    // Redirect UNCONDITIONALLY — tidak peduli response dari server
+    window.location.replace("/login");
   }, []);
 
   const pctColor = tokenPct >= 85 ? "#f87171" : tokenPct >= 60 ? "#fbbf24" : "#4ade80";
