@@ -348,6 +348,7 @@ export async function POST(request: NextRequest) {
         userAgent: headersObj["user-agent"] ?? "",
         headers: headersObj,
         body: { stabilized, imageCount: Array.isArray(images) ? images.length : 0 },
+        skipBodyScan: true, // base64 image data triggers false-positive injection detection
       });
       if (sec.blocked) {
         void recordIpError(ip);

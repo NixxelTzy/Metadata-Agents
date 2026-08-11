@@ -26,6 +26,7 @@ export async function POST(request: NextRequest) {
       userAgent: headersObj["user-agent"] ?? "",
       headers: headersObj,
       body: { tab, keywords: payload?.customKeywords, url: payload?.adobePhotoUrl },
+      skipBodyScan: true, // research queries tidak boleh di-scan injection patterns
     });
     if (sec.blocked) {
       void recordIpError(ip);

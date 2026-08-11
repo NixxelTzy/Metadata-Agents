@@ -67,6 +67,7 @@ export async function POST(request: NextRequest) {
       userAgent: headersObj["user-agent"] ?? "",
       headers: headersObj,
       body: { action },
+      skipBodyScan: true, // vector queries tidak boleh di-scan injection patterns
     });
     if (sec.blocked) {
       void recordIpError(ip);

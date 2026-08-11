@@ -220,104 +220,146 @@ function StatsTab({
   const cutoff = Date.now() - msMap[statsPeriod];
   const filtered = activityEvents.filter(e => new Date(e.timestamp).getTime() >= cutoff);
 
-  const dayMap: Record<string, number> = {};
-  filtered.forEach(e => {
-    const d = new Date(e.timestamp);
-    const key = `${String(d.getDate()).padStart(2,"0")}/${String(d.getMonth()+1).padStart(2,"0")}`;
-    dayMap[key] = (dayMap[key] ?? 0) + 1;
-  });
-  const days = Object.keys(dayMap).slice(-14);
-  const counts = days.map(d => dayMap[d] ?? 0);
-  const maxCount = Math.max(...counts, 1);
+  // Build day buckets based on period
+  const numDays = statsPeriod === "1d" ? 24 : statsPeriod === "7d" ? 7 : 30;
+  const buckets: { label: string; count: number }[] = [];
 
+  if (statsPeriod === "1d") {
+    for (let h = 0; h < 24; h++) {
+      const start = new Date(); start.setHours(h, 0, 0, 0);
+      const end   = new Date(); end.setHours(h, 59, 59, 999);
+      const cnt = filtered.filter(e => { const t = new Date(e.timestamp).getTime(); return t >= start.getTime() && t <= end.getTime(); }).length;
+      buckets.push({ label: `${String(h).padStart(2,"0")}`, count: cnt });
+    }
+  } else {
+    for (let i = numDays - 1; i >= 0; i--) {
+      const d = new Date(); d.setDate(d.getDate() - i); d.setHours(0,0,0,0);
+      const nextD = new Date(d); nextD.setDate(d.getDate() + 1);
+      const cnt = filtered.filter(e => { const t = new Date(e.timestamp).getTime(); return t >= d.getTime() && t < nextD.getTime(); }).length;
+      buckets.push({ label: `${d.getDate()}/${d.getMonth()+1}`, count: cnt });
+    }
+  }
+
+  const maxCount = Math.max(...buckets.map(b => b.count), 1);
   const uniqueUsers = new Set(filtered.map(e => e.userId)).size;
   const featureMap: Record<string, number> = {};
   filtered.forEach(e => { featureMap[e.feature] = (featureMap[e.feature] ?? 0) + 1; });
   const topFeature = Object.entries(featureMap).sort((a,b) => b[1]-a[1])[0]?.[0] ?? "—";
-  const hourMap: Record<number, number> = {};
-  filtered.forEach(e => { const h = new Date(e.timestamp).getHours(); hourMap[h] = (hourMap[h] ?? 0) + 1; });
-  const peakHour = Object.entries(hourMap).sort((a,b) => b[1]-a[1])[0]?.[0] ?? "—";
 
-  const chartW = 280;
-  const chartH = 110;
-  const padL = 28;
-  const padB = 20;
-  const plotW = chartW - padL;
-  const plotH = chartH - padB;
+  // Build SVG line path
+  const W = 260; const H = 60;
+  const pts = buckets.map((b, i) => {
+    const x = buckets.length === 1 ? W / 2 : (i / (buckets.length - 1)) * W;
+    const y = H - (b.count / maxCount) * (H - 6);
+    return { x, y, ...b };
+  });
+
+  const pathD = pts.map((p, i) => `${i === 0 ? "M" : "L"} ${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(" ");
+  const areaD = pts.length > 0
+    ? `${pathD} L ${pts[pts.length-1]!.x.toFixed(1)} ${H} L ${pts[0]!.x.toFixed(1)} ${H} Z`
+    : "";
+
+  // Show label only for a few points
+  const labelStep = Math.max(1, Math.floor(buckets.length / 6));
 
   return (
     <>
-      {/* Period selector + chart */}
+      {/* Chart section */}
       <div className="mon-section">
         <div className="mon-section__title" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <span>📈 Grafik Penggunaan</span>
-          <div style={{ display: "flex", gap: 5 }}>
+          <span style={{ fontSize: 11 }}>Usage</span>
+          <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
             {(["1d","7d","30d"] as const).map(p => (
               <button key={p} type="button" onClick={() => setStatsPeriod(p)}
                 style={{
-                  padding: "3px 9px", borderRadius: 5, border: "none", cursor: "pointer",
-                  background: statsPeriod === p ? "#0ea5e9" : "rgba(14,165,233,0.1)",
-                  color: statsPeriod === p ? "#fff" : "#38bdf8",
-                  fontSize: 10, fontWeight: 700, fontFamily: "inherit", transition: "all 0.15s",
+                  padding: "2px 8px", borderRadius: 4, border: "none", cursor: "pointer",
+                  background: statsPeriod === p ? "#0ea5e9" : "rgba(14,165,233,0.08)",
+                  color: statsPeriod === p ? "#fff" : "rgba(148,197,253,0.6)",
+                  fontSize: 10, fontWeight: 700, fontFamily: "inherit", transition: "all 0.12s",
                 }}>
                 {p === "1d" ? "1H" : p === "7d" ? "7H" : "30H"}
               </button>
             ))}
             <button type="button" onClick={onRefresh}
-              style={{ padding: "3px 9px", borderRadius: 5, border: "1px solid rgba(14,165,233,0.2)", background: "transparent", color: "#38bdf8", fontSize: 10, fontWeight: 700, fontFamily: "inherit", cursor: "pointer" }}>
+              style={{ padding: "2px 7px", borderRadius: 4, border: "1px solid rgba(14,165,233,0.15)", background: "transparent", color: "rgba(56,189,248,0.6)", fontSize: 10, fontFamily: "inherit", cursor: "pointer" }}>
               ↺
             </button>
           </div>
         </div>
 
         {statsLoading ? (
-          <div style={{ textAlign: "center", padding: "20px", color: "var(--text-muted)", fontSize: 12 }}>Memuat data...</div>
-        ) : days.length === 0 ? (
-          <div className="mon-empty">Belum ada data aktivitas di periode ini.</div>
+          <div style={{ height: 72, display: "flex", alignItems: "center", justifyContent: "center", color: "rgba(148,197,253,0.4)", fontSize: 11 }}>Memuat...</div>
+        ) : filtered.length === 0 ? (
+          <div style={{ height: 72, display: "flex", alignItems: "center", justifyContent: "center", color: "rgba(148,197,253,0.3)", fontSize: 11 }}>Belum ada data</div>
         ) : (
-          <svg viewBox={`0 0 ${chartW} ${chartH}`} width="100%" style={{ display: "block", overflow: "visible" }}>
-            <defs>
-              <linearGradient id="statBarGrad" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="#0ea5e9" />
-                <stop offset="100%" stopColor="#0369a1" stopOpacity="0.6" />
-              </linearGradient>
-            </defs>
-            {[0,0.25,0.5,0.75,1].map((r,i) => (
-              <line key={i} x1={padL} y1={r * plotH} x2={chartW} y2={r * plotH}
-                stroke="rgba(14,165,233,0.07)" strokeWidth="0.5" />
-            ))}
-            {days.map((day, i) => {
-              const barW = Math.max(3, (plotW / days.length) - 3);
-              const x = padL + i * (plotW / days.length);
-              const h = (counts[i]! / maxCount) * plotH;
-              const y = plotH - h;
-              return (
-                <g key={day}>
-                  <rect x={x + 1} y={y} width={barW} height={h} rx="2" fill="url(#statBarGrad)" opacity="0.9" />
-                  <text x={x + barW / 2 + 1} y={plotH + 14} textAnchor="middle" fontSize="6" fill="rgba(148,197,253,0.45)">{day}</text>
-                  {counts[i]! > 0 && <text x={x + barW / 2 + 1} y={y - 2} textAnchor="middle" fontSize="6.5" fill="#38bdf8" fontWeight="700">{counts[i]}</text>}
-                </g>
-              );
-            })}
-          </svg>
+          <div style={{ position: "relative" }}>
+            {/* Peak value label */}
+            <div style={{ position: "absolute", top: 0, right: 0, fontSize: 9, color: "#38bdf8", fontFamily: "monospace", fontWeight: 700 }}>
+              peak {maxCount}
+            </div>
+
+            <svg viewBox={`0 0 ${W} ${H + 16}`} width="100%" style={{ display: "block", overflow: "visible" }}>
+              <defs>
+                <linearGradient id="lineAreaGrad" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#0ea5e9" stopOpacity="0.18" />
+                  <stop offset="100%" stopColor="#0ea5e9" stopOpacity="0" />
+                </linearGradient>
+              </defs>
+
+              {/* Horizontal guide lines */}
+              {[0, 0.5, 1].map((r, i) => (
+                <line key={i}
+                  x1="0" y1={6 + (1 - r) * (H - 6)}
+                  x2={W} y2={6 + (1 - r) * (H - 6)}
+                  stroke="rgba(14,165,233,0.07)" strokeWidth="0.5" strokeDasharray="3 3"
+                />
+              ))}
+
+              {/* Area fill */}
+              <path d={areaD} fill="url(#lineAreaGrad)" />
+
+              {/* Line */}
+              <path d={pathD} fill="none" stroke="#0ea5e9" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+
+              {/* Dots only at non-zero points */}
+              {pts.filter(p => p.count > 0).map((p, i) => (
+                <circle key={i} cx={p.x} cy={p.y} r="2.5" fill="#0ea5e9" stroke="#000814" strokeWidth="1" />
+              ))}
+
+              {/* X-axis labels */}
+              {pts.map((p, i) => i % labelStep === 0 && (
+                <text key={i} x={p.x} y={H + 14} textAnchor="middle" fontSize="7" fill="rgba(148,197,253,0.4)">
+                  {p.label}
+                </text>
+              ))}
+            </svg>
+
+            {/* Mini summary below chart */}
+            <div style={{ display: "flex", justifyContent: "space-between", fontSize: 9, color: "rgba(148,197,253,0.4)", marginTop: 2, fontFamily: "monospace" }}>
+              <span>{filtered.length} events</span>
+              <span>{uniqueUsers} users</span>
+              <span>top: {topFeature}</span>
+            </div>
+          </div>
         )}
       </div>
 
-      {/* Stats cards */}
+      {/* Stats 2x2 grid */}
       <div className="mon-section">
-        <div className="mon-section__title">📊 Statistik Periode</div>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+        <div className="mon-section__title" style={{ fontSize: 11 }}>Statistik</div>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }}>
           {[
-            { label: "Total Events", val: filtered.length, icon: "⚡" },
-            { label: "User Aktif", val: uniqueUsers, icon: "👥" },
-            { label: "Fitur Terpopuler", val: topFeature, icon: "🏆" },
-            { label: "Jam Puncak", val: peakHour !== "—" ? `${peakHour}:00` : "—", icon: "⏰" },
+            { label: "Events", val: filtered.length, color: "#0ea5e9" },
+            { label: "Users", val: uniqueUsers, color: "#38bdf8" },
+            { label: "Top Feature", val: topFeature, color: "#93c5fd" },
+            { label: "Period", val: statsPeriod === "1d" ? "24 jam" : statsPeriod === "7d" ? "7 hari" : "30 hari", color: "#bfdbfe" },
           ].map(s => (
-            <div key={s.label} style={{ background: "rgba(14,165,233,0.07)", border: "1px solid rgba(14,165,233,0.14)", borderRadius: 8, padding: "10px 12px" }}>
-              <div style={{ fontSize: 9, color: "rgba(148,197,253,0.5)", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 4 }}>
-                {s.icon} {s.label}
-              </div>
-              <div style={{ fontSize: 17, fontWeight: 800, color: "#f0f8ff", fontFamily: "monospace" }}>{s.val}</div>
+            <div key={s.label} style={{
+              padding: "8px 10px", borderRadius: 7,
+              background: "rgba(14,165,233,0.05)", border: "1px solid rgba(14,165,233,0.1)",
+            }}>
+              <div style={{ fontSize: 9, color: "rgba(148,197,253,0.45)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 3 }}>{s.label}</div>
+              <div style={{ fontSize: 15, fontWeight: 800, color: s.color, fontFamily: "monospace", lineHeight: 1 }}>{s.val}</div>
             </div>
           ))}
         </div>
@@ -325,29 +367,32 @@ function StatsTab({
 
       {/* Realtime feed */}
       <div className="mon-section">
-        <div className="mon-section__title">
-          🔴 Realtime Feed
-          <span className="mon-badge" style={{ background: "rgba(14,165,233,0.15)", color: "#38bdf8", marginLeft: 8, fontSize: 9 }}>
-            5s
-          </span>
+        <div className="mon-section__title" style={{ fontSize: 11, display: "flex", alignItems: "center", gap: 6 }}>
+          <span style={{ width: 5, height: 5, borderRadius: "50%", background: "#0ea5e9", display: "inline-block", animation: "mon-live 1.5s ease-in-out infinite" }} />
+          Live Activity
         </div>
-        {activityEvents.length === 0 && !statsLoading ? (
-          <div className="mon-empty">Belum ada aktivitas.</div>
+        {activityEvents.length === 0 ? (
+          <div className="mon-empty" style={{ padding: "14px 0" }}>Belum ada aktivitas.</div>
         ) : (
-          <div className="mon-attack-list">
-            {activityEvents.slice(0, 15).map((e, i) => (
-              <div key={i} className="mon-attack-item">
-                <div className="mon-attack-item__header">
-                  <span style={{ color: "#38bdf8", fontSize: 11, fontFamily: "monospace" }}>
-                    {e.email?.split("@")[0] ?? e.userId?.slice(0,10)}
-                  </span>
-                  <span className="mon-attack-item__time">{new Date(e.timestamp).toLocaleTimeString("id-ID")}</span>
-                </div>
-                <div className="mon-attack-item__detail">
-                  <span style={{ background: "rgba(14,165,233,0.12)", color: "#38bdf8", padding: "1px 7px", borderRadius: 4, fontSize: 10, fontWeight: 700, border: "1px solid rgba(14,165,233,0.2)" }}>
-                    {e.feature}
-                  </span>
-                </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+            {activityEvents.slice(0, 10).map((e, i) => (
+              <div key={i} style={{
+                display: "flex", alignItems: "center", justifyContent: "space-between",
+                padding: "5px 8px", borderRadius: 6,
+                background: i === 0 ? "rgba(14,165,233,0.07)" : "transparent",
+                gap: 8,
+              }}>
+                <span style={{ fontSize: 10, color: "#93c5fd", fontFamily: "monospace", flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  {e.email?.split("@")[0] ?? e.userId?.slice(0,10)}
+                </span>
+                <span style={{
+                  padding: "1px 6px", borderRadius: 4, fontSize: 9, fontWeight: 700,
+                  background: "rgba(14,165,233,0.1)", color: "#38bdf8",
+                  border: "1px solid rgba(14,165,233,0.18)", flexShrink: 0,
+                }}>{e.feature}</span>
+                <span style={{ fontSize: 9, color: "rgba(148,197,253,0.35)", fontFamily: "monospace", flexShrink: 0 }}>
+                  {new Date(e.timestamp).toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" })}
+                </span>
               </div>
             ))}
           </div>

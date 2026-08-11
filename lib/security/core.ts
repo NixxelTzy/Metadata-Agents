@@ -154,6 +154,12 @@ export interface InspectRequest {
   headers: Record<string, string>;
   body?: unknown;
   requestDurationMs?: number;
+  /**
+   * skipBodyScan: true = jangan scan body untuk injection patterns.
+   * Gunakan di AI/chat routes karena user bisa nanya tentang SQL, JS, dll
+   * yang akan false-positive trigger injection detection.
+   */
+  skipBodyScan?: boolean;
 }
 
 export interface InspectResult {
@@ -1830,11 +1836,12 @@ async function withTimeout<T>(fn: () => Promise<T>, timeoutMs: number, fallback:
 // ═══════════════════════════════════════════════════════════════════════════════
 
 export async function inspect(req: InspectRequest): Promise<InspectResult> {
-  const { ip, userId, endpoint, method, userAgent, headers, body, requestDurationMs } = req;
+  const { ip, userId, endpoint, method, userAgent, headers, body, requestDurationMs, skipBodyScan } = req;
 
-  // ── Feature usage enforcement: identity missing ONLY when token is actually absent ──
-  // Requirement: Defence/Attack hanya mendeteksi penggunaan fitur.
-  // Jangan block kalau user sebenarnya sudah terautentikasi, tetapi userId tidak terpropagasi.
+  // ── Feature usage enforcement: HANYA block jika tidak ada token sama sekali ──
+  // Catatan: Jangan block berdasarkan userId yang tidak di-propagate,
+  // karena banyak route tidak mengirimkan userId ke inspect().
+  // Cukup cek token dari cookie untuk memastikan user sudah login.
   const FEATURE_USAGE_ENDPOINTS = new Set([
     "/api/research",
     "/api/generate",
@@ -1852,13 +1859,9 @@ export async function inspect(req: InspectRequest): Promise<InspectResult> {
   const tokenMatch = cookieHeader.match(/auth_token=([^;]+)/);
   const tokenInRequest = tokenMatch ? tokenMatch[1] : null;
 
-  // Only block when token is missing AND userId is missing.
-  const isIdentityMissing = !userId;
-
-  if (isFeatureUsage && isIdentityMissing && !tokenInRequest) {
-    const durationSec = 24 * 60 * 60; // 24h
-    await manualBlockIp(ip, `blocked_by_missing_email: ${endpoint} ${method}`, durationSec);
-
+  // HANYA block jika tidak ada token sama sekali (benar-benar unauthenticated)
+  // Jangan block hanya karena userId tidak di-propagate
+  if (isFeatureUsage && !tokenInRequest) {
     const now = Date.now();
     const result: InspectResult = {
       action: "block",
@@ -1870,18 +1873,18 @@ export async function inspect(req: InspectRequest): Promise<InspectResult> {
           type: "anomaly",
           severity: "critical",
           confidence: 1.0,
-          detail: `blocked_by_missing_email (${endpoint} ${method})`,
+          detail: `Unauthorized access to feature endpoint: ${endpoint}`,
         },
       ],
       blocked: true,
-      reason: `blocked_by_missing_email`,
+      reason: `Akses fitur tidak diizinkan tanpa autentikasi`,
       trustScore: 0,
       botScore: 0,
       fusedScore: 100,
       attackChainLength: 0,
     };
 
-    // Store event in Redis so monitor UI can show it
+    // Log event tapi JANGAN ban IP — mungkin hanya session expired, bukan attacker
     await logEventRedis({ timestamp: now, ip, userId, endpoint, method, userAgent, ...result });
 
     return result;
@@ -2014,8 +2017,12 @@ export async function inspect(req: InspectRequest): Promise<InspectResult> {
     const errCount = await getIpErrorCount(ip);
     if (errCount >= 8) signals.push({ type: "credential_stuffing", severity: "high", confidence: Math.min(0.95, errCount / 20), detail: `${errCount} errors in 10min` });
 
-    // Payload attack detection (static + extended patterns)
-    signals.push(...detectPayloadSignals(body, headers));
+    // Payload attack detection — DILEWATI untuk AI/chat routes (skipBodyScan)
+    // karena user bisa mengirim konten yang mengandung kata kunci teknis (SQL, JS, dll)
+    // tanpa maksud menyerang. Body scan hanya untuk unauthenticated requests.
+    if (!skipBodyScan) {
+      signals.push(...detectPayloadSignals(body, headers));
+    }
 
     // User-Agent scanner detection
     signals.push(...detectUASignals(userAgent));

@@ -45,6 +45,7 @@ export async function POST(request: NextRequest) {
       userAgent: headersObj["user-agent"] ?? "",
       headers: headersObj,
       body,
+      skipBodyScan: true, // user bisa nanya tentang SQL/JS dll — bukan serangan
     });
     if (sec.blocked) {
       void recordIpError(ip);

@@ -149,11 +149,20 @@ export default function Home() {
   const handleLogout = useCallback(async () => {
     setLoggingOut(true);
     try {
-      await fetch("/api/auth/logout", { method: "POST" });
-      // Hard redirect — ensures cookie cleared before any new request
-      window.location.href = "/login";
+      const res = await fetch("/api/auth/logout", {
+        method: "POST",
+        credentials: "include",
+      });
+      if (res.ok || res.status === 401) {
+        // Cookie cleared — hard redirect regardless of response
+        window.location.replace("/login");
+      } else {
+        // Fallback: force redirect anyway
+        window.location.replace("/login");
+      }
     } catch {
-      setLoggingOut(false);
+      // Network error — still redirect
+      window.location.replace("/login");
     }
   }, []);
 
@@ -430,8 +439,8 @@ export default function Home() {
                   <span>/ {formatTokens(getDailyLimit())}</span>
                 </div>
               </div>
-              <button type="button" onClick={handleLogout} disabled={loggingOut}
-                style={{width:"100%",padding:"12px",background:"transparent",border:"none",color:"#f87171",fontSize:13,fontWeight:700,cursor:loggingOut?"not-allowed":"pointer",opacity:loggingOut?0.5:1,borderTop:"1px solid rgba(255,255,255,0.06)"}}>
+              <button type="button" onClick={handleLogout}
+                style={{width:"100%",padding:"12px",background:"transparent",border:"none",color:"#f87171",fontSize:13,fontWeight:700,cursor:"pointer",borderTop:"1px solid rgba(255,255,255,0.06)"}}>
                 {loggingOut ? "⏳ Keluar..." : "→ Keluar"}
               </button>
             </div>
