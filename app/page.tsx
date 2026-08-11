@@ -93,6 +93,7 @@ export default function Home() {
   const [tokenPct, setTokenPct] = useState(() => getUsagePercent());
   const device = useDevice();
   const profileRef = useRef<HTMLDivElement>(null);
+  const dropRef = useRef<HTMLDivElement>(null);
   const heartbeatRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const [closingMap, setClosingMap] = useState<Record<string, ClosingEntry>>({});
 
@@ -134,7 +135,13 @@ export default function Home() {
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
-      if (profileRef.current && !profileRef.current.contains(e.target as Node)) setProfileOpen(false);
+      const target = e.target as Node;
+      if (
+        profileRef.current && !profileRef.current.contains(target) &&
+        dropRef.current && !dropRef.current.contains(target)
+      ) {
+        setProfileOpen(false);
+      }
     };
     if (profileOpen) document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
@@ -149,21 +156,19 @@ export default function Home() {
   const handleLogout = useCallback(async () => {
     setLoggingOut(true);
     try {
-      // Hapus cookie dari browser-side dulu (document.cookie tidak bisa hapus httpOnly,
-      // tapi ini sebagai safety measure)
       document.cookie = "auth_token=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/; SameSite=Lax";
+      document.cookie = "auth_token=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/api; SameSite=Lax";
 
-      // Panggil logout API
+      try { localStorage.clear(); sessionStorage.clear(); } catch {}
+
       await fetch("/api/auth/logout", {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
-      }).catch(() => {}); // ignore network errors
-
+      }).catch(() => {});
     } catch { /* ignore */ }
 
-    // Redirect UNCONDITIONALLY — tidak peduli response dari server
-    window.location.replace("/login");
+    window.location.href = "/login";
   }, []);
 
   const pctColor = tokenPct >= 85 ? "#f87171" : tokenPct >= 60 ? "#fbbf24" : "#4ade80";
@@ -413,7 +418,7 @@ export default function Home() {
         {profileOpen && (
           <>
             <div style={{position:"fixed",inset:0,zIndex:1999}} onClick={() => setProfileOpen(false)} />
-            <div className="profile-drop" onClick={e => e.stopPropagation()}>
+            <div className="profile-drop" ref={dropRef} onClick={e => e.stopPropagation()}>
               <div style={{padding:"14px 16px",background:"linear-gradient(135deg,rgba(99,102,241,0.1),rgba(139,92,246,0.05))",borderBottom:"1px solid rgba(255,255,255,0.07)",display:"flex",alignItems:"center",gap:11}}>
                 <div style={{width:38,height:38,borderRadius:10,background:"linear-gradient(135deg,#4f46e5,#7c3aed)",color:"white",fontSize:16,fontWeight:800,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>{userInitial}</div>
                 <div>
@@ -439,8 +444,12 @@ export default function Home() {
                   <span>/ {formatTokens(getDailyLimit())}</span>
                 </div>
               </div>
-              <button type="button" onClick={handleLogout}
-                style={{width:"100%",padding:"12px",background:"transparent",border:"none",color:"#f87171",fontSize:13,fontWeight:700,cursor:"pointer",borderTop:"1px solid rgba(255,255,255,0.06)"}}>
+              <button
+                type="button"
+                onMouseDown={(e) => { e.stopPropagation(); e.preventDefault(); void handleLogout(); }}
+                onClick={(e) => { e.stopPropagation(); void handleLogout(); }}
+                style={{width:"100%",padding:"12px",background:"transparent",border:"none",color:"#f87171",fontSize:13,fontWeight:700,cursor:"pointer",borderTop:"1px solid rgba(255,255,255,0.06)"}}
+              >
                 {loggingOut ? "⏳ Keluar..." : "→ Keluar"}
               </button>
             </div>

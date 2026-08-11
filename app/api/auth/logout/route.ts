@@ -1,10 +1,9 @@
 import { NextResponse } from "next/server";
 
-export async function POST() {
+function clearAuthCookie() {
   const response = NextResponse.json({ ok: true, message: "Logout berhasil" });
 
-  // Must match EXACTLY the same attributes as when the cookie was set at login.
-  // Mismatched attributes (secure, sameSite, path) cause browsers to ignore the delete.
+  // Set maxAge: 0, expires: 1970 to force browser cookie deletion
   response.cookies.set("auth_token", "", {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
@@ -14,5 +13,22 @@ export async function POST() {
     path: "/",
   });
 
+  // Explicitly delete token
+  try {
+    response.cookies.delete("auth_token");
+  } catch { /* fallback */ }
+
   return response;
+}
+
+export async function POST() {
+  return clearAuthCookie();
+}
+
+export async function GET() {
+  return clearAuthCookie();
+}
+
+export async function DELETE() {
+  return clearAuthCookie();
 }
