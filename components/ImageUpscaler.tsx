@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { ZoomIn } from "lucide-react";
 
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
@@ -1335,7 +1336,9 @@ export default function ImageUpscaler() {
           }}
           disabled={loading}
         />
-        <div className="dropzone__icon">🔍</div>
+        <div className="dropzone__icon" style={{ fontSize: "2rem" }}>
+          <ZoomIn size={36} color="#38bdf8" />
+        </div>
         <p className="dropzone__title">Seret &amp; lepas foto atau video di sini</p>
         <p className="dropzone__subtitle">atau klik untuk memilih file</p>
         <p className="dropzone__hint">

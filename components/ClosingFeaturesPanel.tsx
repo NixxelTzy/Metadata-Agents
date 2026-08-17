@@ -1,23 +1,24 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Tag, ZoomIn, Eraser, Search, Sparkles, Bot, Clapperboard, Lock } from "lucide-react";
 
 export interface FeatureItem {
   id: string;
   name: string;
   desc: string;
-  icon: string;
+  icon: React.ReactNode;
   color: string;
 }
 
 export const MANAGED_FEATURES: FeatureItem[] = [
-  { id: "metadata",  name: "Metadata Generator", desc: "Upload photo/vector to gen metadata", icon: "🏷️", color: "#4a90e2" },
-  { id: "upscale",   name: "Upscaler (Foto & Video)", desc: "Super resolution foto dan video", icon: "🔍", color: "#ec4899" },
-  { id: "watermark", name: "Hapus Watermark", desc: "Pembersih watermark media", icon: "🧹", color: "#14b8a6" },
-  { id: "research",  name: "Riset Keyword", desc: "Insight produk dan riset pasar", icon: "🔎", color: "#7b5ae0" },
-  { id: "vector",    name: "Vector Ideas", desc: "AI Vector concept generator", icon: "✨", color: "#22c55e" },
-  { id: "chat",      name: "AI Assistant Chat", desc: "Groq AI Chatbot", icon: "🤖", color: "#f59e0b" },
-  { id: "motion",    name: "Motion Studio", desc: "JS Canvas Animation Renderer", icon: "🎬", color: "#a78bfa" },
+  { id: "metadata",  name: "Metadata Generator", desc: "Upload photo/vector to gen metadata", icon: <Tag size={16} color="#38bdf8" />, color: "#38bdf8" },
+  { id: "upscale",   name: "Upscaler (Foto & Video)", desc: "Super resolution foto dan video", icon: <ZoomIn size={16} color="#38bdf8" />, color: "#38bdf8" },
+  { id: "watermark", name: "Hapus Watermark", desc: "Pembersih watermark media", icon: <Eraser size={16} color="#38bdf8" />, color: "#38bdf8" },
+  { id: "research",  name: "Riset Keyword", desc: "Insight produk dan riset pasar", icon: <Search size={16} color="#38bdf8" />, color: "#38bdf8" },
+  { id: "vector",    name: "Vector Ideas", desc: "AI Vector concept generator", icon: <Sparkles size={16} color="#38bdf8" />, color: "#38bdf8" },
+  { id: "chat",      name: "AI Assistant Chat", desc: "Groq AI Chatbot", icon: <Bot size={16} color="#38bdf8" />, color: "#38bdf8" },
+  { id: "motion",    name: "Motion Studio", desc: "JS Canvas Animation Renderer", icon: <Clapperboard size={16} color="#38bdf8" />, color: "#38bdf8" },
 ];
 
 export interface ClosingEntry {
@@ -94,7 +95,9 @@ export default function ClosingFeaturesPanel() {
       {/* Header */}
       <div className="pl-header">
         <div className="pl-header__left">
-          <div className="pl-header__icon">🔒</div>
+          <div className="pl-header__icon">
+            <Lock size={18} color="#38bdf8" />
+          </div>
           <div>
             <div className="pl-header__title">Closing Features</div>
             <div className="pl-header__sub">Kelola ketersediaan fitur untuk pengguna</div>

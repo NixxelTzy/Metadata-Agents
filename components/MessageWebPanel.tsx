@@ -2,6 +2,12 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { showToast } from "./Toast";
+import {
+  MessageSquare, RefreshCw, Ban, Users, Inbox, FileEdit,
+  ClipboardList, Eye, AlertTriangle, Activity, Wrench, Folder,
+  BarChart2, Search, Info, CheckCircle2, Trash2, Key, LogOut,
+  Upload, Zap, Mail, Clock, ShieldAlert, Send
+} from "lucide-react";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -31,10 +37,10 @@ interface SentMessage {
 
 type MsgType = "message" | "refresh" | "block";
 
-const TYPE_META: Record<MsgType, { icon: string; color: string; label: string; desc: string }> = {
-  message: { icon: "💬", color: "#60a5fa", label: "Pesan Biasa", desc: "Tampilkan notifikasi di layar pengguna" },
-  refresh: { icon: "🔄", color: "#4ade80", label: "Refresh / Buka Ulang", desc: "Minta pengguna untuk membuka ulang web" },
-  block:   { icon: "🚫", color: "#f87171", label: "Blokir Sementara", desc: "Blokir akses hingga pengguna reload dengan alasan" },
+const TYPE_META: Record<MsgType, { icon: React.ReactNode; color: string; label: string; desc: string }> = {
+  message: { icon: <MessageSquare size={16} color="#38bdf8" />, color: "#38bdf8", label: "Pesan Biasa", desc: "Tampilkan notifikasi di layar pengguna" },
+  refresh: { icon: <RefreshCw size={16} color="#4ade80" />, color: "#4ade80", label: "Refresh / Buka Ulang", desc: "Minta pengguna untuk membuka ulang web" },
+  block:   { icon: <Ban size={16} color="#f87171" />, color: "#f87171", label: "Blokir Sementara", desc: "Blokir akses hingga pengguna reload dengan alasan" },
 };
 
 // ─── Debug Types ──────────────────────────────────────────────────────────────
@@ -1728,7 +1734,7 @@ export default function MessageWebPanel() {
 
       {/* ── Hero ─────────────────────────────────────────────────────────────── */}
       <div className="uploader__hero" style={{ marginBottom: "24px" }}>
-        <h2>📨 Message Web</h2>
+        <h2>Message Web Broadcast</h2>
         <p>
           Kirim pesan, perintah refresh, atau blokir akses ke pengguna tertentu atau semua pengguna.
           Pesan tampil sebagai notifikasi langsung di layar pengguna secara real-time.
@@ -1743,9 +1749,9 @@ export default function MessageWebPanel() {
         marginBottom: "24px",
       }}>
         {[
-          { icon: "👥", label: "Total User", val: users.length, color: "#60a5fa" },
-          { icon: "🟢", label: "Online Sekarang", val: onlineCount, color: "#4ade80" },
-          { icon: "📬", label: "Pesan Terkirim", val: sentMessages.length, color: "#a78bfa" },
+          { icon: <Users size={18} color="#38bdf8" />, label: "Total User", val: users.length, color: "#38bdf8" },
+          { icon: <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#4ade80", boxShadow: "0 0 8px #4ade80" }} />, label: "Online Sekarang", val: onlineCount, color: "#4ade80" },
+          { icon: <Inbox size={18} color="#a78bfa" />, label: "Pesan Terkirim", val: sentMessages.length, color: "#a78bfa" },
         ].map((s) => (
           <div
             key={s.label}
@@ -1767,7 +1773,7 @@ export default function MessageWebPanel() {
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              fontSize: "18px",
+              flexShrink: 0,
             }}>{s.icon}</div>
             <div>
               <div style={{ fontSize: "20px", fontWeight: "800", color: "var(--text)", lineHeight: 1 }}>{s.val}</div>
@@ -1787,8 +1793,9 @@ export default function MessageWebPanel() {
             flexDirection: "column",
             gap: "6px",
           }}>
-            <div style={{ fontSize: "11px", fontWeight: "700", color: "#4ade80", textTransform: "uppercase", letterSpacing: "0.06em" }}>
-              🟢 Sedang Online
+            <div style={{ fontSize: "11px", fontWeight: "700", color: "#4ade80", textTransform: "uppercase", letterSpacing: "0.06em", display: "flex", alignItems: "center", gap: 6 }}>
+              <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#4ade80", display: "inline-block" }} />
+              Sedang Online
             </div>
             <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
               {users.filter((u) => u.isOnline).map((u) => (
@@ -1821,18 +1828,20 @@ export default function MessageWebPanel() {
         borderRadius: "12px",
         padding: "4px",
         marginBottom: "20px",
-        width: "fit-content",
+        width: "100%",
+        overflowX: "auto",
+        flexWrap: "nowrap",
       }}>
         {([
-          { id: "compose", icon: "✏️", label: "Tulis Pesan" },
-          { id: "log", icon: "📋", label: `Riwayat (${sentMessages.length})` },
-          { id: "receipts", icon: "👁️", label: "Tanda Terima" },
-          { id: "errors", icon: "🚨", label: "Error Logs" },
-          { id: "health", icon: "🏥", label: "Health Check" },
-          { id: "maintenance", icon: "🔧", label: "Maintenance" },
-          { id: "templates", icon: "📁", label: "Templates" },
-          { id: "activity", icon: "📊", label: "Activity Feed" },
-          { id: "debug", icon: "🔍", label: "Debug Log" },
+          { id: "compose", icon: <FileEdit size={14} />, label: "Tulis Pesan" },
+          { id: "log", icon: <ClipboardList size={14} />, label: `Riwayat (${sentMessages.length})` },
+          { id: "receipts", icon: <Eye size={14} />, label: "Tanda Terima" },
+          { id: "errors", icon: <AlertTriangle size={14} />, label: "Error Logs" },
+          { id: "health", icon: <Activity size={14} />, label: "Health Check" },
+          { id: "maintenance", icon: <Wrench size={14} />, label: "Maintenance" },
+          { id: "templates", icon: <Folder size={14} />, label: "Templates" },
+          { id: "activity", icon: <BarChart2 size={14} />, label: "Activity Feed" },
+          { id: "debug", icon: <Search size={14} />, label: "Debug Log" },
         ] as const).map((tab) => {
           const active = activeView === tab.id;
           return (
@@ -1841,21 +1850,23 @@ export default function MessageWebPanel() {
               className="mw-tab-btn"
               onClick={() => { setActiveView(tab.id); if (tab.id === "log") fetchLog(); }}
               style={{
-                padding: "9px 18px",
+                padding: "8px 14px",
                 borderRadius: "9px",
                 border: "none",
                 background: active
-                  ? "linear-gradient(135deg, rgba(124,58,237,0.4), rgba(236,72,153,0.2))"
+                  ? "rgba(56, 189, 248, 0.15)"
                   : "transparent",
-                color: active ? "var(--text)" : "var(--text-muted)",
+                color: active ? "#38bdf8" : "var(--text-muted)",
                 cursor: "pointer",
                 fontWeight: active ? "700" : "500",
-                fontSize: "13px",
-                boxShadow: active ? "0 2px 8px rgba(0,0,0,0.3)" : "none",
+                fontSize: "12px",
+                boxShadow: active ? "0 0 10px rgba(56,189,248,0.2)" : "none",
                 transition: "all 0.2s",
                 display: "flex",
                 alignItems: "center",
-                gap: "7px",
+                gap: "6px",
+                whiteSpace: "nowrap",
+                flexShrink: 0,
               }}
             >
               {tab.icon} {tab.label}
@@ -1888,7 +1899,7 @@ export default function MessageWebPanel() {
         }}>
           <div>
             <div style={{ fontWeight: "800", fontSize: "16px", color: "var(--text)" }}>
-              {activeView === "compose" ? "✏️ Tulis & Kirim Pesan" : activeView === "log" ? "📋 Riwayat Pesan Terkirim" : "🔍 Debug Log — Status & Diagnosa Real-Time"}
+              {activeView === "compose" ? "Tulis & Kirim Pesan" : activeView === "log" ? "Riwayat Pesan Terkirim" : "Debug Log — Status & Diagnosa Real-Time"}
             </div>
             <div style={{ fontSize: "12px", color: "var(--text-muted)", marginTop: "3px" }}>
               {activeView === "compose"
@@ -1911,9 +1922,13 @@ export default function MessageWebPanel() {
                 cursor: "pointer",
                 fontSize: "12px",
                 fontWeight: "600",
+                display: "flex",
+                alignItems: "center",
+                gap: "5px",
               }}
             >
-              {loadingLog ? "⏳" : "🔄"} Refresh
+              <RefreshCw size={13} className={loadingLog ? "pl-spin" : ""} />
+              Refresh
             </button>
           )}
         </div>

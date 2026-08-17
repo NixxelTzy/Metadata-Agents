@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import { Database, HardDrive, Inbox, RefreshCw, Layers, Activity, Server, AlertCircle } from "lucide-react";
 
-interface KeyBreakdown { prefix: string; label: string; emoji: string; count: number; }
+interface KeyBreakdown { prefix: string; label: string; count: number; }
 interface DbStats {
   name: string; online: boolean; error?: string;
   dbSize: number; totalKeys: number;
@@ -57,7 +58,7 @@ export default function StoragePanel() {
 
   useEffect(() => { fetchStats(false); }, []);
   useEffect(() => {
-    const id = setInterval(() => fetchStats(true), 1500);
+    const id = setInterval(() => fetchStats(true), 2500);
     return () => clearInterval(id);
   }, [fetchStats]);
 
@@ -74,38 +75,43 @@ export default function StoragePanel() {
       {/* Header */}
       <div className="pl-header">
         <div className="pl-header__left">
-          <div className="pl-header__icon">🗄️</div>
+          <div className="pl-header__icon">
+            <Database size={18} color="#38bdf8" />
+          </div>
           <div>
-            <div className="pl-header__title">Storage Monitor</div>
+            <div className="pl-header__title">Storage Redis Monitor</div>
             <div className="pl-header__sub">Real-time monitoring Upstash Redis database</div>
           </div>
         </div>
         <div className="pl-header__right">
           {lastRefresh && (
-            <span style={{ fontSize: 11, color: "rgba(255,255,255,0.25)", fontFamily: "monospace" }}>
-              {lastRefresh.toLocaleTimeString("id-ID")}.{String(lastRefresh.getMilliseconds()).padStart(3, "0")}
+            <span style={{ fontSize: 11, color: "rgba(255,255,255,0.35)", fontFamily: "monospace" }}>
+              {lastRefresh.toLocaleTimeString("id-ID")}
             </span>
           )}
           <span className="pl-badge pl-badge--green">
             <span className="pl-badge__dot" style={{ animation: "pl-pulse-green 1.5s ease-in-out infinite" }} />
-            Auto-refresh 1.5s
+            Auto-refresh 2.5s
           </span>
-          <button className="pl-btn pl-btn--ghost" onClick={() => fetchStats(false)} disabled={loading}>
-            {loading ? <span className="pl-spinner" /> : "Refresh"}
+          <button className="pl-btn pl-btn--ghost" onClick={() => fetchStats(false)} disabled={loading} style={{ display: "flex", alignItems: "center", gap: 5 }}>
+            <RefreshCw size={13} className={loading ? "pl-spin" : ""} />
+            Refresh
           </button>
         </div>
       </div>
 
       {/* Sidebar */}
       <div className="pl-sidebar">
-        <div className="pl-sidebar__section-label">Database</div>
+        <div className="pl-sidebar__section-label">Database Redis</div>
         {(data?.databases ?? []).map(db => (
           <button
             key={db.name}
             className={`pl-sidebar__item${selectedDb === db.name ? " active" : ""}`}
             onClick={() => setSelectedDb(db.name)}
           >
-            <span className="pl-sidebar__item-icon">{db.name.includes("#2") ? "🗄️" : "💾"}</span>
+            <span className="pl-sidebar__item-icon">
+              <HardDrive size={15} color="#38bdf8" />
+            </span>
             <span style={{ flex: 1, textAlign: "left", fontSize: 12 }}>{db.name}</span>
             <span style={{
               width: 7, height: 7, borderRadius: "50%", flexShrink: 0,
@@ -125,7 +131,7 @@ export default function StoragePanel() {
               { label: "DB Online", value: `${data.databases.filter(d => d.online).length}/${data.databases.length}` },
             ].map(s => (
               <div key={s.label} style={{ display: "flex", justifyContent: "space-between", fontSize: 11 }}>
-                <span style={{ color: "rgba(255,255,255,0.3)" }}>{s.label}</span>
+                <span style={{ color: "rgba(255,255,255,0.4)" }}>{s.label}</span>
                 <span style={{ color: "#e2e8f0", fontWeight: 700, fontFamily: "monospace" }}>{s.value}</span>
               </div>
             ))}
@@ -136,7 +142,10 @@ export default function StoragePanel() {
       {/* Content */}
       <div className="pl-content">
         {error && (
-          <div className="pl-alert pl-alert--err">⚠ {error}</div>
+          <div className="pl-alert pl-alert--err" style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <AlertCircle size={15} />
+            {error}
+          </div>
         )}
 
         {loading && !data && (
@@ -152,7 +161,13 @@ export default function StoragePanel() {
             <div className="pl-card">
               <div className="pl-card__head">
                 <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                  <span style={{ fontSize: 20 }}>{activeDb.name.includes("#2") ? "🗄️" : "💾"}</span>
+                  <div style={{
+                    width: 34, height: 34, borderRadius: 8,
+                    background: "rgba(14,165,233,0.15)", border: "1px solid rgba(56,189,248,0.3)",
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                  }}>
+                    <Database size={16} color="#38bdf8" />
+                  </div>
                   <div>
                     <div className="pl-card__title">{activeDb.name}</div>
                     <div className="pl-card__desc">Redis v{activeDb.redisVersion}</div>
@@ -172,7 +187,7 @@ export default function StoragePanel() {
                       <label className="pl-label" style={{ margin: 0 }}>Memory Usage</label>
                       <span style={{ fontSize: 12, fontFamily: "monospace" }}>
                         <span style={{ color: memColor(activeDb.usedPercent), fontWeight: 700 }}>{activeDb.usedMemoryHuman}</span>
-                        <span style={{ color: "rgba(255,255,255,0.3)" }}> / {activeDb.maxMemoryHuman !== "0B" ? activeDb.maxMemoryHuman : "Unlimited"}</span>
+                        <span style={{ color: "rgba(255,255,255,0.4)" }}> / {activeDb.maxMemoryHuman !== "0B" ? activeDb.maxMemoryHuman : "Unlimited"}</span>
                         {activeDb.usedPercent !== null && (
                           <span style={{ color: memColor(activeDb.usedPercent), marginLeft: 6 }}>({activeDb.usedPercent}%)</span>
                         )}
@@ -181,7 +196,7 @@ export default function StoragePanel() {
                     <div className="pl-progress-track">
                       <div className="pl-progress-fill" style={{ width: `${Math.min(activeDb.usedPercent ?? 0, 100)}%`, background: memColor(activeDb.usedPercent) }} />
                     </div>
-                    <div style={{ fontSize: 11, color: "rgba(255,255,255,0.25)", marginTop: 4 }}>Peak: {activeDb.peakMemoryHuman}</div>
+                    <div style={{ fontSize: 11, color: "rgba(255,255,255,0.35)", marginTop: 4 }}>Peak: {activeDb.peakMemoryHuman}</div>
                   </div>
 
                   {/* Stats grid */}
@@ -198,7 +213,7 @@ export default function StoragePanel() {
                         padding: "12px 14px", borderRadius: 9,
                         background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.06)",
                       }}>
-                        <div style={{ fontSize: 10, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.07em", color: "rgba(255,255,255,0.28)", marginBottom: 4 }}>{s.label}</div>
+                        <div style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.07em", color: "rgba(255,255,255,0.35)", marginBottom: 4 }}>{s.label}</div>
                         <div style={{ fontSize: 17, fontWeight: 800, color: "#e2e8f0", fontFamily: "monospace" }}>{s.value}</div>
                       </div>
                     ))}
@@ -213,10 +228,10 @@ export default function StoragePanel() {
                           const pct = activeDb.totalKeys > 0 ? (cat.count / activeDb.totalKeys) * 100 : 0;
                           return (
                             <div key={cat.prefix} style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                              <span style={{ fontSize: 14, width: 20, flexShrink: 0 }}>{cat.emoji}</span>
-                              <span style={{ fontSize: 12, color: "rgba(255,255,255,0.55)", width: 140, flexShrink: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{cat.label}</span>
+                              <Layers size={14} color="#38bdf8" style={{ flexShrink: 0 }} />
+                              <span style={{ fontSize: 12, color: "rgba(255,255,255,0.65)", width: 140, flexShrink: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{cat.label}</span>
                               <div style={{ flex: 1, height: 5, background: "rgba(255,255,255,0.06)", borderRadius: 999, overflow: "hidden" }}>
-                                <div style={{ height: "100%", width: `${pct}%`, background: "rgba(99,102,241,0.7)", borderRadius: 999, transition: "width 0.3s" }} />
+                                <div style={{ height: "100%", width: `${pct}%`, background: "rgba(14,165,233,0.7)", borderRadius: 999, transition: "width 0.3s" }} />
                               </div>
                               <span style={{ fontSize: 12, fontWeight: 700, fontFamily: "monospace", color: "#e2e8f0", width: 30, textAlign: "right", flexShrink: 0 }}>{cat.count}</span>
                             </div>
@@ -228,7 +243,7 @@ export default function StoragePanel() {
 
                   {activeDb.totalKeys === 0 && (
                     <div className="pl-empty" style={{ padding: "24px" }}>
-                      <span className="pl-empty__icon" style={{ fontSize: 24 }}>📭</span>
+                      <Inbox size={24} color="#38bdf8" />
                       <span className="pl-empty__text">Database kosong</span>
                     </div>
                   )}
@@ -249,7 +264,7 @@ export default function StoragePanel() {
                   <div
                     key={db.name}
                     className="pl-stat-item"
-                    style={{ cursor: "pointer", border: selectedDb === db.name ? "1px solid rgba(99,102,241,0.3)" : undefined }}
+                    style={{ cursor: "pointer", border: selectedDb === db.name ? "1px solid rgba(56,189,248,0.4)" : undefined }}
                     onClick={() => setSelectedDb(db.name)}
                   >
                     <div className="pl-stat-item__label">{db.name}</div>

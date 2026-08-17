@@ -18,28 +18,28 @@ interface MagicIdea {
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 const ART_THEMES = [
-  { value: "vector",      label: "🟦 Vector"         },
-  { value: "illustrator", label: "🎨 Illustrator"     },
-  { value: "photography", label: "📷 Photography"     },
-  { value: "watercolor",  label: "💧 Watercolor"      },
-  { value: "3d_render",   label: "🧊 3D Render"       },
-  { value: "pixel_art",   label: "🕹️ Pixel Art"       },
-  { value: "sketch",      label: "✏️ Sketch"          },
-  { value: "anime",       label: "🌸 Anime / Manga"   },
-  { value: "infographic", label: "📊 Infographic"     },
-  { value: "icon_set",    label: "🔷 Icon Set"        },
+  { value: "vector",      label: "Vector Art"         },
+  { value: "illustrator", label: "Illustrator Flat"   },
+  { value: "photography", label: "Photography Concept"},
+  { value: "watercolor",  label: "Watercolor Style"   },
+  { value: "3d_render",   label: "3D Isometric Render"},
+  { value: "pixel_art",   label: "Pixel Art Retro"    },
+  { value: "sketch",      label: "Line Art / Sketch"  },
+  { value: "anime",       label: "Anime / Manga"      },
+  { value: "infographic", label: "Infographic Diagram"},
+  { value: "icon_set",    label: "UI Icon Set"        },
 ];
 
 const CONCEPT_CATEGORIES = [
-  { value: "graphic",     label: "🔷 Grafik & Abstrak"    },
-  { value: "business",    label: "💼 Bisnis & Keuangan"   },
-  { value: "scenery",     label: "🌿 Pemandangan & Alam"  },
-  { value: "technology",  label: "🤖 Teknologi & AI"      },
-  { value: "healthcare",  label: "🏥 Kesehatan & Medis"   },
-  { value: "food",        label: "🍜 Makanan & Kuliner"   },
-  { value: "travel",      label: "✈️ Perjalanan & Wisata" },
-  { value: "education",   label: "📚 Pendidikan"          },
-  { value: "sports",      label: "⚽ Olahraga & Fitness"  },
+  { value: "graphic",     label: "Grafik & Abstrak"    },
+  { value: "business",    label: "Bisnis & Keuangan"   },
+  { value: "scenery",     label: "Pemandangan & Alam"  },
+  { value: "technology",  label: "Teknologi & AI"      },
+  { value: "healthcare",  label: "Kesehatan & Medis"   },
+  { value: "food",        label: "Makanan & Kuliner"   },
+  { value: "travel",      label: "Perjalanan & Wisata" },
+  { value: "education",   label: "Pendidikan"          },
+  { value: "sports",      label: "Olahraga & Fitness"  },
 ];
 
 // ── Default Ideas ─────────────────────────────────────────────────────────────

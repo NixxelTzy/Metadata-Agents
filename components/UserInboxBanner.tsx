@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import AdminMessageCard from "./AdminMessageCard";
+import { Bell } from "lucide-react";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -130,22 +131,21 @@ export function NotificationBellButton() {
       title="Kotak Masuk Notifikasi Admin"
       style={{
         position: "relative",
-        background: "rgba(124, 58, 237, 0.12)",
-        border: "1px solid rgba(124, 58, 237, 0.3)",
-        borderRadius: "10px",
-        width: "36px",
-        height: "36px",
+        background: "rgba(56, 189, 248, 0.08)",
+        border: "1px solid rgba(56, 189, 248, 0.2)",
+        borderRadius: "9px",
+        width: "32px",
+        height: "32px",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
         cursor: "pointer",
-        fontSize: "16px",
-        color: "#a78bfa",
-        transition: "all 0.2s",
+        color: "#38bdf8",
+        transition: "all 0.18s",
         flexShrink: 0,
       }}
     >
-      🔔
+      <Bell size={15} color="#38bdf8" />
       {unreadCount > 0 && (
         <span
           style={{

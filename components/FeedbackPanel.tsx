@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Bug, Lightbulb, HelpCircle, Send, History, Inbox, Bot, MessageSquare } from "lucide-react";
 
 interface Report {
   id: string;
@@ -10,9 +11,9 @@ interface Report {
 }
 
 const TYPE_OPTIONS = [
-  { value: "bug",     label: "Bug / Error",         icon: "🐛" },
-  { value: "feature", label: "Usulan Fitur",          icon: "💡" },
-  { value: "other",   label: "Pertanyaan / Lainnya",  icon: "💬" },
+  { value: "bug",     label: "Bug / Error",         icon: <Bug size={16} color="#f87171" /> },
+  { value: "feature", label: "Usulan Fitur",          icon: <Lightbulb size={16} color="#38bdf8" /> },
+  { value: "other",   label: "Pertanyaan / Lainnya",  icon: <HelpCircle size={16} color="#94a3b8" /> },
 ] as const;
 
 export default function FeedbackPanel() {
@@ -55,7 +56,6 @@ export default function FeedbackPanel() {
         setSuccess("Laporan berhasil terkirim.");
         setMessage("");
         if (data.report) setHistory(prev => [data.report!, ...prev]);
-        // Switch to history tab on mobile after submit
         setActiveTab("history");
       }
     } catch { setError("Terjadi kesalahan koneksi"); }
@@ -63,11 +63,11 @@ export default function FeedbackPanel() {
   };
 
   const getTypeLabel = (t: string) => TYPE_OPTIONS.find(o => o.value === t)?.label ?? t;
-  const getTypeIcon  = (t: string) => TYPE_OPTIONS.find(o => o.value === t)?.icon ?? "💬";
+  const getTypeIcon  = (t: string) => TYPE_OPTIONS.find(o => o.value === t)?.icon ?? <HelpCircle size={16} />;
 
   const NAV_ITEMS = [
-    { key: "form",    icon: "✏️", label: "Kirim" },
-    { key: "history", icon: "📋", label: "Riwayat" },
+    { key: "form",    icon: <Send size={15} color="#38bdf8" />, label: "Kirim" },
+    { key: "history", icon: <History size={15} color="#38bdf8" />, label: "Riwayat" },
   ] as const;
 
   return (
@@ -101,7 +101,9 @@ export default function FeedbackPanel() {
       {/* Header */}
       <div className="pl-header">
         <div className="pl-header__left">
-          <div className="pl-header__icon">💬</div>
+          <div className="pl-header__icon">
+            <MessageSquare size={18} color="#38bdf8" />
+          </div>
           <div>
             <div className="pl-header__title">Laporan & Usulan</div>
             <div className="pl-header__sub">Kirim bug report atau usulan fitur baru</div>
@@ -122,14 +124,14 @@ export default function FeedbackPanel() {
           className={`pl-sidebar__item${activeTab === "form" ? " active" : ""}`}
           onClick={() => setActiveTab("form")}
         >
-          <span className="pl-sidebar__item-icon">✏️</span>
+          <span className="pl-sidebar__item-icon"><Send size={15} color="#38bdf8" /></span>
           Kirim Laporan
         </button>
         <button
           className={`pl-sidebar__item${activeTab === "history" ? " active" : ""}`}
           onClick={() => setActiveTab("history")}
         >
-          <span className="pl-sidebar__item-icon">📋</span>
+          <span className="pl-sidebar__item-icon"><History size={15} color="#38bdf8" /></span>
           Riwayat ({history.length})
         </button>
 
@@ -230,7 +232,7 @@ export default function FeedbackPanel() {
                 </div>
               ) : history.length === 0 ? (
                 <div className="pl-empty">
-                  <span className="pl-empty__icon">📭</span>
+                  <span className="pl-empty__icon"><Inbox size={28} color="#38bdf8" /></span>
                   <span className="pl-empty__text">Belum ada riwayat laporan.</span>
                 </div>
               ) : (
@@ -255,9 +257,9 @@ export default function FeedbackPanel() {
                       <div style={{
                         marginTop: 7, padding: "7px 10px", borderRadius: 6,
                         background: "rgba(14,165,233,0.05)", border: "1px solid rgba(14,165,233,0.1)",
-                        fontSize: 11, color: "rgba(255,255,255,0.35)", display: "flex", alignItems: "center", gap: 6,
+                        fontSize: 11, color: "rgba(255,255,255,0.5)", display: "flex", alignItems: "center", gap: 6,
                       }}>
-                        <span>🤖</span>
+                        <Bot size={13} color="#38bdf8" />
                         <span>Diproses oleh AI dan dikirim ke tim via Gmail SMTP.</span>
                       </div>
                     </div>

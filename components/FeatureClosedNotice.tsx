@@ -1,5 +1,7 @@
 "use client";
 
+import { Lock } from "lucide-react";
+
 interface FeatureClosedNoticeProps {
   featureName?: string;
   message?: string;
@@ -71,12 +73,11 @@ export default function FeatureClosedNotice({ featureName, message }: FeatureClo
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            fontSize: "26px",
             margin: "0 auto 24px",
             color: "#f87171",
           }}
         >
-          🔒
+          <Lock size={26} color="#f87171" />
         </div>
 
         {/* Header Status Badge */}

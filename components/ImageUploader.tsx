@@ -413,9 +413,9 @@ export default function ImageUploader({ onTokensUpdated }: Props = {}) {
             style={{
               padding: "16px 18px",
               borderRadius: 14,
-              border: platform === "adobe_stock" ? "1.5px solid #38bdf8" : "1px solid rgba(255,255,255,0.08)",
-              background: platform === "adobe_stock" ? "linear-gradient(135deg, rgba(14,165,233,0.18), rgba(2,132,199,0.08))" : "rgba(255,255,255,0.03)",
-              boxShadow: platform === "adobe_stock" ? "0 4px 20px rgba(14,165,233,0.2)" : "none",
+              border: platform === "adobe_stock" ? "1.5px solid #38bdf8" : "1px solid rgba(149,199,255,0.15)",
+              background: platform === "adobe_stock" ? "rgba(14,165,233,0.18)" : "rgba(149,199,255,0.04)",
+              boxShadow: platform === "adobe_stock" ? "0 4px 20px rgba(14,165,233,0.25), inset 0 0 0 1px rgba(56,189,248,0.3)" : "none",
               display: "flex",
               alignItems: "center",
               justifyContent: "space-between",
@@ -425,12 +425,12 @@ export default function ImageUploader({ onTokensUpdated }: Props = {}) {
             }}
           >
             <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-              <div style={{ width: 38, height: 38, borderRadius: 10, background: "linear-gradient(135deg, #0284c7, #0369a1)", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontWeight: 900, fontSize: 14 }}>
+              <div style={{ width: 38, height: 38, borderRadius: 10, background: "linear-gradient(135deg, #0ea5e9, #0284c7)", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontWeight: 900, fontSize: 13, boxShadow: "0 0 12px rgba(56,189,248,0.3)" }}>
                 As
               </div>
               <div>
                 <div style={{ fontSize: 13, fontWeight: 700, color: "#f0f8ff" }}>Adobe Stock</div>
-                <div style={{ fontSize: 11, color: "rgba(255,255,255,0.4)", marginTop: 2 }}>Title + 49 Keywords</div>
+                <div style={{ fontSize: 11, color: "rgba(255,255,255,0.45)", marginTop: 2 }}>Title + 49 Keywords</div>
               </div>
             </div>
             {platform === "adobe_stock" && <CheckCircle2 size={18} color="#38bdf8" />}
@@ -443,9 +443,9 @@ export default function ImageUploader({ onTokensUpdated }: Props = {}) {
             style={{
               padding: "16px 18px",
               borderRadius: 14,
-              border: platform === "shutterstock" ? "1.5px solid #f43f5e" : "1px solid rgba(255,255,255,0.08)",
-              background: platform === "shutterstock" ? "linear-gradient(135deg, rgba(244,63,94,0.18), rgba(225,29,72,0.08))" : "rgba(255,255,255,0.03)",
-              boxShadow: platform === "shutterstock" ? "0 4px 20px rgba(244,63,94,0.2)" : "none",
+              border: platform === "shutterstock" ? "1.5px solid #38bdf8" : "1px solid rgba(149,199,255,0.15)",
+              background: platform === "shutterstock" ? "rgba(14,165,233,0.18)" : "rgba(149,199,255,0.04)",
+              boxShadow: platform === "shutterstock" ? "0 4px 20px rgba(14,165,233,0.25), inset 0 0 0 1px rgba(56,189,248,0.3)" : "none",
               display: "flex",
               alignItems: "center",
               justifyContent: "space-between",
@@ -455,15 +455,15 @@ export default function ImageUploader({ onTokensUpdated }: Props = {}) {
             }}
           >
             <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-              <div style={{ width: 38, height: 38, borderRadius: 10, background: "linear-gradient(135deg, #f43f5e, #be123c)", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontWeight: 900, fontSize: 14 }}>
+              <div style={{ width: 38, height: 38, borderRadius: 10, background: "linear-gradient(135deg, #0ea5e9, #0284c7)", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontWeight: 900, fontSize: 13, boxShadow: "0 0 12px rgba(56,189,248,0.3)" }}>
                 Ss
               </div>
               <div>
                 <div style={{ fontSize: 13, fontWeight: 700, color: "#f0f8ff" }}>Shutterstock</div>
-                <div style={{ fontSize: 11, color: "rgba(255,255,255,0.4)", marginTop: 2 }}>50 Keywords + 2 Kategori</div>
+                <div style={{ fontSize: 11, color: "rgba(255,255,255,0.45)", marginTop: 2 }}>50 Keywords + 2 Kategori</div>
               </div>
             </div>
-            {platform === "shutterstock" && <CheckCircle2 size={18} color="#f43f5e" />}
+            {platform === "shutterstock" && <CheckCircle2 size={18} color="#38bdf8" />}
           </button>
 
           {/* Magnific */}
@@ -473,9 +473,9 @@ export default function ImageUploader({ onTokensUpdated }: Props = {}) {
             style={{
               padding: "16px 18px",
               borderRadius: 14,
-              border: platform === "magnific" ? "1.5px solid #a855f7" : "1px solid rgba(255,255,255,0.08)",
-              background: platform === "magnific" ? "linear-gradient(135deg, rgba(168,85,247,0.18), rgba(126,34,206,0.08))" : "rgba(255,255,255,0.03)",
-              boxShadow: platform === "magnific" ? "0 4px 20px rgba(168,85,247,0.2)" : "none",
+              border: platform === "magnific" ? "1.5px solid #38bdf8" : "1px solid rgba(149,199,255,0.15)",
+              background: platform === "magnific" ? "rgba(14,165,233,0.18)" : "rgba(149,199,255,0.04)",
+              boxShadow: platform === "magnific" ? "0 4px 20px rgba(14,165,233,0.25), inset 0 0 0 1px rgba(56,189,248,0.3)" : "none",
               display: "flex",
               alignItems: "center",
               justifyContent: "space-between",
@@ -485,15 +485,15 @@ export default function ImageUploader({ onTokensUpdated }: Props = {}) {
             }}
           >
             <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-              <div style={{ width: 38, height: 38, borderRadius: 10, background: "linear-gradient(135deg, #a855f7, #7e22ce)", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontWeight: 900, fontSize: 14 }}>
+              <div style={{ width: 38, height: 38, borderRadius: 10, background: "linear-gradient(135deg, #0ea5e9, #0284c7)", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontWeight: 900, fontSize: 13, boxShadow: "0 0 12px rgba(56,189,248,0.3)" }}>
                 Mg
               </div>
               <div>
                 <div style={{ fontSize: 13, fontWeight: 700, color: "#f0f8ff" }}>Magnific</div>
-                <div style={{ fontSize: 11, color: "rgba(255,255,255,0.4)", marginTop: 2 }}>50 Keywords + AI Prompt</div>
+                <div style={{ fontSize: 11, color: "rgba(255,255,255,0.45)", marginTop: 2 }}>50 Keywords + AI Prompt</div>
               </div>
             </div>
-            {platform === "magnific" && <CheckCircle2 size={18} color="#a855f7" />}
+            {platform === "magnific" && <CheckCircle2 size={18} color="#38bdf8" />}
           </button>
         </div>
       </div>

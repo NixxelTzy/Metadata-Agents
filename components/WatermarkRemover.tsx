@@ -2,6 +2,7 @@
 
 import { useCallback, useRef, useState, useEffect } from "react";
 import JSZip from "jszip";
+import { Paintbrush, Square, Eraser, Stamp } from "lucide-react";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type DrawTool = "brush" | "rect" | "eraser" | "clone";
@@ -24,52 +25,52 @@ interface AlgoProfile {
 
 const ALGO_PROFILES: Record<Algorithm, AlgoProfile> = {
   generative_fill: {
-    label: "Generative AI Fill Simulation",
-    badge: "ADVANCED MULTI-PASS",
-    desc: "Simulasi Generative Fill menggunakan multi-pass anisotropic diffusion & rekonstruksi tekstur tepi",
-    passes: 8,
-    denoise: 45,
+    label: "AI Generative Inpaint",
+    badge: "Tercanggih",
+    desc: "AI rekonstruksi tekstur & warna latar belakang secara alami berdasarkan konteks sekitar",
+    passes: 4,
+    denoise: 15,
     sharpen: true,
   },
   navier_stokes: {
-    label: "Navier-Stokes Isophotes",
-    badge: "EDGE-AWARE",
-    desc: "Transportasi linear intensitas warna mengikuti garis batas kontras (isophotes)",
-    passes: 6,
-    denoise: 25,
+    label: "Navier-Stokes (Fluid)",
+    badge: "Cepat",
+    desc: "Metode dinamika fluida berorientasi isofot — sangat baik untuk garis & tepi tajam",
+    passes: 2,
+    denoise: 8,
     sharpen: true,
   },
   heat_diffusion: {
-    label: "Bilateral Heat Diffusion",
-    badge: "GRADIENT PRESERVATION",
-    desc: "Penyebaran gradien warna terarah untuk melestarikan pencahayaan latar belakang",
-    passes: 5,
-    denoise: 35,
+    label: "Heat Diffusion (Telea)",
+    badge: "Standar",
+    desc: "Metode difusi gradien cepat — optimal untuk area watermark kecil/halus",
+    passes: 1,
+    denoise: 5,
     sharpen: false,
   },
   patch_synthesis: {
-    label: "Texture Patch Synthesis",
-    badge: "COMPLEX TEXTURE",
-    desc: "Pencarian exemplar-patch dari region non-masked untuk tekstur kompleks (rumput, dinding bata)",
-    passes: 1,
-    denoise: 15,
-    sharpen: false,
+    label: "PatchMatch Synthesis",
+    badge: "Tekstur Kaya",
+    desc: "Mencari & meniru patch tekstur dari area gambar yang tidak tertutup watermark",
+    passes: 3,
+    denoise: 12,
+    sharpen: true,
   },
   median_blend: {
-    label: "Fast Median Blend",
-    badge: "SOLID/GRADIENT",
-    desc: "Metode cepat dengan blending median untuk area datar atau warna seragam",
+    label: "Median Blend (Super Fast)",
+    badge: "Ringan",
+    desc: "Algoritma berbasis filter median lokal — instan, cocok untuk preview cepat",
     passes: 1,
-    denoise: 10,
+    denoise: 0,
     sharpen: false,
   },
 };
 
 const TOOL_OPTIONS = [
-  { id: "brush", label: "Brush", icon: "🖌️", desc: "Gambar bebas area watermark" },
-  { id: "rect", label: "Rectangle", icon: "⬜", desc: "Seleksi cepat area kotak" },
-  { id: "eraser", label: "Eraser", icon: "🧹", desc: "Hapus seleksi mask yang salah" },
-  { id: "clone", label: "Clone Stamp", icon: "🐑", desc: "Kloning tekstur (Alt+Klik untuk mengambil sumber)" },
+  { id: "brush", label: "Brush", icon: <Paintbrush size={16} color="#38bdf8" />, desc: "Gambar bebas area watermark" },
+  { id: "rect", label: "Rectangle", icon: <Square size={16} color="#38bdf8" />, desc: "Seleksi cepat area kotak" },
+  { id: "eraser", label: "Eraser", icon: <Eraser size={16} color="#38bdf8" />, desc: "Hapus seleksi mask yang salah" },
+  { id: "clone", label: "Clone Stamp", icon: <Stamp size={16} color="#38bdf8" />, desc: "Kloning tekstur (Alt+Klik untuk mengambil sumber)" },
 ] as const;
 
 // ─── Helper Functions ──────────────────────────────────────────────────────────
@@ -864,7 +865,9 @@ export default function WatermarkRemover() {
               e.target.value = "";
             }}
           />
-          <div className="dropzone__icon">🌊</div>
+          <div className="dropzone__icon" style={{ fontSize: "2rem" }}>
+            <Eraser size={36} color="#38bdf8" />
+          </div>
           <p className="dropzone__title">Seret &amp; lepas foto atau video di sini</p>
           <p className="dropzone__subtitle">atau klik untuk memilih file</p>
           <p className="dropzone__hint">JPG · PNG · WEBP · MP4 · MOV (Hingga 15 detik video)</p>
@@ -880,9 +883,9 @@ export default function WatermarkRemover() {
               display: "flex",
               flexDirection: "column",
               gap: "16px",
-              background: "var(--surface)",
-              border: "1px solid var(--border)",
-              borderRadius: "var(--radius)",
+              background: "rgba(149,199,255,0.04)",
+              border: "1px solid rgba(149,199,255,0.15)",
+              borderRadius: "14px",
               padding: "16px",
             }}
           >
@@ -897,7 +900,7 @@ export default function WatermarkRemover() {
                   marginBottom: "4px",
                 }}
               >
-                {mediaType === "video" ? "📹 Preview Frame Video" : "🖼️ Sumber Gambar"}
+                {mediaType === "video" ? "Preview Frame Video" : "Sumber Gambar"}
               </div>
               <div style={{ fontSize: "12px", color: "var(--text)", fontWeight: "700", wordBreak: "break-all" }}>
                 {fileName}
@@ -907,7 +910,7 @@ export default function WatermarkRemover() {
               </div>
             </div>
 
-            <div style={{ height: "1px", background: "var(--border)" }} />
+            <div style={{ height: "1px", background: "rgba(149,199,255,0.15)" }} />
 
             {/* Drawing Tools Selection */}
             <div>
@@ -922,7 +925,7 @@ export default function WatermarkRemover() {
               >
                 Selection Tool
               </div>
-              <div style={{ display: "flex", flexDirection: "column", gap: "5px" }}>
+              <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
                 {TOOL_OPTIONS.map((t) => {
                   const active = tool === t.id;
                   return (
@@ -936,17 +939,19 @@ export default function WatermarkRemover() {
                         alignItems: "center",
                         gap: "8px",
                         padding: "8px 12px",
-                        borderRadius: "6px",
-                        border: `1px solid ${active ? "#ec4899" : "var(--border)"}`,
-                        background: active ? "rgba(236,72,153,0.12)" : "var(--bg-secondary)",
-                        color: active ? "#ec4899" : "var(--text)",
+                        borderRadius: "8px",
+                        border: `1px solid ${active ? "#38bdf8" : "rgba(149,199,255,0.15)"}`,
+                        background: active ? "rgba(14,165,233,0.2)" : "rgba(149,199,255,0.03)",
+                        color: active ? "#38bdf8" : "#f0f8ff",
+                        boxShadow: active ? "0 0 12px rgba(56,189,248,0.25)" : "none",
                         cursor: "pointer",
                         fontSize: "12px",
                         fontWeight: "700",
                         textAlign: "left",
+                        transition: "all 0.15s ease",
                       }}
                     >
-                      <span>{t.icon}</span>
+                      <span style={{ display: "flex", alignItems: "center" }}>{t.icon}</span>
                       {t.label}
                     </button>
                   );
@@ -957,15 +962,16 @@ export default function WatermarkRemover() {
                 <div
                   style={{
                     fontSize: "10px",
-                    color: "#ec4899",
+                    color: "#38bdf8",
                     padding: "8px",
-                    background: "rgba(236,72,153,0.08)",
+                    background: "rgba(14,165,233,0.1)",
+                    border: "1px solid rgba(56,189,248,0.2)",
                     borderRadius: "6px",
                     marginTop: "6px",
                     lineHeight: 1.4,
                   }}
                 >
-                  💡 <strong>Alt + Klik</strong> pada gambar untuk menetapkan sumber kloning, lalu coret di area watermark.
+                  <strong>Alt + Klik</strong> pada gambar untuk menetapkan sumber kloning, lalu coret di area watermark.
                 </div>
               )}
             </div>

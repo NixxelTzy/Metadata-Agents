@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { Calendar, Search, ExternalLink } from "lucide-react";
 
 interface Contributor {
   name: string;
@@ -208,15 +209,15 @@ export default function ResearchPanel() {
                 display: "flex",
                 alignItems: "center",
                 gap: "6px",
-                background: "var(--surface)",
+                background: "var(--bg-secondary)",
+                padding: "6px 12px",
+                borderRadius: "8px",
                 border: "1px solid var(--border)",
-                padding: "4px 12px",
-                borderRadius: "6px",
                 fontSize: "13px",
                 fontWeight: "600"
               }}
             >
-              <span>📅</span>
+              <Calendar size={15} color="#38bdf8" />
               <select
                 value={dateRange}
                 onChange={(e) => setDateRange(e.target.value)}
@@ -242,14 +243,17 @@ export default function ResearchPanel() {
               target="_blank"
               rel="noreferrer"
               style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "4px",
                 fontSize: "13px",
-                color: "#4a90e2",
+                color: "#38bdf8",
                 textDecoration: "none",
                 fontWeight: "600",
                 marginLeft: "8px"
               }}
             >
-              How it works ↗
+              How it works <ExternalLink size={13} />
             </a>
           </div>
           <p style={{ margin: "6px 0 0 0", fontSize: "13px", color: "var(--text-muted)" }}>
@@ -266,19 +270,19 @@ export default function ResearchPanel() {
             display: "flex",
             alignItems: "center",
             gap: "8px",
-            background: "linear-gradient(135deg, #0066FF 0%, #00C8FF 100%)",
+            background: "linear-gradient(135deg, #0ea5e9, #0284c7)",
             color: "#fff",
             border: "none",
-            borderRadius: "8px",
+            borderRadius: "10px",
             padding: "10px 20px",
             fontSize: "14px",
             fontWeight: "700",
             cursor: isLoading ? "wait" : "pointer",
-            boxShadow: "0 4px 14px rgba(0, 102, 255, 0.3)",
+            boxShadow: "0 4px 18px rgba(14, 165, 233, 0.35)",
             transition: "all 0.2s"
           }}
         >
-          {isLoading ? <span className="spinner" /> : "🚀"}
+          {isLoading ? <span className="spinner" /> : <Search size={16} />}
           {isLoading ? "Memproses Riset AI..." : "Mulai Riset Insight"}
         </button>
       </div>

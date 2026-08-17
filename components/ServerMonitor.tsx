@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { Radio, Activity, Triangle, Shield, BarChart3, AlertTriangle, RefreshCw } from "lucide-react";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -485,7 +486,10 @@ export default function ServerMonitor() {
       {/* Header */}
       <div className="mon-header">
         <div className="mon-header__left">
-          <span className="mon-header__title">🖥️ Server Monitor</span>
+          <span className="mon-header__title" style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <Radio size={16} color="#38bdf8" />
+            Server Monitor
+          </span>
           <span className={`mon-status ${connected ? "mon-status--ok" : "mon-status--err"}`}>
             {connected ? "● Live" : reconnectStatus ? `○ ${reconnectStatus}` : "○ Offline"}
           </span>
@@ -507,8 +511,14 @@ export default function ServerMonitor() {
           <button key={t} type="button"
             className={`mon-tab ${tab === t ? "mon-tab--active" : ""}`}
             onClick={() => setTab(t)}
+            style={{ display: "inline-flex", alignItems: "center", gap: 6 }}
           >
-            {t === "overview" ? "📊 Overview" : t === "vercel" ? "▲ Vercel" : t === "security" ? "🛡️ Defence" : t === "stats" ? "📈 Stats" : "⚠️ Attacks"}
+            {t === "overview" && <Activity size={13} />}
+            {t === "vercel" && <Triangle size={12} />}
+            {t === "security" && <Shield size={13} />}
+            {t === "stats" && <BarChart3 size={13} />}
+            {t === "attacks" && <AlertTriangle size={13} />}
+            <span>{t === "overview" ? "Overview" : t === "vercel" ? "Vercel" : t === "security" ? "Defence" : t === "stats" ? "Stats" : "Attacks"}</span>
           </button>
         ))}
       </div>

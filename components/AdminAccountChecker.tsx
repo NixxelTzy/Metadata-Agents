@@ -2,6 +2,11 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { showToast } from "./Toast";
+import {
+  Users, ShieldCheck, Star, ShieldAlert, Activity, Search, RefreshCw,
+  Key, Trash2, Globe, Clock, CheckCircle2, AlertTriangle, User, Eye, EyeOff,
+  Sparkles, Tag, ZoomIn, Eraser, Bot, MessageSquare, Clapperboard, Database, Mail
+} from "lucide-react";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -31,18 +36,18 @@ interface ActivityEvent {
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const FEATURE_LABELS: Record<string, string> = {
-  metadata: "🏷️ Metadata",
-  upscale: "🔍 Upscale",
-  watermark: "🧹 Hapus WM",
-  research: "🔬 Riset",
-  vector: "✨ Vector",
-  chat: "🤖 AI Chat",
-  feedback: "💬 Laporan",
-  motion: "🎬 Motion Studio",
-  accounts: "🛡️ Accounts",
-  storage: "🗄️ Storage",
-  "admin-messages": "📬 Pesan",
-  unknown: "❓ Unknown",
+  metadata: "Metadata",
+  upscale: "Upscale",
+  watermark: "Hapus WM",
+  research: "Riset",
+  vector: "Vector",
+  chat: "AI Chat",
+  feedback: "Laporan",
+  motion: "Motion",
+  accounts: "Accounts",
+  storage: "Storage",
+  "admin-messages": "Pesan",
+  unknown: "Dashboard",
 };
 
 const ACTION_COLORS: Record<string, string> = {
@@ -58,15 +63,15 @@ const ACTION_COLORS: Record<string, string> = {
 };
 
 const ACTION_ICONS: Record<string, string> = {
-  login: "🔐",
-  logout: "🚪",
-  metadata_upload: "📸",
-  upscale: "🔍",
-  vector: "🎨",
-  motion: "🎬",
-  research: "🔬",
-  watermark: "🪣",
-  download: "⬇️",
+  login: "•",
+  logout: "•",
+  metadata_upload: "•",
+  upscale: "•",
+  vector: "•",
+  motion: "•",
+  research: "•",
+  watermark: "•",
+  download: "•",
 };
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -515,19 +520,11 @@ function GlobalActivityFeed({ onClose }: { onClose: () => void }) {
                     >
                       {event.action.replace(/_/g, " ")}
                     </span>
-                    <span
-                      style={{
-                        fontSize: "11px",
-                        color: "var(--text-muted)",
-                        marginLeft: "auto",
-                      }}
-                    >
+                    <div style={{ fontSize: "11px", color: "var(--text-muted)", marginLeft: "auto" }}>
                       {formatRelativeTime(event.timestamp)}
-                    </span>
+                    </div>
                   </div>
-                  <div style={{ fontSize: "12px", color: "var(--text-muted)" }}>
-                    {event.detail}
-                  </div>
+                  <div style={{ fontSize: "12px", color: "var(--text-muted)" }}>{event.detail}</div>
                 </div>
               </div>
             ))
@@ -546,7 +543,7 @@ function StatsCard({
   value,
   color,
 }: {
-  icon: string;
+  icon: React.ReactNode;
   label: string;
   value: string | number;
   color: string;
@@ -554,7 +551,7 @@ function StatsCard({
   return (
     <div
       style={{
-        background: "var(--surface)",
+        background: "rgba(149, 199, 255, 0.05)",
         border: `1px solid ${color}33`,
         borderRadius: "12px",
         padding: "16px 20px",
@@ -572,17 +569,16 @@ function StatsCard({
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          fontSize: "20px",
           flexShrink: 0,
         }}
       >
         {icon}
       </div>
       <div>
-        <div style={{ fontSize: "22px", fontWeight: "800", color: "var(--text)", lineHeight: 1.1 }}>
+        <div style={{ fontSize: "22px", fontWeight: "800", color: "#f0f8ff", lineHeight: 1.1 }}>
           {value}
         </div>
-        <div style={{ fontSize: "11px", color: "var(--text-muted)", marginTop: "3px" }}>
+        <div style={{ fontSize: "11px", color: "rgba(255,255,255,0.4)", marginTop: "3px" }}>
           {label}
         </div>
       </div>
@@ -598,29 +594,27 @@ export default function AdminAccountChecker() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [roleFilter, setRoleFilter] = useState<"all" | "user" | "premium" | "admin">("all");
+  const [sortBy, setSortBy] = useState<"created" | "online" | "lastSeen">("online");
 
   const [editingUserId, setEditingUserId] = useState<string | null>(null);
   const [newPasswordVal, setNewPasswordVal] = useState("");
   const [showConfirmDelete, setShowConfirmDelete] = useState<string | null>(null);
   const [timelineUserId, setTimelineUserId] = useState<string | null>(null);
-  const [timelineUsername, setTimelineUsername] = useState("");
+  const [timelineUsername, setTimelineUsername] = useState<string>("");
   const [showGlobalFeed, setShowGlobalFeed] = useState(false);
-  const [roleFilter, setRoleFilter] = useState<"all" | "user" | "premium" | "admin">("all");
-  const [sortBy, setSortBy] = useState<"created" | "lastSeen" | "online">("online");
 
   const fetchUsers = useCallback(async () => {
-    setLoading(true);
-    setError("");
     try {
       const res = await fetch("/api/admin/users");
       if (!res.ok) {
-        if (res.status === 403) throw new Error("Akses ditolak. Khusus Admin.");
-        throw new Error("Gagal mengambil data akun");
+        const errData = (await res.json()) as { error?: string };
+        throw new Error(errData.error || "Gagal memuat data pengguna");
       }
       const data = (await res.json()) as { users: AccountUser[] };
-      setUsers(data.users);
+      setUsers(data.users || []);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Terjadi kesalahan");
+      setError(err instanceof Error ? err.message : "Gagal memuat data pengguna");
     } finally {
       setLoading(false);
     }
@@ -628,29 +622,32 @@ export default function AdminAccountChecker() {
 
   useEffect(() => {
     fetchUsers();
-    const interval = setInterval(fetchUsers, 500);
+    const interval = setInterval(fetchUsers, 5000);
     return () => clearInterval(interval);
   }, [fetchUsers]);
 
-  const handleUpdateRole = async (email: string, role: "user" | "premium" | "admin") => {
+  const handleRoleChange = async (email: string, newRole: "user" | "premium" | "admin") => {
     setActionLoading(`role-${email}`);
     try {
       const res = await fetch("/api/admin/users/update", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, role }),
+        body: JSON.stringify({ email, newRole }),
       });
       if (!res.ok) {
         const errData = (await res.json()) as { error?: string };
-        throw new Error(errData.error || "Gagal memperbarui role");
+        throw new Error(errData.error || "Gagal mengubah role");
       }
+      showToast({ type: "success", title: "Role diubah!", message: `${email} sekarang menjadi ${newRole}` });
       await fetchUsers();
     } catch (err) {
-      showToast({ type: "error", title: "Gagal update role", message: err instanceof Error ? err.message : "Gagal memperbarui role" });
+      showToast({ type: "error", title: "Gagal ubah role", message: err instanceof Error ? err.message : "Gagal mengubah role" });
     } finally {
       setActionLoading(null);
     }
   };
+
+  const handleUpdateRole = handleRoleChange;
 
   const handleResetPassword = async (email: string) => {
     if (newPasswordVal.length < 8) {
@@ -727,7 +724,7 @@ export default function AdminAccountChecker() {
   const adminCount = users.filter((u) => u.role === "admin").length;
 
   return (
-    <div style={{ position: "fixed", inset: 0, top: 56, overflowY: "auto", background: "#07070f", padding: "24px 32px" }}>
+    <div style={{ minHeight: "100%", padding: "24px 20px 60px", maxWidth: 1200, margin: "0 auto", fontFamily: "var(--font)" }}>
       <style>{`
         @keyframes pulse {
           0%, 100% { opacity: 1; box-shadow: 0 0 6px #4ade80; }
@@ -753,15 +750,15 @@ export default function AdminAccountChecker() {
       {/* Header */}
       <div style={{ marginBottom: "20px", paddingBottom: "16px", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
         <h2 style={{ fontSize: 18, fontWeight: 800, color: "#e2e8f0", letterSpacing: "-0.02em", marginBottom: 4 }}>Admin Control Center</h2>
-        <p style={{ fontSize: 12, color: "rgba(255,255,255,0.35)", lineHeight: 1.5 }}>
+        <p style={{ fontSize: 12, color: "rgba(255,255,255,0.4)", lineHeight: 1.5 }}>
           Dashboard untuk memantau dan mengelola semua akun pengguna secara real-time.
-          Notifikasi email otomatis ke <strong style={{ color: "#a5b4fc" }}>nixxeltzy@gmail.com</strong> saat ada login.
+          Notifikasi email otomatis ke <strong style={{ color: "#38bdf8" }}>nixxeltzy@gmail.com</strong> saat ada login.
         </p>
       </div>
 
       {error && (
         <div className="status status--error" style={{ marginBottom: "16px" }}>
-          ⚠️ {error}
+          <AlertTriangle size={16} /> {error}
         </div>
       )}
 
