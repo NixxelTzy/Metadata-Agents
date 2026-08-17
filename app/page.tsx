@@ -19,7 +19,7 @@ import ClosingFeaturesPanel, { ClosingEntry } from "@/components/ClosingFeatures
 import FeatureClosedNotice from "@/components/FeatureClosedNotice";
 import UserInboxBanner, { NotificationBellButton } from "@/components/UserInboxBanner";
 import ServerShutdownPanel from "@/components/ServerShutdownPanel";
-import BotWaPanel from "@/components/BotWaPanel";
+import PremAccessPanel from "@/components/PremAccessPanel";
 import PremiumPricingModal from "@/components/PremiumPricingModal";
 import { useRouter } from "next/navigation";
 import {
@@ -38,7 +38,7 @@ type Tab =
   | "dashboard" | "metadata" | "chat" | "research" | "vector"
   | "upscale" | "watermark" | "accounts" | "feedback"
   | "admin-messages" | "storage" | "motion" | "messageweb"
-  | "closing" | "shutdown" | "monitor" | "botwa";
+  | "closing" | "shutdown" | "monitor" | "prem_access";
 
 const ADMIN_EMAIL = "nixxeltzy@gmail.com";
 
@@ -68,7 +68,7 @@ const TAB_META: TabMeta[] = [
   { id: "storage",        label: "Redis Monitor",              icon: <Database size={SZ} />, isAdmin: true },
   { id: "shutdown",       label: "Server Control",             icon: <Power size={SZ} />, isAdmin: true, isDanger: true },
   { id: "monitor",        label: "Server Monitor",             icon: <Radio size={SZ} />, isAdmin: true },
-  { id: "botwa",          label: "Bot WhatsApp",               icon: <Bot size={SZ} />, isAdmin: true },
+  { id: "prem_access",    label: "Prem Access",                icon: <Crown size={SZ} />, isAdmin: true },
 ];
 
 interface UserInfo {
@@ -579,7 +579,7 @@ export default function Home() {
           : activeTab === "admin-messages" && isAdmin ? <AdminMessagesPanel />
           : activeTab === "storage" && isAdmin ? <StoragePanel />
           : activeTab === "shutdown" && isAdmin ? <ServerShutdownPanel />
-          : activeTab === "botwa" && isAdmin ? <BotWaPanel />
+          : activeTab === "prem_access" && isAdmin ? <PremAccessPanel />
           : activeTab === "feedback" ? <FeedbackPanel />
           : activeTab === "metadata" ? <ImageUploader onTokensUpdated={refreshTokens} />
           : activeTab === "upscale" ? <ImageUpscaler />
