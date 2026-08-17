@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState, useCallback } from "react";
-import { addUsage, formatTokens } from "@/lib/tokenStore";
+import { addUsage, formatTokens, isTokenLimitReached, openPremiumModal } from "@/lib/tokenStore";
+import { showToast } from "@/components/Toast";
 
 interface Message {
   id: string;
@@ -288,6 +289,16 @@ export default function AIChat({ onTokensUpdated }: Props) {
   const handleSend = async () => {
     const trimmed = input.trim();
     if ((!trimmed && attachments.length === 0) || loading) return;
+
+    if (isTokenLimitReached()) {
+      showToast({
+        type: "warning",
+        title: "Batas Token 100k Tercapai",
+        message: "Kuota token harian 100k Anda telah habis. Dapatkan akses unlimited dengan Paket Premium!",
+      });
+      openPremiumModal();
+      return;
+    }
 
     const messageContent = buildMessageContent(trimmed || "(file attached)", attachments);
     const attachmentMeta: AttachmentMeta[] = attachments.map((a) => ({

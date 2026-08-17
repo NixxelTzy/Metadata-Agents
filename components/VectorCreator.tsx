@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useCallback, useEffect } from "react";
-import { addUsage, formatTokens, estimateCost, getPlatformLabel, getUsage, type Platform } from "@/lib/tokenStore";
+import { addUsage, formatTokens, estimateCost, getPlatformLabel, getUsage, isTokenLimitReached, openPremiumModal, type Platform } from "@/lib/tokenStore";
+import { showToast } from "@/components/Toast";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 type PanelTab = "magic" | "analytics";
@@ -127,6 +128,15 @@ export default function VectorCreator({ onTokensUpdated }: VectorCreatorProps = 
 
   // ── handleMagic ──────────────────────────────────────────────────────────────
   const handleMagic = useCallback(async () => {
+    if (isTokenLimitReached()) {
+      showToast({
+        type: "warning",
+        title: "Batas Token 100k Tercapai",
+        message: "Kuota token harian 100k Anda telah habis. Dapatkan akses unlimited dengan Paket Premium!",
+      });
+      openPremiumModal();
+      return;
+    }
     setError(""); setIsMagicking(true);
     try {
       const artLabel = ART_THEMES.find(a => a.value === selectedArtTheme)?.label.replace(/[^\w\s]/gi, "").trim() || selectedArtTheme;

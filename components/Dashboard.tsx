@@ -7,7 +7,7 @@ import {
   TrendingUp, Clock, Shield, Star, ChevronRight,
   ImageIcon, FileText, Layers, Power, Radio,
   ShieldCheck, Mail, Lock, Megaphone, Database,
-  ShieldAlert, UserCheck
+  ShieldAlert, UserCheck, Crown
 } from "lucide-react";
 
 interface FeatureCard {
@@ -435,6 +435,25 @@ export default function Dashboard({ onNavigate, username, isAdmin = false }: Pro
             <Eraser size={15} color="#38bdf8" />
             Hapus Watermark
           </button>
+          {!isAdmin && (
+            <button
+              type="button"
+              className="quick-btn"
+              onClick={() => {
+                if (typeof window !== "undefined") {
+                  window.dispatchEvent(new CustomEvent("open_premium_pricing_modal"));
+                }
+              }}
+              style={{
+                background: "linear-gradient(135deg, rgba(99,102,241,0.2), rgba(14,165,233,0.2))",
+                border: "1px solid rgba(129, 140, 248, 0.4)",
+                color: "#c7d2fe",
+              }}
+            >
+              <Crown size={15} color="#818cf8" />
+              Paket Premium (Unlimited)
+            </button>
+          )}
         </div>
       </div>
 

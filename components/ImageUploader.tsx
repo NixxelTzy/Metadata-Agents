@@ -3,7 +3,8 @@
 import { useCallback, useRef, useState } from "react";
 import { MAX_IMAGES, compressImage, extractImageHints, extractVideoFrame } from "@/lib/utils";
 import type { MetadataResult } from "@/app/api/generate/route";
-import { addUsage } from "@/lib/tokenStore";
+import { addUsage, isTokenLimitReached, openPremiumModal } from "@/lib/tokenStore";
+import { showToast } from "@/components/Toast";
 import {
   UploadCloud, Tag, Sparkles, Download, Trash2, Plus, X,
   CheckCircle2, AlertCircle, Layers, Settings2, ShieldCheck,
@@ -135,6 +136,16 @@ export default function ImageUploader({ onTokensUpdated }: Props = {}) {
 
   const generate = async () => {
     if (images.length === 0) return;
+
+    if (isTokenLimitReached()) {
+      showToast({
+        type: "warning",
+        title: "Batas Token 100k Tercapai",
+        message: "Kuota token harian 100k Anda telah habis. Dapatkan akses unlimited dengan Paket Premium!",
+      });
+      openPremiumModal();
+      return;
+    }
 
     setLoading(true);
     setError("");

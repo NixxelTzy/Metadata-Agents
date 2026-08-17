@@ -19,16 +19,18 @@ import ClosingFeaturesPanel, { ClosingEntry } from "@/components/ClosingFeatures
 import FeatureClosedNotice from "@/components/FeatureClosedNotice";
 import UserInboxBanner, { NotificationBellButton } from "@/components/UserInboxBanner";
 import ServerShutdownPanel from "@/components/ServerShutdownPanel";
+import PremiumPricingModal from "@/components/PremiumPricingModal";
 import { useRouter } from "next/navigation";
 import {
   getUsage, getUsagePercent, getDailyLimit,
-  formatTokens, type Platform,
+  formatTokens, openPremiumModal, isUserAdminOrPremium,
+  type Platform,
 } from "@/lib/tokenStore";
 import {
   Tag, ZoomIn, Eraser, Search, Sparkles, Bot, Clapperboard,
   MessageSquare, ShieldCheck, Mail, Lock, Megaphone, Database,
   Radio, Power, Zap, LogOut, Loader2, ArrowLeft, Layers,
-  ChevronRight,
+  ChevronRight, Crown,
 } from "lucide-react";
 
 type Tab =
@@ -87,6 +89,15 @@ export default function Home() {
   const heartbeatRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const [closingMap, setClosingMap] = useState<Record<string, ClosingEntry>>({});
 
+  const isAdmin = user?.email === ADMIN_EMAIL || user?.role === "admin";
+  const isPremium = user?.role === "premium";
+  const isUnlimited = isAdmin || isPremium;
+
+  const refreshTokens = useCallback(() => {
+    setTokenUsage(getUsage());
+    setTokenPct(getUsagePercent(user?.role, user?.email));
+  }, [user]);
+
   const fetchClosing = useCallback(() => {
     fetch("/api/closing-features")
       .then(r => r.json())
@@ -103,9 +114,20 @@ export default function Home() {
   useEffect(() => {
     fetch("/api/auth/me")
       .then(r => r.json())
-      .then((d: { user?: UserInfo }) => { if (d.user) setUser(d.user); })
+      .then((d: { user?: UserInfo }) => {
+        if (d.user) {
+          setUser(d.user);
+          setTokenPct(getUsagePercent(d.user.role, d.user.email));
+        }
+      })
       .catch(() => {});
   }, []);
+
+  useEffect(() => {
+    const handleUsageUpdated = () => refreshTokens();
+    window.addEventListener("token_usage_updated", handleUsageUpdated);
+    return () => window.removeEventListener("token_usage_updated", handleUsageUpdated);
+  }, [refreshTokens]);
 
   useEffect(() => {
     if (!user) return;
@@ -120,15 +142,11 @@ export default function Home() {
   }, [user, activeTab]);
 
   useEffect(() => {
-    if (profileOpen) { setTokenUsage(getUsage()); setTokenPct(getUsagePercent()); }
-  }, [profileOpen]);
-
-  const refreshTokens = useCallback(() => {
-    setTokenUsage(getUsage());
-    setTokenPct(getUsagePercent());
-  }, []);
-
-  const isAdmin = user?.email === ADMIN_EMAIL;
+    if (profileOpen) {
+      setTokenUsage(getUsage());
+      setTokenPct(getUsagePercent(user?.role, user?.email));
+    }
+  }, [profileOpen, user]);
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
@@ -155,7 +173,7 @@ export default function Home() {
     window.location.href = "/login";
   }, []);
 
-  const pctColor = tokenPct >= 85 ? "#f87171" : tokenPct >= 60 ? "#fbbf24" : "#4ade80";
+  const pctColor = isUnlimited ? "#38bdf8" : tokenPct >= 85 ? "#f87171" : tokenPct >= 60 ? "#fbbf24" : "#4ade80";
   const userInitial = user?.username?.charAt(0)?.toUpperCase() ?? "?";
   const isOnDashboard = activeTab === "dashboard";
   const currentTabMeta = TAB_META.find(t => t.id === activeTab);
@@ -284,11 +302,16 @@ export default function Home() {
           display: flex; align-items: center; gap: 5px;
           padding: 5px 10px;
           background: rgba(255,255,255,0.04);
-          border: 1px solid rgba(255,255,255,0.07);
+          border: 1px solid rgba(255,255,255,0.08);
           border-radius: 999px;
           font-size: 11px; font-weight: 700; font-family: 'JetBrains Mono', 'Fira Code', monospace;
           transition: all 0.2s;
-          cursor: default;
+          cursor: pointer;
+        }
+        .token-pill:hover {
+          background: rgba(56, 189, 248, 0.12);
+          border-color: rgba(56, 189, 248, 0.35);
+          transform: translateY(-1px);
         }
         .token-dot {
           width: 6px; height: 6px; border-radius: 50%;
@@ -313,13 +336,13 @@ export default function Home() {
 
         /* ══ PROFILE DROPDOWN ══ */
         .profile-drop {
-          position: fixed; top: 63px; right: 12px; width: 268px;
+          position: fixed; top: 63px; right: 12px; width: 280px;
           background: rgba(3, 10, 26, 0.97);
           backdrop-filter: blur(28px) saturate(200%);
           -webkit-backdrop-filter: blur(28px) saturate(200%);
-          border: 1px solid rgba(56, 189, 248, 0.15);
+          border: 1px solid rgba(56, 189, 248, 0.18);
           border-radius: 16px;
-          box-shadow: 0 24px 64px rgba(0,0,0,0.6), 0 0 0 1px rgba(56,189,248,0.05);
+          box-shadow: 0 24px 64px rgba(0,0,0,0.65), 0 0 0 1px rgba(56,189,248,0.05);
           animation: dropIn 0.2s cubic-bezier(0.16,1,0.3,1);
           z-index: 2000; overflow: hidden;
         }
@@ -336,7 +359,7 @@ export default function Home() {
           box-shadow: 0 4px 14px rgba(14,165,233,0.3); flex-shrink: 0;
         }
         .pd-name  { font-size: 13px; font-weight: 700; color: #f0f8ff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .pd-email { font-size: 10.5px; color: rgba(255,255,255,0.38); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 1px; }
+        .pd-email { font-size: 10.5px; color: rgba(255,255,255,0.4); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 1px; }
 
         .pd-tokens {
           padding: 12px 16px;
@@ -346,6 +369,32 @@ export default function Home() {
           display: flex; align-items: center; justify-content: space-between;
           margin-bottom: 8px; font-size: 10px;
           font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em;
+        }
+
+        .pd-premium-btn {
+          width: 100%;
+          padding: 10px 14px;
+          background: linear-gradient(135deg, rgba(14,165,233,0.18), rgba(99,102,241,0.18));
+          border: 1px solid rgba(56, 189, 248, 0.3);
+          border-radius: 10px;
+          color: #bae6fd;
+          font-size: 12px;
+          font-weight: 700;
+          cursor: pointer;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 6px;
+          transition: all 0.17s;
+          margin-top: 10px;
+          font-family: inherit;
+        }
+        .pd-premium-btn:hover {
+          background: linear-gradient(135deg, rgba(14,165,233,0.32), rgba(99,102,241,0.32));
+          border-color: rgba(56, 189, 248, 0.55);
+          color: #ffffff;
+          transform: translateY(-1px);
+          box-shadow: 0 4px 14px rgba(14, 165, 233, 0.25);
         }
 
         .pd-logout {
@@ -385,6 +434,7 @@ export default function Home() {
 
       <div className="app-root">
         <UserInboxBanner />
+        <PremiumPricingModal userEmail={user?.email} username={user?.username} />
 
         {/* ══ HEADER ══ */}
         <header className="app-header">
@@ -418,9 +468,15 @@ export default function Home() {
           )}
 
           <div className="hdr-right">
-            <div className="token-pill" style={{ color: pctColor }}>
+            {/* Clickable token pill -> opens Premium Modal */}
+            <div
+              className="token-pill"
+              style={{ color: pctColor }}
+              onClick={() => openPremiumModal()}
+              title={isUnlimited ? "Akun Unlimited Token (Admin/Premium)" : "Token Harian: Klik untuk lihat Paket Premium Unlimited"}
+            >
               <span className="token-dot" style={{ background: pctColor, boxShadow: `0 0 6px ${pctColor}` }} />
-              {tokenPct}%
+              {isUnlimited ? "Unlimited" : `${tokenPct}%`}
             </div>
             <NotificationBellButton />
             <button
@@ -439,31 +495,59 @@ export default function Home() {
           <div ref={dropRef} className="profile-drop">
             <div className="pd-header">
               <div className="pd-avatar">{userInitial}</div>
-              <div style={{ minWidth: 0 }}>
+              <div style={{ minWidth: 0, flex: 1 }}>
                 <div className="pd-name">{user?.username ?? "Pengguna"}</div>
                 <div className="pd-email">{user?.email ?? ""}</div>
               </div>
+              {isUnlimited && (
+                <span style={{
+                  fontSize: 9, fontWeight: 800, padding: "2px 7px", borderRadius: 999,
+                  background: isAdmin ? "rgba(239,68,68,0.15)" : "rgba(56,189,248,0.15)",
+                  border: `1px solid ${isAdmin ? "rgba(239,68,68,0.3)" : "rgba(56,189,248,0.3)"}`,
+                  color: isAdmin ? "#fca5a5" : "#38bdf8", textTransform: "uppercase"
+                }}>
+                  {isAdmin ? "Admin" : "Premium"}
+                </span>
+              )}
             </div>
 
-            <div className="pd-tokens">
+            <div className="pd-tokens" onClick={() => openPremiumModal()} style={{ cursor: "pointer" }} title="Klik untuk lihat paket token unlimited">
               <div className="pd-tokens-label">
-                <span style={{ display:"flex",alignItems:"center",gap:4,color:"rgba(255,255,255,0.35)" }}>
+                <span style={{ display:"flex",alignItems:"center",gap:4,color:"rgba(255,255,255,0.4)" }}>
                   <Zap size={10} color="#38bdf8" /> Token Hari Ini
                 </span>
-                <span style={{ fontWeight:800, color: pctColor }}>{tokenPct}%</span>
+                <span style={{ fontWeight:800, color: pctColor }}>
+                  {isUnlimited ? "Unlimited" : `${tokenPct}%`}
+                </span>
               </div>
               <div style={{ height: 5, background: "rgba(255,255,255,0.05)", borderRadius: 999, overflow: "hidden", display: "flex", marginBottom: 6 }}>
                 {(["metadata","chat","vector","motion"] as Platform[]).map(p => {
                   const pu = tokenUsage.byPlatform?.[p];
-                  const w = tokenUsage.totalTokens > 0 && pu ? (pu.totalTokens / tokenUsage.totalTokens) * tokenPct : 0;
+                  const w = tokenUsage.totalTokens > 0 && pu ? (pu.totalTokens / tokenUsage.totalTokens) * (isUnlimited ? 25 : tokenPct) : 0;
                   const c: Record<Platform,string> = { metadata:"#38bdf8", chat:"#0ea5e9", vector:"#7dd3fc", motion:"#0284c7" };
                   return <div key={p} style={{ width:`${w}%`,height:"100%",background:c[p],transition:"width 0.6s ease" }} />;
                 })}
               </div>
-              <div style={{ display:"flex",justifyContent:"space-between",fontSize:10,color:"rgba(255,255,255,0.3)",fontFamily:"monospace" }}>
+              <div style={{ display:"flex",justifyContent:"space-between",fontSize:10,color:"rgba(255,255,255,0.35)",fontFamily:"monospace" }}>
                 <span>{formatTokens(tokenUsage.totalTokens)}</span>
-                <span>/{formatTokens(getDailyLimit())}</span>
+                <span>/ {formatTokens(getDailyLimit(user?.role, user?.email))}</span>
               </div>
+
+              {/* Button Akses Premium di Profile Dropdown */}
+              {!isUnlimited && (
+                <button
+                  type="button"
+                  className="pd-premium-btn"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setProfileOpen(false);
+                    openPremiumModal();
+                  }}
+                >
+                  <Crown size={14} color="#38bdf8" />
+                  <span>Akses Premium? Token Unlimited</span>
+                </button>
+              )}
             </div>
 
             <button
