@@ -6,7 +6,8 @@ import {
   Send, RefreshCw, CheckCircle2, AlertTriangle, XCircle,
   Clock, Users, Trash2, Plus, Copy, Check, ArrowRight,
   Sparkles, ShieldAlert, Radio, HelpCircle, Terminal,
-  ExternalLink, Zap
+  ExternalLink, Zap, ZoomIn, ZoomOut, Maximize2, RotateCcw,
+  X
 } from "lucide-react";
 import { showToast } from "./Toast";
 
@@ -16,6 +17,8 @@ interface BotConfig {
   status: "disconnected" | "connecting" | "qr_ready" | "code_ready" | "connected";
   pairingCode?: string;
   qrData?: string;
+  qrPayload?: string;
+  qrGeneratedAt?: string;
   connectedAt?: string;
   lastActive?: string;
 }
@@ -56,13 +59,17 @@ export default function BotWaPanel() {
   const [adminNumbers, setAdminNumbers] = useState<string[]>(["6282343769190"]);
   const [activeUsers, setActiveUsers] = useState<ActivePremiumUser[]>([]);
   const [logs, setLogs] = useState<BotLog[]>([]);
-  const [loading, setLoading] = useState(false);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
 
   // Form states
   const [targetNumberInput, setTargetNumberInput] = useState("6282343769190");
   const [newAdminInput, setNewAdminInput] = useState("");
   const [selectedMethod, setSelectedMethod] = useState<"code" | "qr">("code");
+
+  // QR Code Zoom state (px)
+  const [qrSize, setQrSize] = useState(200);
+  const [qrModalOpen, setQrModalOpen] = useState(false);
+  const [qrCountdown, setQrCountdown] = useState(25);
 
   // Simulator states
   const [simSender, setSimSender] = useState("6282343769190");
@@ -103,6 +110,33 @@ export default function BotWaPanel() {
     return () => clearInterval(interval);
   }, [fetchData]);
 
+  // QR Code auto-countdown timer
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setQrCountdown((prev) => {
+        if (prev <= 1) {
+          // Refresh QR silently
+          fetch("/api/admin/botwa", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ action: "refresh_qr" }),
+          })
+            .then((r) => r.json())
+            .then((d) => {
+              if (d.qrData) {
+                setConfig((c) => ({ ...c, qrData: d.qrData }));
+              }
+            })
+            .catch(() => {});
+          return 25;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, []);
+
   // Handle connect / restart session
   const handleConnect = async (method: "code" | "qr") => {
     setActionLoading("connect");
@@ -119,9 +153,55 @@ export default function BotWaPanel() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Gagal menghubungkan");
       showToast({ type: "success", title: "Bot Terhubung!", message: `Metode ${method === "code" ? "Pairing Code" : "QR Code"} aktif.` });
+      setQrCountdown(25);
       await fetchData();
     } catch (err) {
       showToast({ type: "error", title: "Gagal Hubungkan", message: err instanceof Error ? err.message : "Error" });
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  // Refresh QR Manually
+  const handleRefreshQr = async () => {
+    setActionLoading("refresh-qr");
+    try {
+      const res = await fetch("/api/admin/botwa", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "refresh_qr" }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Gagal refresh QR");
+      if (data.qrData) {
+        setConfig((c) => ({ ...c, qrData: data.qrData }));
+        setQrCountdown(25);
+        showToast({ type: "success", title: "QR Code Diperbarui", message: "QR Code asli baru telah dimuat." });
+      }
+    } catch (err) {
+      showToast({ type: "error", title: "Gagal Refresh QR", message: err instanceof Error ? err.message : "Error" });
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  // Refresh Pairing Code Manually
+  const handleRefreshCode = async () => {
+    setActionLoading("refresh-code");
+    try {
+      const res = await fetch("/api/admin/botwa", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "refresh_code" }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Gagal refresh code");
+      if (data.pairingCode) {
+        setConfig((c) => ({ ...c, pairingCode: data.pairingCode }));
+        showToast({ type: "success", title: "Pairing Code Baru", message: `Kode baru: ${data.pairingCode}` });
+      }
+    } catch (err) {
+      showToast({ type: "error", title: "Gagal Refresh Code", message: err instanceof Error ? err.message : "Error" });
     } finally {
       setActionLoading(null);
     }
@@ -287,6 +367,11 @@ export default function BotWaPanel() {
 
   const isConnected = config.status === "connected";
 
+  // Zoom controls
+  const handleZoomIn = () => setQrSize((s) => Math.min(s + 40, 420));
+  const handleZoomOut = () => setQrSize((s) => Math.max(s - 40, 120));
+  const handleZoomReset = () => setQrSize(200);
+
   return (
     <div
       style={{
@@ -326,9 +411,9 @@ export default function BotWaPanel() {
           box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.18);
         }
         .bw-btn {
-          padding: 10px 16px;
+          padding: 9px 15px;
           border-radius: 10px;
-          font-size: 13px;
+          font-size: 12.5px;
           font-weight: 700;
           cursor: pointer;
           border: none;
@@ -356,6 +441,15 @@ export default function BotWaPanel() {
         .bw-btn-danger:hover {
           background: rgba(239, 68, 68, 0.25);
           border-color: #ef4444;
+          color: #ffffff;
+        }
+        .bw-btn-secondary {
+          background: rgba(255, 255, 255, 0.06);
+          border: 1px solid rgba(255, 255, 255, 0.12);
+          color: #e2e8f0;
+        }
+        .bw-btn-secondary:hover {
+          background: rgba(255, 255, 255, 0.12);
           color: #ffffff;
         }
         .bw-badge {
@@ -423,7 +517,7 @@ export default function BotWaPanel() {
               Bot WhatsApp — Autonomous Premium Engine
             </h1>
             <div style={{ fontSize: "12px", color: "rgba(255,255,255,0.5)", marginTop: "2px" }}>
-              Otomasi pemberian paket premium (.prem / .unprem), verifikasi nomor admin, dan pengaitan sesi WA.
+              Otomasi pemberian paket premium (.prem / .unprem), verifikasi nomor admin, dan sesi pengaitan asli.
             </div>
           </div>
         </div>
@@ -443,12 +537,11 @@ export default function BotWaPanel() {
 
           <button
             type="button"
-            className="bw-btn"
+            className="bw-btn bw-btn-secondary"
             onClick={fetchData}
-            style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)", color: "#e2e8f0" }}
           >
             <RefreshCw size={13} />
-            Refresh
+            Refresh Data
           </button>
         </div>
       </div>
@@ -460,10 +553,10 @@ export default function BotWaPanel() {
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "16px" }}>
             <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
               <Smartphone size={18} color="#38bdf8" />
-              <span style={{ fontSize: "15px", fontWeight: "800" }}>Pengaitan Sesi WhatsApp</span>
+              <span style={{ fontSize: "15px", fontWeight: "800" }}>Pengaitan Sesi WhatsApp Asli</span>
             </div>
             <span style={{ fontSize: "11px", color: "rgba(255,255,255,0.4)" }}>
-              Metode: {selectedMethod === "code" ? "Pairing Code (8-Digit)" : "QR Code"}
+              {selectedMethod === "code" ? "Pairing Code (8-Digit)" : "QR Code Scanner"}
             </span>
           </div>
 
@@ -520,37 +613,59 @@ export default function BotWaPanel() {
                 disabled={actionLoading === "connect"}
               >
                 <Zap size={14} />
-                {isConnected ? "Perbarui / Hubungkan" : "Kaitkan Bot"}
+                Hubungkan
               </button>
             </div>
           </div>
 
-          {/* Pairing Code or QR Display Box */}
+          {/* ── PAIRING CODE BOX ── */}
           {selectedMethod === "code" ? (
             <div
               style={{
-                padding: "16px",
+                padding: "18px",
                 background: "rgba(2, 8, 24, 0.9)",
                 border: "1px solid rgba(56, 189, 248, 0.3)",
                 borderRadius: "14px",
                 textAlign: "center",
               }}
             >
-              <div style={{ fontSize: "11px", color: "rgba(255,255,255,0.5)", marginBottom: "4px" }}>
-                Kode Pengaitan WhatsApp (Pairing Code):
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "8px" }}>
+                <span style={{ fontSize: "11px", color: "rgba(255,255,255,0.5)" }}>
+                  Kode Pengaitan 8 Digit Asli:
+                </span>
+                <button
+                  type="button"
+                  onClick={handleRefreshCode}
+                  disabled={actionLoading === "refresh-code"}
+                  style={{
+                    background: "transparent",
+                    border: "none",
+                    color: "#38bdf8",
+                    cursor: "pointer",
+                    fontSize: "11px",
+                    fontWeight: "700",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "4px",
+                  }}
+                >
+                  <RotateCcw size={12} />
+                  Buat Kode Baru
+                </button>
               </div>
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "10px", margin: "10px 0" }}>
+
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "10px", margin: "14px 0" }}>
                 <span
                   style={{
                     fontFamily: "monospace",
-                    fontSize: "26px",
+                    fontSize: "28px",
                     fontWeight: "900",
                     letterSpacing: "0.18em",
                     color: "#38bdf8",
                     background: "rgba(56, 189, 248, 0.1)",
-                    padding: "6px 18px",
-                    borderRadius: "10px",
-                    border: "1px dashed rgba(56, 189, 248, 0.4)",
+                    padding: "8px 20px",
+                    borderRadius: "12px",
+                    border: "1px dashed rgba(56, 189, 248, 0.45)",
                   }}
                 >
                   {config.pairingCode || "8N9K-2P4Q"}
@@ -559,32 +674,153 @@ export default function BotWaPanel() {
                   type="button"
                   className="bw-btn"
                   onClick={() => copyPairingCode(config.pairingCode || "8N9K-2P4Q")}
-                  style={{ background: "rgba(56, 189, 248, 0.15)", border: "1px solid rgba(56, 189, 248, 0.3)", color: "#38bdf8", padding: "8px 12px" }}
+                  style={{ background: "rgba(56, 189, 248, 0.15)", border: "1px solid rgba(56, 189, 248, 0.3)", color: "#38bdf8", padding: "10px 14px" }}
                 >
-                  {copiedCode ? <Check size={14} /> : <Copy size={14} />}
+                  {copiedCode ? <Check size={15} /> : <Copy size={15} />}
                   {copiedCode ? "Disalin!" : "Salin"}
                 </button>
               </div>
-              <div style={{ fontSize: "11px", color: "rgba(255,255,255,0.45)", lineHeight: 1.5 }}>
-                1. Buka WhatsApp di HP $\rightarrow$ <strong>Perangkat Tertaut</strong>.<br />
-                2. Pilih <strong>Tautkan dengan nomor telepon</strong> $\rightarrow$ Masukkan kode 8 digit di atas.
+
+              <div style={{ fontSize: "11.5px", color: "rgba(255,255,255,0.5)", lineHeight: 1.6, textAlign: "left", background: "rgba(255,255,255,0.03)", padding: "10px 14px", borderRadius: "8px" }}>
+                <strong>Langkah Pengaitan di WhatsApp HP:</strong><br />
+                1. Buka aplikasi WhatsApp $\rightarrow$ ketuk <strong>Titik Tiga (⋮)</strong> / Pengaturan $\rightarrow$ <strong>Perangkat Tertaut</strong>.<br />
+                2. Pilih <strong>Tautkan Perangkat</strong> $\rightarrow$ pilih <strong>Tautkan dengan nomor telepon saja</strong>.<br />
+                3. Masukkan 8 digit kode di atas untuk menyelesaikan sinkronisasi.
               </div>
             </div>
           ) : (
+            /* ── QR CODE BOX DENGAN KONTROL ZOOM (PERBESAR / PERKECIL) ── */
             <div
               style={{
-                padding: "16px",
+                padding: "18px",
                 background: "rgba(2, 8, 24, 0.9)",
                 border: "1px solid rgba(56, 189, 248, 0.3)",
                 borderRadius: "14px",
                 textAlign: "center",
               }}
             >
-              <div style={{ width: "130px", height: "130px", margin: "0 auto 10px", background: "#ffffff", borderRadius: "10px", padding: "8px", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                <QrCode size={110} color="#020b18" />
+              {/* Zoom Controls Bar */}
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  marginBottom: "12px",
+                  padding: "6px 12px",
+                  background: "rgba(255,255,255,0.04)",
+                  borderRadius: "8px",
+                  border: "1px solid rgba(255,255,255,0.08)",
+                }}
+              >
+                <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                  <span style={{ fontSize: "11px", color: "rgba(255,255,255,0.6)", fontWeight: "700" }}>
+                    Ukuran QR: {qrSize}px
+                  </span>
+                </div>
+
+                <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
+                  <button
+                    type="button"
+                    className="bw-btn bw-btn-secondary"
+                    onClick={handleZoomOut}
+                    title="Perkecil QR Code (-)"
+                    style={{ padding: "4px 8px", fontSize: "11px" }}
+                  >
+                    <ZoomOut size={13} />
+                  </button>
+                  <button
+                    type="button"
+                    className="bw-btn bw-btn-secondary"
+                    onClick={handleZoomReset}
+                    title="Reset Ukuran Normal"
+                    style={{ padding: "4px 8px", fontSize: "11px" }}
+                  >
+                    100%
+                  </button>
+                  <button
+                    type="button"
+                    className="bw-btn bw-btn-secondary"
+                    onClick={handleZoomIn}
+                    title="Perbesar QR Code (+)"
+                    style={{ padding: "4px 8px", fontSize: "11px" }}
+                  >
+                    <ZoomIn size={13} />
+                  </button>
+                  <button
+                    type="button"
+                    className="bw-btn bw-btn-secondary"
+                    onClick={() => setQrModalOpen(true)}
+                    title="Buka Layar Penuh"
+                    style={{ padding: "4px 8px", fontSize: "11px" }}
+                  >
+                    <Maximize2 size={13} />
+                  </button>
+                </div>
               </div>
-              <div style={{ fontSize: "11px", color: "rgba(255,255,255,0.5)" }}>
-                Pindai QR Code di atas menggunakan menu <strong>Perangkat Tertaut</strong> WhatsApp.
+
+              {/* Dynamic QR Code Canvas/Image */}
+              <div
+                style={{
+                  display: "inline-block",
+                  padding: "10px",
+                  background: "#ffffff",
+                  borderRadius: "14px",
+                  boxShadow: "0 8px 30px rgba(0,0,0,0.6)",
+                  margin: "8px auto",
+                  cursor: "pointer",
+                  transition: "all 0.2s ease",
+                }}
+                onClick={() => setQrModalOpen(true)}
+                title="Klik untuk membuka layar penuh"
+              >
+                {config.qrData ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={config.qrData}
+                    alt="WhatsApp Web QR Code Asli"
+                    style={{
+                      width: `${qrSize}px`,
+                      height: `${qrSize}px`,
+                      display: "block",
+                      borderRadius: "6px",
+                      imageRendering: "pixelated",
+                    }}
+                  />
+                ) : (
+                  <div style={{ width: `${qrSize}px`, height: `${qrSize}px`, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    <QrCode size={qrSize * 0.75} color="#020b18" />
+                  </div>
+                )}
+              </div>
+
+              {/* Rotation Countdown & Manual Refresh */}
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "10px", marginTop: "8px" }}>
+                <span style={{ fontSize: "11px", color: "rgba(255,255,255,0.4)" }}>
+                  Rotasi QR dalam <strong style={{ color: "#38bdf8" }}>{qrCountdown}s</strong>
+                </span>
+                <button
+                  type="button"
+                  onClick={handleRefreshQr}
+                  disabled={actionLoading === "refresh-qr"}
+                  style={{
+                    background: "transparent",
+                    border: "none",
+                    color: "#38bdf8",
+                    fontSize: "11px",
+                    fontWeight: "700",
+                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "4px",
+                  }}
+                >
+                  <RotateCcw size={12} className={actionLoading === "refresh-qr" ? "pl-spin" : ""} />
+                  Muat Ulang QR
+                </button>
+              </div>
+
+              <div style={{ fontSize: "11px", color: "rgba(255,255,255,0.45)", marginTop: "8px" }}>
+                Buka WhatsApp di HP $\rightarrow$ <strong>Perangkat Tertaut</strong> $\rightarrow$ Pindai QR Code di atas.
               </div>
             </div>
           )}
@@ -962,6 +1198,101 @@ export default function BotWaPanel() {
           </div>
         )}
       </div>
+
+      {/* ── FULLSCREEN QR CODE MODAL ── */}
+      {qrModalOpen && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 99999,
+            background: "rgba(0, 5, 16, 0.9)",
+            backdropFilter: "blur(20px)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: "20px",
+          }}
+          onClick={() => setQrModalOpen(false)}
+        >
+          <div
+            style={{
+              position: "relative",
+              background: "linear-gradient(165deg, rgba(6, 18, 42, 0.98), rgba(2, 8, 24, 0.98))",
+              border: "1px solid rgba(56, 189, 248, 0.3)",
+              borderRadius: "24px",
+              padding: "32px",
+              textAlign: "center",
+              maxWidth: "500px",
+              width: "100%",
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              type="button"
+              onClick={() => setQrModalOpen(false)}
+              style={{
+                position: "absolute",
+                top: "16px",
+                right: "16px",
+                background: "rgba(255,255,255,0.06)",
+                border: "1px solid rgba(255,255,255,0.12)",
+                borderRadius: "10px",
+                width: "36px",
+                height: "36px",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                color: "#ffffff",
+                cursor: "pointer",
+              }}
+            >
+              <X size={18} />
+            </button>
+
+            <h3 style={{ fontSize: "18px", fontWeight: "800", color: "#f0f8ff", marginBottom: "8px" }}>
+              Pindai QR Code WhatsApp (Layar Penuh)
+            </h3>
+            <p style={{ fontSize: "12px", color: "rgba(255,255,255,0.5)", marginBottom: "20px" }}>
+              Gunakan kamera WhatsApp di HP Anda untuk menghubungkan bot secara instan.
+            </p>
+
+            <div
+              style={{
+                display: "inline-block",
+                padding: "16px",
+                background: "#ffffff",
+                borderRadius: "18px",
+                boxShadow: "0 10px 40px rgba(0,0,0,0.8)",
+                marginBottom: "16px",
+              }}
+            >
+              {config.qrData ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={config.qrData}
+                  alt="WhatsApp Web QR Code Asli Fullscreen"
+                  style={{
+                    width: "320px",
+                    height: "320px",
+                    display: "block",
+                    borderRadius: "8px",
+                    imageRendering: "pixelated",
+                  }}
+                />
+              ) : (
+                <div style={{ width: "320px", height: "320px", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <QrCode size={240} color="#020b18" />
+                </div>
+              )}
+            </div>
+
+            <div style={{ fontSize: "12px", color: "rgba(255,255,255,0.5)" }}>
+              Rotasi QR otomatis dalam <strong style={{ color: "#38bdf8" }}>{qrCountdown}s</strong>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
