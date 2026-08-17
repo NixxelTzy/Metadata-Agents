@@ -25,6 +25,8 @@ const PUBLIC_PATHS = [
   "/api/auth/login",
   "/api/auth/register",
   "/api/auth/verify-otp",
+  "/api/auth/logout",
+  "/api/health",
 ];
 
 // ─── Rate Limiting Config (per-IP sliding window — in-memory per Edge instance)
@@ -40,14 +42,15 @@ interface RateWindow {
 const RATE_STORE = new Map<string, RateWindow>();
 
 const RATE_LIMITS: Record<string, { max: number; windowMs: number }> = {
-  // Authenticated pages — generous
-  page:    { max: 120,  windowMs: 60_000 },
-  // API endpoints — moderate
-  api:     { max: 60,   windowMs: 60_000 },
-  // Auth endpoints — strict (anti brute-force)
-  auth:    { max: 10,   windowMs: 60_000 },
-  // Upload / generate — very strict
-  heavy:   { max: 20,   windowMs: 60_000 },
+  // Pages — sangat generous, user normal tidak boleh kena ini
+  page:    { max: 300,  windowMs: 60_000 },
+  // API endpoints umum
+  api:     { max: 200,  windowMs: 60_000 },
+  // Auth endpoints — strict khusus untuk brute-force, bukan penggunaan normal
+  auth:    { max: 20,   windowMs: 60_000 },
+  // Heavy AI endpoints — generous untuk user yang memang pakai fitur
+  // 60 req/menit = 1 per detik, cukup untuk intensive AI usage
+  heavy:   { max: 60,   windowMs: 60_000 },
 };
 
 // Heavy API routes that consume lots of resources
@@ -213,10 +216,56 @@ export async function middleware(request: NextRequest) {
     }
   }
 
-  // ── LAYER BYPASS: Authenticated users get 100% freedom (no rate limit / threat blocking) ──
+  // ── LAYER BYPASS: Authenticated users still go through rate limiting ──────
+  // NOTE: We do NOT bypass security for authenticated users.
+  // Authenticated sessions can still be hijacked, abused, or DDoS sources.
+  // Only heavy AI-threat blocking is relaxed for verified tokens.
   if (token) {
+    // Still apply rate limiting — authenticated DDoS is real
+    const userAgent = request.headers.get("user-agent") ?? "";
+    const ip =
+      request.headers.get("cf-connecting-ip") ??
+      request.headers.get("x-real-ip") ??
+      request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??
+      "unknown";
+
+    const isHeavyApi = HEAVY_API_PREFIXES.some(p => pathname.startsWith(p));
+    const isAuthApi  = pathname.startsWith("/api/auth/");
+    const tier = isHeavyApi ? "heavy" : isAuthApi ? "auth" : isApiPath ? "api" : "page";
+    const rl = checkRateLimit(ip, tier);
+
+    if (!rl.allowed) {
+      if (rl.strikes >= 5) {
+        console.warn(`[FW] Auth DDoS tarpit: ip=${ip} tier=${tier} strikes=${rl.strikes}`);
+        return tarpitResponse(`auth-${ip}-${Date.now()}`);
+      }
+      console.warn(`[FW] Auth rate limited: ip=${ip} tier=${tier}`);
+      return blockedResponse(429, "RATE_LIMITED", "Terlalu banyak permintaan. Coba lagi nanti.", {
+        "Retry-After": String(Math.ceil((rl.resetMs - Date.now()) / 1000)),
+        "X-RateLimit-Remaining": "0",
+      });
+    }
+
+    // Detect extreme DDoS burst from authenticated sessions only
+    // Threshold: 200 req/s is impossible for human users, clearly automated attack
+    const burstKey = `auth_burst:${ip}`;
+    const existing = RATE_STORE.get(burstKey);
+    const now2 = Date.now();
+    if (!existing || now2 - existing.windowStart > 1000) {
+      RATE_STORE.set(burstKey, { count: 1, windowStart: now2, strikes: existing?.strikes ?? 0 });
+    } else {
+      existing.count++;
+      if (existing.count > 200) { // 200 req/s from authenticated = clear DDoS
+        console.warn(`[FW] Auth DDoS: ip=${ip} burst=${existing.count}/s`);
+        return blockedResponse(429, "DDOS_DETECTED", "Serangan DDoS terdeteksi. Koneksi diputus.", {
+          "Retry-After": "60",
+        });
+      }
+    }
+
     const response = NextResponse.next();
     addSecurityHeaders(response);
+    response.headers.set("X-RateLimit-Remaining", String(rl.remaining));
     return response;
   }
 
