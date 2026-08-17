@@ -116,7 +116,7 @@ export default function PremiumPricingModal({ isOpen: controlledIsOpen, onClose,
   const handleContactAdmin = (plan: PricingPlan) => {
     const emailInfo = userEmail ? ` (Email: ${userEmail})` : "";
     const msg = encodeURIComponent(`${plan.waText}${emailInfo}`);
-    window.open(`https://wa.me/62881026038318?text=${msg}`, "_blank");
+    window.open(`https://wa.me/6282343769190?text=${msg}`, "_blank");
   };
 
   if (!isVisible) return null;

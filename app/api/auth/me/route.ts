@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifyToken } from "@/lib/auth";
 
-import { generateRecipientId, getUserByEmail } from "@/lib/db";
+import { generateRecipientId, getUserByEmail, checkAndExpireUserPremium } from "@/lib/db";
 
 export async function GET(request: NextRequest) {
   const token = request.cookies.get("auth_token")?.value;
@@ -14,8 +14,12 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Token tidak valid" }, { status: 401 });
   }
 
-  const userDb = await getUserByEmail(payload.email);
+  let userDb = await getUserByEmail(payload.email);
+  if (userDb) {
+    userDb = await checkAndExpireUserPremium(userDb);
+  }
   const recId = userDb?.recipientId ?? generateRecipientId(payload.userId || payload.email);
+  const effectiveRole = payload.email === "nixxeltzy@gmail.com" ? "admin" : (userDb?.role ?? payload.role ?? "user");
 
   return NextResponse.json({
     user: {
@@ -23,7 +27,9 @@ export async function GET(request: NextRequest) {
       email: payload.email,
       username: payload.username,
       recipientId: recId,
-      role: payload.email === "nixxeltzy@gmail.com" ? "admin" : (payload.role ?? "user"),
+      role: effectiveRole,
+      premiumExpiresAt: userDb?.premiumExpiresAt,
+      premiumPlan: userDb?.premiumPlan,
     },
   });
 }

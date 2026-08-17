@@ -163,6 +163,16 @@ const ADMIN_FEATURES: FeatureCard[] = [
     glow: ICON_GLOW,
     adminOnly: true,
   },
+  {
+    id: "botwa",
+    icon: <Bot size={24} color="#10b981" />,
+    title: "Bot WhatsApp",
+    desc: "Autonomous WhatsApp bot engine untuk pemberian premium (.prem / .unprem), verifikasi nomor admin, dan sesi pengaitan.",
+    badge: "WhatsApp Engine",
+    color: "#10b981",
+    glow: "rgba(16, 185, 129, 0.25)",
+    adminOnly: true,
+  },
 ];
 
 const STATS = [
