@@ -3,7 +3,8 @@ import { verifyToken } from "@/lib/auth";
 import {
   getBotConfig, updateBotConfig, getAdminNumbers,
   addAdminNumber, removeAdminNumber, executeBotCommand,
-  getBotLogs, getActivePremiumUsers, type PairingMethod
+  getBotLogs, getActivePremiumUsers, generateRealPairingCode,
+  generateRealQrDataUrl, type PairingMethod
 } from "@/lib/botwa";
 import { checkAllUsersPremiumExpiry, getUserByEmail, createUser, sendUserInAppNotification } from "@/lib/db";
 
@@ -27,8 +28,21 @@ export async function GET(request: NextRequest) {
     // Run automated expiry check on GET
     await checkAllUsersPremiumExpiry().catch(() => {});
 
-    const [config, adminNumbers, activePremiumUsers, logs] = await Promise.all([
-      getBotConfig(),
+    let config = await getBotConfig();
+
+    // If QR data is missing and in QR mode, generate real QR data url
+    if (!config.qrData || !config.pairingCode) {
+      const qrRes = await generateRealQrDataUrl(config.targetNumber);
+      const pairingCode = config.pairingCode || generateRealPairingCode();
+      config = await updateBotConfig({
+        qrData: qrRes.dataUrl,
+        qrPayload: qrRes.payload,
+        qrGeneratedAt: new Date().toISOString(),
+        pairingCode,
+      });
+    }
+
+    const [adminNumbers, activePremiumUsers, logs] = await Promise.all([
       getAdminNumbers(),
       getActivePremiumUsers(),
       getBotLogs(),
@@ -70,9 +84,18 @@ export async function POST(request: NextRequest) {
 
     // ── Update Config / Pairing Method & Target Number ─────────────────────────
     if (action === "update_config") {
+      const targetNumber = body.targetNumber || "6282343769190";
+      const pairingMethod = body.pairingMethod || "code";
+      const qrRes = await generateRealQrDataUrl(targetNumber);
+      const pairingCode = generateRealPairingCode();
+
       const updated = await updateBotConfig({
-        pairingMethod: body.pairingMethod || "code",
-        targetNumber: body.targetNumber || "6282343769190",
+        pairingMethod,
+        targetNumber,
+        qrData: qrRes.dataUrl,
+        qrPayload: qrRes.payload,
+        qrGeneratedAt: new Date().toISOString(),
+        pairingCode,
       });
       return NextResponse.json({ ok: true, config: updated });
     }
@@ -81,22 +104,43 @@ export async function POST(request: NextRequest) {
     if (action === "connect") {
       const method = body.pairingMethod || "code";
       const targetNumber = body.targetNumber || "6282343769190";
-
-      // Generate random 8-character pairing code (e.g. 8K9P-2M4Q)
-      const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-      const p1 = Array.from({ length: 4 }, () => chars[Math.floor(Math.random() * chars.length)]).join("");
-      const p2 = Array.from({ length: 4 }, () => chars[Math.floor(Math.random() * chars.length)]).join("");
-      const pairingCode = `${p1}-${p2}`;
+      const qrRes = await generateRealQrDataUrl(targetNumber);
+      const pairingCode = generateRealPairingCode();
 
       const updated = await updateBotConfig({
         pairingMethod: method,
         targetNumber,
         status: "connected",
         pairingCode,
+        qrData: qrRes.dataUrl,
+        qrPayload: qrRes.payload,
+        qrGeneratedAt: new Date().toISOString(),
         connectedAt: new Date().toISOString(),
       });
 
       return NextResponse.json({ ok: true, config: updated, message: "Bot WhatsApp berhasil dikaitkan dan aktif" });
+    }
+
+    // ── Refresh QR Code ───────────────────────────────────────────────────────
+    if (action === "refresh_qr") {
+      const cfg = await getBotConfig();
+      const qrRes = await generateRealQrDataUrl(cfg.targetNumber);
+      const updated = await updateBotConfig({
+        qrData: qrRes.dataUrl,
+        qrPayload: qrRes.payload,
+        qrGeneratedAt: new Date().toISOString(),
+      });
+      return NextResponse.json({ ok: true, config: updated, qrData: qrRes.dataUrl });
+    }
+
+    // ── Refresh Pairing Code ─────────────────────────────────────────────────
+    if (action === "refresh_code") {
+      const pairingCode = generateRealPairingCode();
+      const updated = await updateBotConfig({
+        pairingCode,
+        lastActive: new Date().toISOString(),
+      });
+      return NextResponse.json({ ok: true, config: updated, pairingCode });
     }
 
     // ── Disconnect ────────────────────────────────────────────────────────────
