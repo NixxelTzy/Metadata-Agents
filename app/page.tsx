@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import Dashboard from "@/components/Dashboard";
 import ImageUploader from "@/components/ImageUploader";
 import ImageUpscaler from "@/components/ImageUpscaler";
 import WatermarkRemover from "@/components/WatermarkRemover";
@@ -25,33 +26,43 @@ import {
   formatTokens, resetUsage, getPlatformLabel,
   estimateCost, type Platform,
 } from "@/lib/tokenStore";
+import {
+  LayoutDashboard, Tag, ZoomIn, Eraser, Search, Sparkles, Bot, Clapperboard,
+  MessageSquare, ShieldCheck, Mail, Lock, Megaphone, Database,
+  Radio, Power, MoreHorizontal, LayoutGrid,
+} from "lucide-react";
 
-type Tab = "metadata" | "chat" | "research" | "vector" | "upscale" | "watermark" | "accounts" | "feedback" | "admin-messages" | "storage" | "motion" | "messageweb" | "closing" | "shutdown";
+type Tab = "dashboard" | "metadata" | "chat" | "research" | "vector" | "upscale" | "watermark" | "accounts" | "feedback" | "admin-messages" | "storage" | "motion" | "messageweb" | "closing" | "shutdown";
 const ADMIN_EMAIL = "nixxeltzy@gmail.com";
 
-const TAB_CONFIG: { id: Tab; icon: string; label: string; desc: string; color: string }[] = [
-  { id: "metadata",  icon: "🏷️", label: "Metadata",    desc: "Adobe Stock & Shutterstock", color: "#4a90e2" },
-  { id: "upscale",   icon: "🔍", label: "Upscale",     desc: "Super Resolution",            color: "#ec4899" },
-  { id: "watermark", icon: "🧹", label: "Hapus WM",    desc: "Watermark Remover",           color: "#14b8a6" },
-  { id: "research",  icon: "🔎", label: "Riset",        desc: "Keyword Research",            color: "#7b5ae0" },
-  { id: "vector",    icon: "✨", label: "Vector",       desc: "AI Ideas Gen",                color: "#22c55e" },
-  { id: "chat",      icon: "🤖", label: "AI Chat",      desc: "Groq Assistant",              color: "#f59e0b" },
-  { id: "motion",    icon: "🎬", label: "Motion",       desc: "AI Canvas Animation",         color: "#a78bfa" },
-  { id: "feedback",  icon: "💬", label: "Laporan",      desc: "Kirim Bug & Usulan Fitur",    color: "#ec4899" },
-  { id: "accounts",  icon: "🛡️", label: "Accounts",    desc: "Account Checker",             color: "#ef4444" },
-  { id: "messageweb",icon: "📨", label: "Message Web",  desc: "Kirim Pesan ke User",         color: "#a78bfa" },
-  { id: "closing",   icon: "🔒", label: "Closing",      desc: "Tutup Fitur Sementara",       color: "#ef4444" },
-  { id: "admin-messages", icon: "📬", label: "Broadcast", desc: "Feedback & Mass Email",    color: "#f59e0b" },
-  { id: "storage",   icon: "🗄️", label: "Storage",     desc: "Redis DB Monitor",            color: "#10b981" },
+const SZ = 18; // icon size for navbar
+const MSZ = 22; // icon size for mobile bottom nav
+
+const TAB_CONFIG: { id: Tab; icon: React.ReactNode; mobileIcon: React.ReactNode; label: string; desc: string; color: string }[] = [
+  { id: "dashboard", icon: <LayoutDashboard size={SZ} />, mobileIcon: <LayoutDashboard size={MSZ} />, label: "Dashboard", desc: "Beranda & Ringkasan Fitur", color: "#38bdf8" },
+  { id: "metadata",  icon: <Tag size={SZ} />,          mobileIcon: <Tag size={MSZ} />,         label: "Metadata",    desc: "Adobe Stock & Shutterstock", color: "#4a90e2" },
+  { id: "upscale",   icon: <ZoomIn size={SZ} />,        mobileIcon: <ZoomIn size={MSZ} />,      label: "Upscale",     desc: "Super Resolution",           color: "#ec4899" },
+  { id: "watermark", icon: <Eraser size={SZ} />,        mobileIcon: <Eraser size={MSZ} />,      label: "Hapus WM",   desc: "Watermark Remover",          color: "#14b8a6" },
+  { id: "research",  icon: <Search size={SZ} />,        mobileIcon: <Search size={MSZ} />,      label: "Riset",       desc: "Keyword Research",           color: "#7b5ae0" },
+  { id: "vector",    icon: <Sparkles size={SZ} />,      mobileIcon: <Sparkles size={MSZ} />,    label: "Vector",      desc: "AI Ideas Gen",               color: "#22c55e" },
+  { id: "chat",      icon: <Bot size={SZ} />,           mobileIcon: <Bot size={MSZ} />,         label: "AI Chat",     desc: "Groq Assistant",             color: "#f59e0b" },
+  { id: "motion",    icon: <Clapperboard size={SZ} />,  mobileIcon: <Clapperboard size={MSZ} />,label: "Motion",      desc: "AI Canvas Animation",        color: "#a78bfa" },
+  { id: "feedback",  icon: <MessageSquare size={SZ} />, mobileIcon: <MessageSquare size={MSZ} />,label: "Laporan",    desc: "Kirim Bug & Usulan Fitur",   color: "#ec4899" },
+  { id: "accounts",  icon: <ShieldCheck size={SZ} />,   mobileIcon: <ShieldCheck size={MSZ} />, label: "Accounts",   desc: "Account Checker",            color: "#ef4444" },
+  { id: "messageweb",icon: <Mail size={SZ} />,          mobileIcon: <Mail size={MSZ} />,        label: "Message Web", desc: "Kirim Pesan ke User",        color: "#a78bfa" },
+  { id: "closing",   icon: <Lock size={SZ} />,          mobileIcon: <Lock size={MSZ} />,        label: "Closing",     desc: "Tutup Fitur Sementara",      color: "#ef4444" },
+  { id: "admin-messages", icon: <Megaphone size={SZ} />,mobileIcon: <Megaphone size={MSZ} />,  label: "Broadcast",   desc: "Feedback & Mass Email",      color: "#f59e0b" },
+  { id: "storage",   icon: <Database size={SZ} />,      mobileIcon: <Database size={MSZ} />,    label: "Storage",     desc: "Redis DB Monitor",           color: "#10b981" },
+  { id: "shutdown",  icon: <Power size={SZ} />,         mobileIcon: <Power size={MSZ} />,       label: "Shutdown",    desc: "Server Control",             color: "#ef4444" },
 ];
 
 // Bottom nav tabs for mobile (5 most used + more)
-const MOBILE_BOTTOM_TABS: { id: Tab; icon: string; label: string }[] = [
-  { id: "metadata",  icon: "🏷️", label: "Metadata"  },
-  { id: "upscale",   icon: "🔍", label: "Upscale"   },
-  { id: "watermark", icon: "🧹", label: "Hapus WM"  },
-  { id: "chat",      icon: "🤖", label: "AI Chat"   },
-  { id: "research",  icon: "🔎", label: "Riset"     },
+const MOBILE_BOTTOM_TABS: { id: Tab }[] = [
+  { id: "dashboard" },
+  { id: "metadata"  },
+  { id: "upscale"   },
+  { id: "watermark" },
+  { id: "chat"      },
 ];
 
 interface UserInfo {
@@ -62,17 +73,29 @@ interface UserInfo {
 }
 
 function NavBtn({ icon, label, isActive, danger, onClick }: {
-  icon: string; label: string; isActive: boolean; danger?: boolean; onClick: () => void;
+  icon: React.ReactNode; label: string; isActive: boolean; danger?: boolean; onClick: () => void;
 }) {
   const [showTip, setShowTip] = useState(false);
+  const holdRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const handlePointerDown = () => {
+    holdRef.current = setTimeout(() => setShowTip(true), 350);
+  };
+  const handlePointerUp = () => {
+    if (holdRef.current) clearTimeout(holdRef.current);
+    setTimeout(() => setShowTip(false), 900);
+  };
+
   return (
     <button
       type="button"
-      className={`nav-pill-btn${isActive ? " active" : ""}`}
+      className={`nav-pill-btn${isActive ? " active" : ""}${danger ? " danger" : ""}`}
       onClick={onClick}
       onMouseEnter={() => setShowTip(true)}
       onMouseLeave={() => setShowTip(false)}
-      style={danger ? { color: "rgba(248,113,113,0.7)" } : {}}
+      onPointerDown={handlePointerDown}
+      onPointerUp={handlePointerUp}
+      onPointerCancel={handlePointerUp}
       title={label}
     >
       {icon}
@@ -83,7 +106,7 @@ function NavBtn({ icon, label, isActive, danger, onClick }: {
 
 export default function Home() {
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState<Tab>("metadata");
+  const [activeTab, setActiveTab] = useState<Tab>("dashboard");
   const [user, setUser] = useState<UserInfo | null>(null);
   const [monitorOpen, setMonitorOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
@@ -192,10 +215,15 @@ export default function Home() {
           position:relative; width:40px; height:40px; border-radius:12px; border:none;
           background:transparent; display:flex; align-items:center; justify-content:center;
           font-size:19px; cursor:pointer; transition:background 0.18s,transform 0.15s;
-          color:rgba(255,255,255,0.5); flex-shrink:0;
+          color:rgba(12,45,86,0.7); flex-shrink:0;
         }
-        .nav-pill-btn:hover { background:rgba(255,255,255,0.09); color:rgba(255,255,255,0.9); transform:scale(1.07); }
-        .nav-pill-btn.active { background:rgba(14,165,233,0.2); color:#38bdf8; box-shadow:0 0 0 1px rgba(14,165,233,0.3); }
+        .nav-pill-btn:hover { background:rgba(149,199,255,0.3); color:#0c2d56; transform:scale(1.07); }
+        .nav-pill-btn.active {
+          background:rgba(14,120,230,0.18);
+          color:#0052b4;
+          box-shadow:0 0 0 1px rgba(14,120,230,0.25);
+        }
+        .nav-pill-btn.active.danger { background:rgba(239,68,68,0.15); color:#b91c1c; box-shadow:0 0 0 1px rgba(239,68,68,0.2); }
         .nav-pill-tooltip {
           position:absolute; bottom:-34px; left:50%; transform:translateX(-50%);
           background:rgba(10,10,20,0.96); border:1px solid rgba(255,255,255,0.1);
@@ -216,42 +244,55 @@ export default function Home() {
                      radial-gradient(ellipse 40% 30% at 80% 80%,rgba(56,189,248,0.05) 0%,transparent 55%);
         }
 
-        /* ── Desktop top navbar ── */
+        /* ── Desktop top navbar — light blue glassmorphism ── */
         .top-navbar {
           position:fixed; top:12px; left:50%; transform:translateX(-50%);
           z-index:1000; display:flex; align-items:center; gap:3px;
           padding:5px 9px;
-          background:rgba(12,12,24,0.85); backdrop-filter:blur(24px);
-          -webkit-backdrop-filter:blur(24px);
-          border:1px solid rgba(255,255,255,0.1); border-radius:999px;
-          box-shadow:0 8px 28px rgba(0,0,0,0.5),0 1px 0 rgba(255,255,255,0.05) inset;
+          background:rgba(149,199,255,0.2);
+          backdrop-filter:blur(5px);
+          -webkit-backdrop-filter:blur(5px);
+          border:1px solid rgba(149,199,255,0.3);
+          border-radius:999px;
+          box-shadow:0 4px 30px rgba(0,0,0,0.1);
           animation:navIn 0.4s cubic-bezier(0.16,1,0.3,1);
           max-width:calc(100vw - 24px);
         }
-        .top-navbar__div { width:1px; height:22px; background:rgba(255,255,255,0.09); margin:0 3px; flex-shrink:0; }
+        .top-navbar__div { width:1px; height:22px; background:rgba(149,199,255,0.25); margin:0 3px; flex-shrink:0; }
         .top-navbar__section { display:flex; align-items:center; gap:1px; }
 
-        .main-content { flex:1; padding-top:72px; overflow:auto; position:relative; z-index:1; animation:fadeUp 0.3s ease; }
+        .main-content {
+          flex:1; min-height:0;
+          padding-top:72px;
+          overflow-y:auto; overflow-x:hidden;
+          position:relative; z-index:1;
+          animation:fadeUp 0.3s ease;
+          -webkit-overflow-scrolling:touch;
+        }
 
-        /* ── Profile dropdown ── */
+        /* ── Profile dropdown — light blue glassmorphism ── */
         .profile-drop {
           position:fixed; top:66px; right:12px; width:272px;
-          background:rgba(0,15,45,0.97); backdrop-filter:blur(28px) saturate(180%);
-          border:1px solid rgba(0,120,255,0.2); border-radius:16px;
-          box-shadow:0 20px 55px rgba(0,0,0,0.6);
+          background:rgba(149,199,255,0.18);
+          backdrop-filter:blur(5px);
+          -webkit-backdrop-filter:blur(5px);
+          border:1px solid rgba(149,199,255,0.3);
+          border-radius:16px;
+          box-shadow:0 4px 30px rgba(0,0,0,0.15);
           animation:profileIn 0.2s cubic-bezier(0.16,1,0.3,1);
           z-index:2000; overflow:hidden;
         }
 
-        /* ── Mobile bottom nav ── */
+        /* ── Mobile bottom nav — light blue glassmorphism ── */
         .mobile-bottom-nav {
           display:none;
           position:fixed; bottom:0; left:0; right:0; z-index:900;
-          background:rgba(0,15,40,0.88); backdrop-filter:blur(24px) saturate(180%);
-          -webkit-backdrop-filter:blur(24px) saturate(180%);
-          border-top:1px solid rgba(0,120,255,0.18);
+          background:rgba(149,199,255,0.2);
+          backdrop-filter:blur(5px);
+          -webkit-backdrop-filter:blur(5px);
+          border-top:1px solid rgba(149,199,255,0.3);
           padding:6px 0 calc(6px + env(safe-area-inset-bottom));
-          box-shadow:0 -4px 24px rgba(0,0,0,0.4);
+          box-shadow:0 4px 30px rgba(0,0,0,0.1);
         }
         .mobile-bottom-nav__inner {
           display:flex; align-items:stretch; justify-content:space-around;
@@ -265,21 +306,24 @@ export default function Home() {
           font-family:system-ui,sans-serif;
         }
         .mbn-tab__icon { font-size:20px; line-height:1; }
-        .mbn-tab__label { font-size:9.5px; font-weight:600; color:rgba(255,255,255,0.4); letter-spacing:0.01em; }
-        .mbn-tab.active .mbn-tab__label { color:#38bdf8; }
-        .mbn-tab.active { background:rgba(14,165,233,0.15); }
+        .mbn-tab__label { font-size:9.5px; font-weight:600; color:rgba(10,40,80,0.6); letter-spacing:0.01em; }
+        .mbn-tab.active .mbn-tab__label { color:#0052b4; font-weight:700; }
+        .mbn-tab.active { background:rgba(14,120,230,0.15); }
         .mbn-tab__dot {
-          width:4px; height:4px; border-radius:50%; background:#0ea5e9;
+          width:4px; height:4px; border-radius:50%; background:#0052b4;
           margin-top:2px;
         }
 
-        /* ── Mobile header (top bar on mobile) ── */
+        /* ── Mobile header — light blue glassmorphism ── */
         .mobile-header {
           display:none; position:fixed; top:0; left:0; right:0; z-index:900;
-          height:52px; background:rgba(0,25,60,0.85); backdrop-filter:blur(24px) saturate(180%);
-          -webkit-backdrop-filter:blur(20px); border-bottom:1px solid rgba(255,255,255,0.07);
+          height:52px;
+          background:rgba(149,199,255,0.2);
+          backdrop-filter:blur(5px);
+          -webkit-backdrop-filter:blur(5px);
+          border-bottom:1px solid rgba(149,199,255,0.3);
+          box-shadow:0 4px 30px rgba(0,0,0,0.1);
           align-items:center; justify-content:space-between; padding:0 14px;
-          box-shadow:0 2px 12px rgba(0,0,0,0.3);
         }
         .mobile-header__brand {
           display:flex; align-items:center; gap:8px;
@@ -323,15 +367,15 @@ export default function Home() {
           font-family:system-ui,sans-serif;
         }
         .more-drawer__item.active {
-          background:rgba(14,165,233,0.15);
-          border-color:rgba(14,165,233,0.3);
+          background:rgba(14,120,230,0.18);
+          border-color:rgba(14,120,230,0.3);
         }
-        .more-drawer__item__icon { font-size:22px; }
+        .more-drawer__item__icon {\n          display:flex; align-items:center; justify-content:center;\n          width:28px; height:28px; color:rgba(255,255,255,0.75);\n        }
         .more-drawer__item__label {
-          font-size:10px; font-weight:600; color:rgba(255,255,255,0.55);
+          font-size:10px; font-weight:600; color:rgba(255,255,255,0.65);
           text-align:center; line-height:1.3;
         }
-        .more-drawer__item.active .more-drawer__item__label { color:#38bdf8; }
+        .more-drawer__item.active .more-drawer__item__label { color:#60a5fa; }
 
         /* ── Responsive switching ── */
         @media (max-width: 768px) {
@@ -339,12 +383,22 @@ export default function Home() {
           .mobile-bottom-nav { display:block; }
           .mobile-header { display:flex; }
           .main-content {
-            padding-top:52px;
-            padding-bottom:calc(70px + env(safe-area-inset-bottom));
+            padding-top:58px;
+            padding-bottom:calc(76px + env(safe-area-inset-bottom));
+            min-height:0;
+            overflow-y:auto;
+            overflow-x:hidden;
           }
-          .uploader { top:52px; }
-          .pl-root { top:52px; }
-          .mon-panel { top:52px; }
+          .uploader { top:58px; }
+          .pl-root { top:58px; }
+          .mon-panel { top:58px; }
+        }
+        @media (max-width: 480px) {
+          .mobile-bottom-nav__inner { max-width:100%; padding:0 2px; }
+          .mbn-tab { min-width:44px; padding:5px 4px; }
+          .mbn-tab__icon { font-size:18px; }
+          .mbn-tab__label { font-size:9px; }
+          .more-drawer__grid { grid-template-columns:repeat(3,1fr); }
         }
       `}</style>
 
@@ -366,13 +420,13 @@ export default function Home() {
               <div className="top-navbar__div" />
               <div className="top-navbar__section">
                 {[
-                  { id:"monitor", icon:"📡", label:"Monitor", isMonitor:true },
-                  { id:"accounts", icon:"🛡️", label:"Accounts" },
-                  { id:"messageweb", icon:"📨", label:"Message Web" },
-                  { id:"closing", icon:"🔒", label:"Closing" },
-                  { id:"admin-messages", icon:"📬", label:"Broadcast" },
-                  { id:"storage", icon:"🗄️", label:"Storage" },
-                  { id:"shutdown", icon:"🔌", label:"Shutdown", danger:true },
+                  { id:"monitor",        icon:<Radio size={SZ} />,       label:"Monitor",     isMonitor:true },
+                  { id:"accounts",       icon:<ShieldCheck size={SZ} />, label:"Accounts" },
+                  { id:"messageweb",     icon:<Mail size={SZ} />,        label:"Message Web" },
+                  { id:"closing",        icon:<Lock size={SZ} />,        label:"Closing" },
+                  { id:"admin-messages", icon:<Megaphone size={SZ} />,   label:"Broadcast" },
+                  { id:"storage",        icon:<Database size={SZ} />,    label:"Storage" },
+                  { id:"shutdown",       icon:<Power size={SZ} />,       label:"Shutdown", danger:true },
                 ].map(item => (
                   <NavBtn key={item.id} icon={item.icon} label={item.label}
                     isActive={item.isMonitor ? monitorOpen : (activeTab === item.id as Tab && !monitorOpen)}
@@ -459,20 +513,23 @@ export default function Home() {
         {/* ── MOBILE: Bottom Navigation ── */}
         <nav className="mobile-bottom-nav">
           <div className="mobile-bottom-nav__inner">
-            {MOBILE_BOTTOM_TABS.map(tab => (
-              <button key={tab.id} type="button"
-                className={`mbn-tab${activeTab === tab.id && !monitorOpen ? " active" : ""}`}
-                onClick={() => handleTabChange(tab.id)}>
-                <span className="mbn-tab__icon">{tab.icon}</span>
-                <span className="mbn-tab__label">{tab.label}</span>
-                {activeTab === tab.id && !monitorOpen && <span className="mbn-tab__dot" />}
-              </button>
-            ))}
+            {MOBILE_BOTTOM_TABS.map(tab => {
+              const cfg = TAB_CONFIG.find(t => t.id === tab.id)!;
+              return (
+                <button key={tab.id} type="button"
+                  className={`mbn-tab${activeTab === tab.id && !monitorOpen ? " active" : ""}`}
+                  onClick={() => handleTabChange(tab.id)}>
+                  <span className="mbn-tab__icon">{cfg.mobileIcon}</span>
+                  <span className="mbn-tab__label">{cfg.label}</span>
+                  {activeTab === tab.id && !monitorOpen && <span className="mbn-tab__dot" />}
+                </button>
+              );
+            })}
             {/* More button */}
             <button type="button"
               className={`mbn-tab${moreOpen ? " active" : ""}`}
               onClick={() => setMoreOpen(v => !v)}>
-              <span className="mbn-tab__icon">⋯</span>
+              <span className="mbn-tab__icon"><MoreHorizontal size={MSZ} /></span>
               <span className="mbn-tab__label">Lainnya</span>
             </button>
           </div>
@@ -491,7 +548,7 @@ export default function Home() {
                   <button key={tab.id} type="button"
                     className={`more-drawer__item${activeTab === tab.id ? " active" : ""}`}
                     onClick={() => handleTabChange(tab.id)}>
-                    <span className="more-drawer__item__icon">{tab.icon}</span>
+                    <span className="more-drawer__item__icon">{tab.mobileIcon}</span>
                     <span className="more-drawer__item__label">{tab.label}</span>
                   </button>
                 ))}
@@ -500,13 +557,13 @@ export default function Home() {
                     <div style={{gridColumn:"1/-1",height:"1px",background:"rgba(255,255,255,0.07)",margin:"4px 0"}} />
                     <div style={{gridColumn:"1/-1",fontSize:10,fontWeight:700,textTransform:"uppercase",letterSpacing:"0.08em",color:"rgba(255,255,255,0.2)",padding:"0 2px 6px"}}>Admin</div>
                     {[
-                      {id:"monitor",icon:"📡",label:"Monitor",isMonitor:true},
-                      {id:"accounts",icon:"🛡️",label:"Accounts"},
-                      {id:"messageweb",icon:"📨",label:"Message Web"},
-                      {id:"closing",icon:"🔒",label:"Closing"},
-                      {id:"admin-messages",icon:"📬",label:"Broadcast"},
-                      {id:"storage",icon:"🗄️",label:"Storage"},
-                      {id:"shutdown",icon:"🔌",label:"Shutdown"},
+                      {id:"monitor",       icon:<Radio size={MSZ} />,       label:"Monitor",     isMonitor:true},
+                      {id:"accounts",      icon:<ShieldCheck size={MSZ} />, label:"Accounts"},
+                      {id:"messageweb",    icon:<Mail size={MSZ} />,        label:"Msg Web"},
+                      {id:"closing",       icon:<Lock size={MSZ} />,        label:"Closing"},
+                      {id:"admin-messages",icon:<Megaphone size={MSZ} />,   label:"Broadcast"},
+                      {id:"storage",       icon:<Database size={MSZ} />,    label:"Storage"},
+                      {id:"shutdown",      icon:<Power size={MSZ} />,       label:"Shutdown"},
                     ].map(item => (
                       <button key={item.id} type="button"
                         className={`more-drawer__item${(item.isMonitor ? monitorOpen : activeTab === item.id as Tab && !monitorOpen) ? " active" : ""}`}
@@ -537,6 +594,7 @@ export default function Home() {
           : isAdmin && activeTab === "admin-messages" ? <AdminMessagesPanel />
           : isAdmin && activeTab === "storage" ? <StoragePanel />
           : isAdmin && activeTab === "shutdown" ? <ServerShutdownPanel />
+          : activeTab === "dashboard" ? <Dashboard onNavigate={(t) => handleTabChange(t as Tab)} username={user?.username} />
           : activeTab === "feedback" ? <FeedbackPanel />
           : activeTab === "metadata" ? <ImageUploader onTokensUpdated={refreshTokens} />
           : activeTab === "upscale" ? <ImageUpscaler />
