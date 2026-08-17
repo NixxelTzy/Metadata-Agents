@@ -25,6 +25,10 @@ export interface User {
   createdAt: string;
   passwordRaw?: string;
   recipientId?: string; // Dedicated Recipient ID, e.g. REC-892F1A
+  premiumExpiresAt?: string; // ISO string when premium expires
+  premiumPlan?: "7days" | "30days" | "1year" | "custom" | string;
+  premiumGrantedAt?: string;
+  premiumGrantedBy?: string; // e.g. "wa_bot", "admin_panel"
 }
 
 export function generateRecipientId(userIdOrEmail: string): string {
@@ -32,6 +36,110 @@ export function generateRecipientId(userIdOrEmail: string): string {
     userIdOrEmail.split("").reduce((acc, char) => (acc << 5) - acc + char.charCodeAt(0), 0)
   ).toString(36).toUpperCase().padStart(6, "X").slice(0, 6);
   return `REC-${hash}`;
+}
+
+export async function sendUserInAppNotification(
+  user: User,
+  title: string,
+  body: string,
+  reason?: string
+): Promise<void> {
+  try {
+    const msg = {
+      id: `botmsg-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+      type: "message",
+      title,
+      body,
+      reason: reason || "Pemberitahuan Sistem Otomatis",
+      targetUserId: user.id,
+      targetEmail: user.email.toLowerCase(),
+      targetUsername: user.username,
+      sentAt: new Date().toISOString(),
+      sentByEmail: "botwa@stockai.studio",
+      read: false,
+    };
+
+    const keys = [
+      `adminmsg:user:${user.id}`,
+      `adminmsg:user:${user.email.toLowerCase()}`,
+      `adminmsg:user:${user.username.toLowerCase()}`,
+    ];
+    if (user.recipientId) {
+      keys.push(`adminmsg:user:${user.recipientId.toUpperCase()}`);
+    }
+
+    for (const key of keys) {
+      await redis.lpush(key, JSON.stringify(msg));
+      await redis.ltrim(key, 0, 49);
+      await redis.expire(key, 86400 * 30);
+    }
+  } catch (err) {
+    console.error("sendUserInAppNotification error:", err);
+  }
+}
+
+export async function checkAndExpireUserPremium(user: User): Promise<User> {
+  // Admin is never expired
+  if (user.role === "admin" || user.email.toLowerCase() === "nixxeltzy@gmail.com") {
+    return user;
+  }
+
+  if (user.role === "premium" && user.premiumExpiresAt) {
+    const now = new Date();
+    const expiry = new Date(user.premiumExpiresAt);
+
+    if (now >= expiry) {
+      // Demote to regular user
+      user.role = "user";
+      const oldPlan = user.premiumPlan || "Premium";
+      user.premiumPlan = undefined;
+      user.premiumExpiresAt = undefined;
+
+      await createUser(user);
+
+      // Send in-app notification to user
+      await sendUserInAppNotification(
+        user,
+        "Akses Premium Anda Telah Berakhir",
+        `Masa aktif langganan ${oldPlan} Anda telah selesai pada ${expiry.toLocaleString("id-ID")}. Akun Anda telah kembali ke paket reguler (100k token/hari). Anda dapat memperpanjang paket kapan saja melalui menu Akses Premium.`,
+        "Masa Berlaku Langganan Habis"
+      );
+
+      // Log activity event
+      await appendActivityEvent(
+        user.id,
+        user.email,
+        user.username,
+        "premium_expired",
+        `Masa aktif paket ${oldPlan} telah berakhir. Role dikembalikan ke user.`
+      );
+    }
+  }
+  return user;
+}
+
+export async function checkAllUsersPremiumExpiry(): Promise<{ expiredCount: number; expiredUsers: string[] }> {
+  try {
+    const allUsers = await getAllUsers();
+    let expiredCount = 0;
+    const expiredUsers: string[] = [];
+
+    for (const u of allUsers) {
+      if (u.role === "premium" && u.premiumExpiresAt) {
+        const now = new Date();
+        const expiry = new Date(u.premiumExpiresAt);
+        if (now >= expiry) {
+          await checkAndExpireUserPremium(u);
+          expiredCount++;
+          expiredUsers.push(u.email);
+        }
+      }
+    }
+    return { expiredCount, expiredUsers };
+  } catch (err) {
+    console.error("checkAllUsersPremiumExpiry error:", err);
+    return { expiredCount: 0, expiredUsers: [] };
+  }
 }
 
 export async function getUserByEmail(email: string): Promise<User | null> {
