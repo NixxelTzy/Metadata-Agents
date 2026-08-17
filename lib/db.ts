@@ -55,7 +55,7 @@ export async function sendUserInAppNotification(
       targetEmail: user.email.toLowerCase(),
       targetUsername: user.username,
       sentAt: new Date().toISOString(),
-      sentByEmail: "botwa@stockai.studio",
+      sentByEmail: "premium@stockai.studio",
       read: false,
     };
 

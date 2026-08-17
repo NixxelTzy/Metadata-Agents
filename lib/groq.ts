@@ -127,8 +127,14 @@ export async function callGroq(
     throw new Error("Groq API key tidak dikonfigurasi. Set GROQ_API_KEY di environment variables.");
   }
 
-  const { temperature = 0.3, max_tokens = 8192 } = opts;
-  const modelsToTry = [CHAT_MODEL, "llama-3.1-8b-instant"];
+  const { temperature = 0.3, max_tokens = 8192, vision = false } = opts;
+  const hasImage = vision || messages.some(
+    (m) => Array.isArray(m.content) && m.content.some((c) => c.type === "image_url")
+  );
+
+  const modelsToTry = hasImage
+    ? [VISION_MODEL, VISION_FALLBACK_MODEL]
+    : [CHAT_MODEL];
 
   let lastError: Error | null = null;
 

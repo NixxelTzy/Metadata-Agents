@@ -26,11 +26,7 @@ const GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions";
  * Fast, high quality, dan sangat baik untuk JSON generation task.
  */
 const RISET_MODEL = "llama-3.3-70b-versatile";
-
-/**
- * Fallback model jika primary rate limited.
- */
-const RISET_FALLBACK_MODEL = "llama-3.1-8b-instant";
+const RISET_FALLBACK_MODEL = "llama-3.3-70b-versatile";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 

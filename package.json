@@ -3,18 +3,11 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "dev": "concurrently --names \"NEXT,BOT\" --prefix-colors \"cyan,green\" \"next dev\" \"node scripts/wa-bot.js --pairing-code\"",
+    "dev": "next dev",
     "build": "next build",
-    "start": "concurrently --names \"NEXT,BOT\" --prefix-colors \"cyan,green\" \"next start\" \"node scripts/wa-bot.js --pairing-code\"",
-    "deploy": "next build && concurrently --names \"NEXT,BOT\" --prefix-colors \"cyan,green\" \"next start\" \"node scripts/wa-bot.js --pairing-code\"",
-    "next:dev": "next dev",
-    "next:start": "next start",
+    "start": "next start",
     "lint": "next lint",
-    "test": "jest --runInBand",
-    "bot": "node scripts/wa-bot.js --pairing-code",
-    "bot:qr": "node scripts/wa-bot.js --qr",
-    "bot:code": "node scripts/wa-bot.js --pairing-code",
-    "bot:number": "node scripts/wa-bot.js --pairing-code --number"
+    "test": "jest --runInBand"
   },
   "dependencies": {
     "@types/qrcode": "^1.5.6",
