@@ -1,9 +1,12 @@
-const config = {
-  appId: 'com.stockaistudio.app',
-  appName: 'Stock AI Studio',
-  webDir: 'out',
+import type { CapacitorConfig } from '@capacitor/cli';
+
+const config: CapacitorConfig = {
+  appId: 'com.metadataagents.app',
+  appName: 'Metadata Agents',
+  webDir: 'www',
   server: {
-    androidScheme: 'https'
+    url: 'https://metadata-agents.vercel.app',
+    cleartext: false
   }
 };
 

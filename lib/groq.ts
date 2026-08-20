@@ -8,7 +8,9 @@ import { getGroqApiKeys } from "@/lib/config";
 
 const GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions";
 
-const CHAT_MODEL   = "llama-3.3-70b-versatile";
+// Model dibaca dari env variable MODEL_AI — set di .env.local dan Vercel
+// Fallback ke llama-3.3-70b-versatile jika env tidak ada
+const CHAT_MODEL   = process.env.MODEL_AI ?? "llama-3.3-70b-versatile";
 const VISION_MODEL = "llama-3.2-11b-vision-instruct";
 const VISION_FALLBACK_MODEL = "llama-3.2-90b-vision-instruct";
 

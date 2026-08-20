@@ -22,11 +22,12 @@ import { getGroqRisetApiKey } from "@/lib/config";
 const GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions";
 
 /**
- * Model default untuk riset: llama-3.3-70b-versatile.
- * Fast, high quality, dan sangat baik untuk JSON generation task.
+ * Model untuk riset — dibaca dari env variable MODEL_AI.
+ * Set MODEL_AI=llama-3.3-70b-versatile di .env.local dan Vercel.
+ * Fallback ke llama-3.3-70b-versatile jika env tidak ada.
  */
-const RISET_MODEL = "llama-3.3-70b-versatile";
-const RISET_FALLBACK_MODEL = "llama-3.3-70b-versatile";
+const RISET_MODEL = process.env.MODEL_AI ?? "llama-3.3-70b-versatile";
+const RISET_FALLBACK_MODEL = process.env.MODEL_AI ?? "llama-3.3-70b-versatile";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
