@@ -21,6 +21,7 @@ import UserInboxBanner, { NotificationBellButton } from "@/components/UserInboxB
 import ServerShutdownPanel from "@/components/ServerShutdownPanel";
 import PremAccessPanel from "@/components/PremAccessPanel";
 import PremiumPricingModal from "@/components/PremiumPricingModal";
+import NativeNavBar from "@/components/NativeNavBar";
 import { useRouter } from "next/navigation";
 import {
   getUsage, getUsagePercent, getDailyLimit,
@@ -592,6 +593,9 @@ export default function Home() {
             <AIChat onTokensUpdated={refreshTokens} />
           )}
         </main>
+
+        {/* Native Android / Mobile Navigation Bar & Notification Listener Drawer */}
+        <NativeNavBar />
       </div>
     </>
   );
