@@ -265,36 +265,40 @@ export default function PremAccessPanel() {
         margin: "0 auto",
         padding: "24px 16px",
         fontFamily: "'Inter', system-ui, -apple-system, sans-serif",
-        color: "#f0f8ff",
+        color: "#0f172a",
       }}
     >
       <style>{`
         .pa-card {
-          background: rgba(8, 20, 44, 0.65);
-          border: 1px solid rgba(56, 189, 248, 0.16);
+          background: rgba(255, 255, 255, 0.72);
+          border: 1px solid rgba(147, 197, 253, 0.45);
           border-radius: 18px;
           padding: 22px;
           backdrop-filter: blur(16px);
+          -webkit-backdrop-filter: blur(16px);
           margin-bottom: 20px;
-          transition: border-color 0.2s;
+          box-shadow: 0 4px 20px rgba(59, 130, 246, 0.08);
+          transition: border-color 0.2s, box-shadow 0.2s;
         }
         .pa-card:hover {
-          border-color: rgba(56, 189, 248, 0.35);
+          border-color: rgba(59, 130, 246, 0.5);
+          box-shadow: 0 8px 30px rgba(59, 130, 246, 0.12);
         }
         .pa-input {
-          background: rgba(2, 8, 24, 0.85);
-          border: 1px solid rgba(56, 189, 248, 0.25);
+          background: rgba(255, 255, 255, 0.85);
+          border: 1.5px solid rgba(147, 197, 253, 0.5);
           border-radius: 10px;
           padding: 11px 15px;
-          color: #f0f8ff;
+          color: #0f172a;
           font-size: 13.5px;
           font-family: inherit;
           outline: none;
           transition: all 0.15s;
         }
         .pa-input:focus {
-          border-color: #38bdf8;
-          box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.18);
+          border-color: #3b82f6;
+          box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+          background: #ffffff;
         }
         .pa-btn {
           padding: 9px 15px;
@@ -311,32 +315,33 @@ export default function PremAccessPanel() {
           font-family: inherit;
         }
         .pa-btn-primary {
-          background: linear-gradient(135deg, #0ea5e9, #0284c7);
+          background: linear-gradient(135deg, #3b82f6, #2563eb);
           color: #ffffff;
-          box-shadow: 0 4px 14px rgba(14, 165, 233, 0.3);
+          box-shadow: 0 4px 14px rgba(59, 130, 246, 0.35);
         }
         .pa-btn-primary:hover {
-          background: linear-gradient(135deg, #38bdf8, #0ea5e9);
+          background: linear-gradient(135deg, #2563eb, #1d4ed8);
           transform: translateY(-1px);
+          box-shadow: 0 6px 18px rgba(59, 130, 246, 0.45);
         }
         .pa-btn-danger {
-          background: rgba(239, 68, 68, 0.15);
-          border: 1px solid rgba(239, 68, 68, 0.35);
-          color: #fca5a5;
+          background: rgba(254, 226, 226, 0.7);
+          border: 1px solid rgba(252, 165, 165, 0.6);
+          color: #dc2626;
         }
         .pa-btn-danger:hover {
-          background: rgba(239, 68, 68, 0.25);
+          background: rgba(254, 202, 202, 0.9);
           border-color: #ef4444;
-          color: #ffffff;
+          color: #991b1b;
         }
         .pa-btn-secondary {
-          background: rgba(255, 255, 255, 0.06);
-          border: 1px solid rgba(255, 255, 255, 0.12);
-          color: #e2e8f0;
+          background: rgba(219, 234, 254, 0.6);
+          border: 1px solid rgba(147, 197, 253, 0.5);
+          color: #1e40af;
         }
         .pa-btn-secondary:hover {
-          background: rgba(255, 255, 255, 0.12);
-          color: #ffffff;
+          background: rgba(191, 219, 254, 0.8);
+          color: #1d4ed8;
         }
         .pa-chip {
           font-size: 11.5px;
@@ -344,18 +349,18 @@ export default function PremAccessPanel() {
           padding: 5px 12px;
           border-radius: 8px;
           cursor: pointer;
-          border: 1px solid rgba(56, 189, 248, 0.25);
-          background: rgba(56, 189, 248, 0.1);
-          color: #bae6fd;
+          border: 1px solid rgba(147, 197, 253, 0.5);
+          background: rgba(219, 234, 254, 0.6);
+          color: #1e40af;
           transition: all 0.15s;
           display: inline-flex;
           align-items: center;
           gap: 5px;
         }
         .pa-chip:hover {
-          background: rgba(56, 189, 248, 0.22);
-          border-color: #38bdf8;
-          color: #ffffff;
+          background: rgba(191, 219, 254, 0.85);
+          border-color: #3b82f6;
+          color: #1d4ed8;
           transform: translateY(-1px);
         }
         .pa-badge {
@@ -368,12 +373,13 @@ export default function PremAccessPanel() {
           gap: 4px;
         }
         .terminal-box {
-          background: #020817;
-          border: 1px solid rgba(56, 189, 248, 0.2);
+          background: #0f172a;
+          border: 1px solid rgba(147, 197, 253, 0.3);
           border-radius: 12px;
           font-family: 'JetBrains Mono', 'Fira Code', monospace;
           color: #e2e8f0;
           padding: 16px;
+          box-shadow: 0 4px 16px rgba(15, 23, 42, 0.2);
         }
       `}</style>
 

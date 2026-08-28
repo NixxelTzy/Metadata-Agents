@@ -71,15 +71,15 @@ export default function NativeNavBar() {
           left: 0,
           right: 0,
           zIndex: 99990,
-          background: "rgba(3, 10, 26, 0.94)",
+          background: "rgba(255, 255, 255, 0.85)",
           backdropFilter: "blur(20px)",
           WebkitBackdropFilter: "blur(20px)",
-          borderTop: "1px solid rgba(56, 189, 248, 0.18)",
+          borderTop: "1px solid rgba(147, 197, 253, 0.45)",
           padding: "8px 16px env(safe-area-inset-bottom, 12px) 16px",
           display: "flex",
           justifyContent: "space-around",
           alignItems: "center",
-          boxShadow: "0 -4px 25px rgba(0, 0, 0, 0.6)",
+          boxShadow: "0 -4px 25px rgba(59, 130, 246, 0.12)",
         }}
         aria-label="Native Android Navigation"
       >
@@ -89,7 +89,7 @@ export default function NativeNavBar() {
           style={navBtnStyle}
           title="Home"
         >
-          <Home size={18} color="#38bdf8" />
+          <Home size={18} color="#2563eb" />
           <span style={navLabelStyle}>Home</span>
         </button>
 
@@ -99,7 +99,7 @@ export default function NativeNavBar() {
           style={navBtnStyle}
           title="Back"
         >
-          <ArrowLeft size={18} color="#94a3b8" />
+          <ArrowLeft size={18} color="#64748b" />
           <span style={navLabelStyle}>Back</span>
         </button>
 
@@ -113,7 +113,7 @@ export default function NativeNavBar() {
           title="Notifications"
         >
           <div style={{ position: "relative", display: "inline-flex" }}>
-            <Bell size={18} color={notifications.length > 0 ? "#facc15" : "#94a3b8"} />
+            <Bell size={18} color={notifications.length > 0 ? "#d97706" : "#64748b"} />
             {notifications.length > 0 && (
               <span
                 style={{
@@ -144,7 +144,7 @@ export default function NativeNavBar() {
           style={navBtnStyle}
           title="Settings"
         >
-          <Settings size={18} color="#94a3b8" />
+          <Settings size={18} color="#64748b" />
           <span style={navLabelStyle}>Settings</span>
         </button>
 
@@ -154,8 +154,8 @@ export default function NativeNavBar() {
           style={navBtnStyle}
           title="Exit App"
         >
-          <LogOut size={18} color="#f87171" />
-          <span style={{ ...navLabelStyle, color: "#fca5a5" }}>Exit</span>
+          <LogOut size={18} color="#dc2626" />
+          <span style={{ ...navLabelStyle, color: "#dc2626" }}>Exit</span>
         </button>
       </nav>
 
@@ -166,8 +166,9 @@ export default function NativeNavBar() {
             position: "fixed",
             inset: 0,
             zIndex: 99999,
-            background: "rgba(0, 4, 16, 0.85)",
+            background: "rgba(15, 23, 42, 0.4)",
             backdropFilter: "blur(16px)",
+            WebkitBackdropFilter: "blur(16px)",
             display: "flex",
             flexDirection: "column",
             justifyContent: "flex-end",
@@ -176,14 +177,14 @@ export default function NativeNavBar() {
         >
           <div
             style={{
-              background: "linear-gradient(180deg, #071530 0%, #030a1a 100%)",
-              borderTop: "1px solid rgba(56, 189, 248, 0.3)",
+              background: "linear-gradient(180deg, #f0f7ff 0%, #ffffff 100%)",
+              borderTop: "1px solid rgba(147, 197, 253, 0.6)",
               borderTopLeftRadius: "24px",
               borderTopRightRadius: "24px",
               maxHeight: "85vh",
               display: "flex",
               flexDirection: "column",
-              boxShadow: "0 -10px 40px rgba(0,0,0,0.8)",
+              boxShadow: "0 -10px 40px rgba(59, 130, 246, 0.2)",
               overflow: "hidden",
             }}
             onClick={(e) => e.stopPropagation()}
@@ -192,7 +193,7 @@ export default function NativeNavBar() {
             <div
               style={{
                 padding: "16px 20px",
-                borderBottom: "1px solid rgba(255, 255, 255, 0.08)",
+                borderBottom: "1px solid rgba(147, 197, 253, 0.3)",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "space-between",
@@ -204,19 +205,20 @@ export default function NativeNavBar() {
                     width: "36px",
                     height: "36px",
                     borderRadius: "10px",
-                    background: "rgba(56, 189, 248, 0.15)",
+                    background: "rgba(219, 234, 254, 0.8)",
+                    border: "1px solid rgba(147, 197, 253, 0.5)",
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
                   }}
                 >
-                  <Bell size={18} color="#38bdf8" />
+                  <Bell size={18} color="#2563eb" />
                 </div>
                 <div>
-                  <h3 style={{ margin: 0, fontSize: "16px", fontWeight: "800", color: "#f0f8ff" }}>
+                  <h3 style={{ margin: 0, fontSize: "16px", fontWeight: "800", color: "#0f172a" }}>
                     Android Notification Listener
                   </h3>
-                  <div style={{ fontSize: "11px", color: "rgba(255, 255, 255, 0.5)" }}>
+                  <div style={{ fontSize: "11px", color: "#64748b" }}>
                     {notifications.length} notifikasi terdeteksi
                   </div>
                 </div>
@@ -229,13 +231,13 @@ export default function NativeNavBar() {
                   style={iconBtnStyle}
                   title="Refresh"
                 >
-                  <RefreshCw size={14} className={loading ? "animate-spin" : ""} />
+                  <RefreshCw size={14} className={loading ? "animate-spin" : ""} color="#1e40af" />
                 </button>
                 {notifications.length > 0 && (
                   <button
                     type="button"
                     onClick={handleClear}
-                    style={{ ...iconBtnStyle, color: "#fca5a5" }}
+                    style={{ ...iconBtnStyle, color: "#dc2626" }}
                     title="Clear All"
                   >
                     <Trash2 size={14} />
@@ -247,7 +249,7 @@ export default function NativeNavBar() {
                   style={iconBtnStyle}
                   title="Close"
                 >
-                  <X size={16} />
+                  <X size={16} color="#64748b" />
                 </button>
               </div>
             </div>
@@ -258,8 +260,8 @@ export default function NativeNavBar() {
                 margin: "14px 20px 0 20px",
                 padding: "12px 14px",
                 borderRadius: "12px",
-                background: accessGranted ? "rgba(34, 197, 94, 0.1)" : "rgba(234, 179, 8, 0.12)",
-                border: `1px solid ${accessGranted ? "rgba(34, 197, 94, 0.3)" : "rgba(234, 179, 8, 0.35)"}`,
+                background: accessGranted ? "rgba(220, 252, 231, 0.8)" : "rgba(254, 243, 199, 0.8)",
+                border: `1px solid ${accessGranted ? "rgba(134, 239, 172, 0.8)" : "rgba(252, 211, 77, 0.8)"}`,
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "space-between",
@@ -268,15 +270,15 @@ export default function NativeNavBar() {
             >
               <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
                 {accessGranted ? (
-                  <ShieldCheck size={18} color="#4ade80" />
+                  <ShieldCheck size={18} color="#16a34a" />
                 ) : (
-                  <ShieldAlert size={18} color="#facc15" />
+                  <ShieldAlert size={18} color="#d97706" />
                 )}
                 <div>
-                  <div style={{ fontSize: "12px", fontWeight: "700", color: accessGranted ? "#86efac" : "#fde047" }}>
+                  <div style={{ fontSize: "12px", fontWeight: "700", color: accessGranted ? "#15803d" : "#92400e" }}>
                     {accessGranted ? "Notification Access Aktif" : "Izin Notification Access Belum Diberikan"}
                   </div>
-                  <div style={{ fontSize: "11px", color: "rgba(255, 255, 255, 0.5)" }}>
+                  <div style={{ fontSize: "11px", color: accessGranted ? "#166534" : "#78350f" }}>
                     {accessGranted
                       ? "Aplikasi siap mendengarkan notifikasi secara real-time."
                       : "Buka pengaturan untuk mengizinkan aplikasi membaca notifikasi."}
@@ -289,7 +291,7 @@ export default function NativeNavBar() {
                   type="button"
                   onClick={handleOpenSettings}
                   style={{
-                    background: "linear-gradient(135deg, #0ea5e9, #0284c7)",
+                    background: "linear-gradient(135deg, #3b82f6, #2563eb)",
                     color: "#ffffff",
                     border: "none",
                     padding: "6px 12px",
@@ -301,6 +303,7 @@ export default function NativeNavBar() {
                     alignItems: "center",
                     gap: "4px",
                     whiteSpace: "nowrap",
+                    boxShadow: "0 2px 8px rgba(59, 130, 246, 0.3)",
                   }}
                 >
                   <ExternalLink size={12} />
@@ -324,11 +327,11 @@ export default function NativeNavBar() {
                   style={{
                     padding: "36px 16px",
                     textAlign: "center",
-                    color: "rgba(255, 255, 255, 0.4)",
+                    color: "#64748b",
                     fontSize: "12.5px",
                   }}
                 >
-                  <Smartphone size={32} color="rgba(255, 255, 255, 0.2)" style={{ margin: "0 auto 10px" }} />
+                  <Smartphone size={32} color="#94a3b8" style={{ margin: "0 auto 10px" }} />
                   Belum ada notifikasi baru yang diterima.
                 </div>
               ) : (
@@ -336,13 +339,14 @@ export default function NativeNavBar() {
                   <div
                     key={`${n.key || n.id}-${i}`}
                     style={{
-                      background: "rgba(2, 8, 24, 0.75)",
-                      border: "1px solid rgba(255, 255, 255, 0.08)",
+                      background: "rgba(255, 255, 255, 0.8)",
+                      border: "1px solid rgba(147, 197, 253, 0.4)",
                       borderRadius: "12px",
                       padding: "12px 14px",
                       display: "flex",
                       flexDirection: "column",
                       gap: "4px",
+                      boxShadow: "0 2px 8px rgba(59, 130, 246, 0.05)",
                     }}
                   >
                     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
@@ -350,27 +354,28 @@ export default function NativeNavBar() {
                         style={{
                           fontSize: "10.5px",
                           fontWeight: "800",
-                          color: "#38bdf8",
-                          background: "rgba(56, 189, 248, 0.12)",
+                          color: "#1e40af",
+                          background: "rgba(219, 234, 254, 0.7)",
+                          border: "1px solid rgba(147, 197, 253, 0.5)",
                           padding: "2px 6px",
                           borderRadius: "4px",
                         }}
                       >
                         {n.appName || n.packageName}
                       </span>
-                      <span style={{ fontSize: "10px", color: "rgba(255, 255, 255, 0.4)" }}>
+                      <span style={{ fontSize: "10px", color: "#94a3b8" }}>
                         {new Date(n.postTime || n.timestamp).toLocaleTimeString("id-ID")}
                       </span>
                     </div>
 
                     {n.title && (
-                      <div style={{ fontSize: "13px", fontWeight: "700", color: "#f8fafc", marginTop: "2px" }}>
+                      <div style={{ fontSize: "13px", fontWeight: "700", color: "#0f172a", marginTop: "2px" }}>
                         {n.title}
                       </div>
                     )}
 
                     {(n.text || n.bigText) && (
-                      <div style={{ fontSize: "12px", color: "rgba(255, 255, 255, 0.75)", lineHeight: 1.5 }}>
+                      <div style={{ fontSize: "12px", color: "#334155", lineHeight: 1.5 }}>
                         {n.bigText || n.text}
                       </div>
                     )}
@@ -401,13 +406,13 @@ const navBtnStyle: React.CSSProperties = {
 const navLabelStyle: React.CSSProperties = {
   fontSize: "10px",
   fontWeight: "700",
-  color: "rgba(255, 255, 255, 0.6)",
+  color: "#1e40af",
 };
 
 const iconBtnStyle: React.CSSProperties = {
-  background: "rgba(255, 255, 255, 0.06)",
-  border: "1px solid rgba(255, 255, 255, 0.12)",
-  color: "#ffffff",
+  background: "rgba(219, 234, 254, 0.6)",
+  border: "1px solid rgba(147, 197, 253, 0.5)",
+  color: "#1e40af",
   borderRadius: "8px",
   width: "32px",
   height: "32px",

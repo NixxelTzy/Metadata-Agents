@@ -127,7 +127,7 @@ export default function PremiumPricingModal({ isOpen: controlledIsOpen, onClose,
         position: "fixed",
         inset: 0,
         zIndex: 9999,
-        background: "rgba(0, 5, 16, 0.82)",
+        background: "rgba(15, 23, 42, 0.45)",
         backdropFilter: "blur(20px)",
         WebkitBackdropFilter: "blur(20px)",
         display: "flex",
@@ -158,8 +158,8 @@ export default function PremiumPricingModal({ isOpen: controlledIsOpen, onClose,
         .pricing-card {
           display: flex;
           flex-direction: column;
-          background: rgba(14, 28, 54, 0.65);
-          border: 1px solid rgba(149, 199, 255, 0.15);
+          background: rgba(255, 255, 255, 0.8);
+          border: 1px solid rgba(147, 197, 253, 0.45);
           border-radius: 18px;
           padding: 22px 20px;
           position: relative;
@@ -168,21 +168,23 @@ export default function PremiumPricingModal({ isOpen: controlledIsOpen, onClose,
           flex: 1;
           min-width: 260px;
           backdrop-filter: blur(12px);
+          -webkit-backdrop-filter: blur(12px);
+          box-shadow: 0 4px 16px rgba(59, 130, 246, 0.08);
         }
         .pricing-card:hover {
           transform: translateY(-5px);
-          border-color: rgba(56, 189, 248, 0.45);
-          background: rgba(14, 28, 54, 0.9);
-          box-shadow: 0 16px 36px rgba(0, 0, 0, 0.5), 0 0 24px rgba(56, 189, 248, 0.2);
+          border-color: rgba(59, 130, 246, 0.6);
+          background: rgba(255, 255, 255, 0.95);
+          box-shadow: 0 16px 36px rgba(59, 130, 246, 0.16);
         }
         .pricing-card--popular {
-          border-color: rgba(129, 140, 248, 0.5);
-          background: linear-gradient(175deg, rgba(30, 41, 88, 0.85) 0%, rgba(14, 23, 54, 0.75) 100%);
-          box-shadow: 0 10px 30px rgba(129, 140, 248, 0.2);
+          border-color: rgba(129, 140, 248, 0.6);
+          background: linear-gradient(175deg, rgba(238, 242, 255, 0.9) 0%, rgba(255, 255, 255, 0.9) 100%);
+          box-shadow: 0 10px 30px rgba(129, 140, 248, 0.15);
         }
         .pricing-card--popular:hover {
-          border-color: rgba(129, 140, 248, 0.8);
-          box-shadow: 0 20px 48px rgba(0, 0, 0, 0.6), 0 0 32px rgba(129, 140, 248, 0.35);
+          border-color: rgba(99, 102, 241, 0.8);
+          box-shadow: 0 20px 48px rgba(99, 102, 241, 0.22);
         }
 
         .buy-btn {
@@ -202,14 +204,14 @@ export default function PremiumPricingModal({ isOpen: controlledIsOpen, onClose,
           margin: 16px 0;
         }
         .buy-btn--default {
-          background: linear-gradient(135deg, #0ea5e9, #0284c7);
+          background: linear-gradient(135deg, #3b82f6, #2563eb);
           color: #ffffff;
-          box-shadow: 0 4px 16px rgba(14, 165, 233, 0.35);
+          box-shadow: 0 4px 16px rgba(59, 130, 246, 0.35);
         }
         .buy-btn--default:hover {
           transform: translateY(-2px);
-          box-shadow: 0 8px 24px rgba(14, 165, 233, 0.55);
-          background: linear-gradient(135deg, #38bdf8, #0ea5e9);
+          box-shadow: 0 8px 24px rgba(59, 130, 246, 0.45);
+          background: linear-gradient(135deg, #2563eb, #1d4ed8);
         }
         .buy-btn--popular {
           background: linear-gradient(135deg, #6366f1, #4f46e5);
@@ -219,7 +221,7 @@ export default function PremiumPricingModal({ isOpen: controlledIsOpen, onClose,
         .buy-btn--popular:hover {
           transform: translateY(-2px);
           box-shadow: 0 8px 28px rgba(99, 102, 241, 0.65);
-          background: linear-gradient(135deg, #818cf8, #6366f1);
+          background: linear-gradient(135deg, #4f46e5, #4338ca);
         }
         .buy-btn--yearly {
           background: linear-gradient(135deg, #10b981, #059669);
@@ -229,7 +231,7 @@ export default function PremiumPricingModal({ isOpen: controlledIsOpen, onClose,
         .buy-btn--yearly:hover {
           transform: translateY(-2px);
           box-shadow: 0 8px 28px rgba(16, 185, 129, 0.55);
-          background: linear-gradient(135deg, #34d399, #10b981);
+          background: linear-gradient(135deg, #059669, #047857);
         }
 
         .close-btn {
@@ -239,20 +241,20 @@ export default function PremiumPricingModal({ isOpen: controlledIsOpen, onClose,
           width: 36px;
           height: 36px;
           border-radius: 10px;
-          background: rgba(255, 255, 255, 0.06);
-          border: 1px solid rgba(255, 255, 255, 0.12);
+          background: rgba(219, 234, 254, 0.6);
+          border: 1px solid rgba(147, 197, 253, 0.5);
           display: flex;
           align-items: center;
           justify-content: center;
-          color: rgba(255, 255, 255, 0.6);
+          color: #1e40af;
           cursor: pointer;
           transition: all 0.16s;
           font-family: inherit;
         }
         .close-btn:hover {
-          background: rgba(239, 68, 68, 0.18);
-          border-color: rgba(239, 68, 68, 0.4);
-          color: #fca5a5;
+          background: rgba(254, 226, 226, 0.8);
+          border-color: rgba(252, 165, 165, 0.8);
+          color: #dc2626;
           transform: rotate(90deg);
         }
 
@@ -272,10 +274,10 @@ export default function PremiumPricingModal({ isOpen: controlledIsOpen, onClose,
           position: "relative",
           maxWidth: "980px",
           width: "100%",
-          background: "linear-gradient(165deg, rgba(6, 18, 42, 0.95) 0%, rgba(2, 8, 24, 0.98) 100%)",
-          border: "1px solid rgba(56, 189, 248, 0.22)",
+          background: "linear-gradient(165deg, rgba(255, 255, 255, 0.95) 0%, rgba(240, 247, 255, 0.98) 100%)",
+          border: "1px solid rgba(147, 197, 253, 0.55)",
           borderRadius: "24px",
-          boxShadow: "0 25px 70px rgba(0, 0, 0, 0.7), 0 0 40px rgba(14, 165, 233, 0.15)",
+          boxShadow: "0 25px 70px rgba(59, 130, 246, 0.2), 0 0 40px rgba(59, 130, 246, 0.1)",
           padding: "clamp(24px, 4vw, 36px)",
           animation: "modalCardIn 0.3s cubic-bezier(0.16, 1, 0.3, 1)",
           maxHeight: "92vh",
@@ -302,9 +304,9 @@ export default function PremiumPricingModal({ isOpen: controlledIsOpen, onClose,
               gap: "6px",
               padding: "4px 14px",
               borderRadius: "999px",
-              background: "rgba(56, 189, 248, 0.12)",
-              border: "1px solid rgba(56, 189, 248, 0.3)",
-              color: "#38bdf8",
+              background: "rgba(219, 234, 254, 0.7)",
+              border: "1px solid rgba(147, 197, 253, 0.5)",
+              color: "#1e40af",
               fontSize: "11px",
               fontWeight: 800,
               textTransform: "uppercase",
@@ -320,7 +322,7 @@ export default function PremiumPricingModal({ isOpen: controlledIsOpen, onClose,
             style={{
               fontSize: "clamp(20px, 3.5vw, 28px)",
               fontWeight: 900,
-              color: "#f0f8ff",
+              color: "#0f172a",
               letterSpacing: "-0.02em",
               lineHeight: 1.2,
               marginBottom: "8px",
@@ -332,13 +334,13 @@ export default function PremiumPricingModal({ isOpen: controlledIsOpen, onClose,
           <p
             style={{
               fontSize: "13px",
-              color: "rgba(255, 255, 255, 0.6)",
+              color: "#64748b",
               maxWidth: "560px",
               margin: "0 auto",
               lineHeight: 1.6,
             }}
           >
-            User biasa dibatasi 100k token/hari. Dapatkan <strong style={{ color: "#38bdf8" }}>Token AI Unlimited</strong> tanpa batasan kuota untuk seluruh fitur kreator Stock AI Studio.
+            User biasa dibatasi 100k token/hari. Dapatkan <strong style={{ color: "#2563eb" }}>Token AI Unlimited</strong> tanpa batasan kuota untuk seluruh fitur kreator Stock AI Studio.
           </p>
         </div>
 
@@ -371,9 +373,9 @@ export default function PremiumPricingModal({ isOpen: controlledIsOpen, onClose,
                           fontWeight: 800,
                           padding: "3px 9px",
                           borderRadius: "999px",
-                          background: isPop ? "rgba(129, 140, 248, 0.25)" : "rgba(52, 211, 153, 0.25)",
-                          border: `1px solid ${isPop ? "rgba(129, 140, 248, 0.5)" : "rgba(52, 211, 153, 0.5)"}`,
-                          color: isPop ? "#c7d2fe" : "#a7f3d0",
+                          background: isPop ? "rgba(224, 231, 255, 0.9)" : "rgba(209, 250, 229, 0.9)",
+                          border: `1px solid ${isPop ? "rgba(129, 140, 248, 0.6)" : "rgba(52, 211, 153, 0.6)"}`,
+                          color: isPop ? "#3730a3" : "#065f46",
                           textTransform: "uppercase",
                           letterSpacing: "0.05em",
                         }}
@@ -387,15 +389,15 @@ export default function PremiumPricingModal({ isOpen: controlledIsOpen, onClose,
                     {plan.duration}
                   </div>
 
-                  <div style={{ fontSize: "18px", fontWeight: 800, color: "#f0f8ff", marginBottom: "8px" }}>
+                  <div style={{ fontSize: "18px", fontWeight: 800, color: "#0f172a", marginBottom: "8px" }}>
                     {plan.title}
                   </div>
 
                   <div style={{ display: "flex", alignItems: "baseline", gap: "4px", marginBottom: "4px" }}>
-                    <span style={{ fontSize: "28px", fontWeight: 900, color: "#ffffff", letterSpacing: "-0.03em" }}>
+                    <span style={{ fontSize: "28px", fontWeight: 900, color: "#0f172a", letterSpacing: "-0.03em" }}>
                       {plan.price}
                     </span>
-                    <span style={{ fontSize: "12px", color: "rgba(255, 255, 255, 0.45)", fontWeight: 600 }}>
+                    <span style={{ fontSize: "12px", color: "#64748b", fontWeight: 600 }}>
                       {plan.periodText}
                     </span>
                   </div>
@@ -413,13 +415,13 @@ export default function PremiumPricingModal({ isOpen: controlledIsOpen, onClose,
                 </button>
 
                 {/* ── BAGIAN BAWAH: Keuntungan ── */}
-                <div style={{ marginTop: "4px", paddingTop: "14px", borderTop: "1px solid rgba(255, 255, 255, 0.08)" }}>
-                  <div style={{ fontSize: "11px", fontWeight: 800, color: "rgba(255, 255, 255, 0.5)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "10px" }}>
+                <div style={{ marginTop: "4px", paddingTop: "14px", borderTop: "1px solid rgba(147, 197, 253, 0.3)" }}>
+                  <div style={{ fontSize: "11px", fontWeight: 800, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "10px" }}>
                     Keuntungan Paket:
                   </div>
                   <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: "8px" }}>
                     {plan.benefits.map((b, i) => (
-                      <li key={i} style={{ display: "flex", alignItems: "flex-start", gap: "8px", fontSize: "12px", color: "#e2e8f0", lineHeight: 1.45 }}>
+                      <li key={i} style={{ display: "flex", alignItems: "flex-start", gap: "8px", fontSize: "12px", color: "#334155", lineHeight: 1.45 }}>
                         <span
                           style={{
                             width: "16px",
@@ -451,8 +453,8 @@ export default function PremiumPricingModal({ isOpen: controlledIsOpen, onClose,
           <div
             style={{
               padding: "20px 24px",
-              background: "rgba(14, 165, 233, 0.08)",
-              border: "1px solid rgba(56, 189, 248, 0.3)",
+              background: "rgba(219, 234, 254, 0.7)",
+              border: "1px solid rgba(147, 197, 253, 0.6)",
               borderRadius: "16px",
               marginBottom: "20px",
               animation: "modalCardIn 0.25s ease",
@@ -460,10 +462,10 @@ export default function PremiumPricingModal({ isOpen: controlledIsOpen, onClose,
           >
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "12px", flexWrap: "wrap", gap: "10px" }}>
               <div>
-                <div style={{ fontSize: "15px", fontWeight: 800, color: "#f0f8ff" }}>
+                <div style={{ fontSize: "15px", fontWeight: 800, color: "#0f172a" }}>
                   Konfirmasi Pembelian: {selectedPlan.title} ({selectedPlan.price})
                 </div>
-                <div style={{ fontSize: "12px", color: "rgba(255, 255, 255, 0.6)", marginTop: "2px" }}>
+                <div style={{ fontSize: "12px", color: "#64748b", marginTop: "2px" }}>
                   Aktivasi instan melalui WhatsApp Admin atau QRIS / Transfer Bank
                 </div>
               </div>
@@ -473,7 +475,7 @@ export default function PremiumPricingModal({ isOpen: controlledIsOpen, onClose,
                 style={{
                   background: "transparent",
                   border: "none",
-                  color: "rgba(255, 255, 255, 0.5)",
+                  color: "#2563eb",
                   cursor: "pointer",
                   fontSize: "12px",
                   fontWeight: 700,
@@ -517,10 +519,10 @@ export default function PremiumPricingModal({ isOpen: controlledIsOpen, onClose,
                 }}
                 style={{
                   padding: "12px 18px",
-                  background: "rgba(255, 255, 255, 0.08)",
-                  border: "1px solid rgba(255, 255, 255, 0.2)",
+                  background: "rgba(255, 255, 255, 0.8)",
+                  border: "1px solid rgba(147, 197, 253, 0.5)",
                   borderRadius: "10px",
-                  color: "#f0f8ff",
+                  color: "#1e40af",
                   fontWeight: 700,
                   fontSize: "13px",
                   cursor: "pointer",
@@ -543,15 +545,15 @@ export default function PremiumPricingModal({ isOpen: controlledIsOpen, onClose,
             alignItems: "center",
             justifyContent: "space-between",
             padding: "14px 18px",
-            background: "rgba(255, 255, 255, 0.03)",
-            border: "1px solid rgba(255, 255, 255, 0.07)",
+            background: "rgba(255, 255, 255, 0.6)",
+            border: "1px solid rgba(147, 197, 253, 0.4)",
             borderRadius: "12px",
             flexWrap: "wrap",
             gap: "10px",
           }}
         >
-          <div style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "11.5px", color: "rgba(255, 255, 255, 0.5)" }}>
-            <Shield size={14} color="#38bdf8" />
+          <div style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "11.5px", color: "#64748b" }}>
+            <Shield size={14} color="#2563eb" />
             <span>Garansi aktivasi instan 100% aman langsung aktif di akun Anda.</span>
           </div>
 
@@ -561,7 +563,7 @@ export default function PremiumPricingModal({ isOpen: controlledIsOpen, onClose,
             style={{
               background: "transparent",
               border: "none",
-              color: "#38bdf8",
+              color: "#2563eb",
               fontSize: "11.5px",
               fontWeight: 700,
               cursor: "pointer",

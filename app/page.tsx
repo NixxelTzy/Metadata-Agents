@@ -197,7 +197,7 @@ export default function Home() {
         /* ══ ROOT ══ */
         .app-root {
           min-height: 100dvh;
-          background: #020b18;
+          background: linear-gradient(135deg, #dbeafe 0%, #eff6ff 30%, #e0f2fe 60%, #f0f9ff 100%);
           display: flex;
           flex-direction: column;
           position: relative;
@@ -208,9 +208,9 @@ export default function Home() {
           content: '';
           position: fixed; inset: 0; pointer-events: none; z-index: 0;
           background:
-            radial-gradient(ellipse 70% 50% at 15% 0%, rgba(14,165,233,0.09) 0%, transparent 65%),
-            radial-gradient(ellipse 50% 40% at 85% 100%, rgba(56,189,248,0.06) 0%, transparent 60%),
-            radial-gradient(ellipse 40% 60% at 50% 50%, rgba(2,6,23,0.8) 0%, transparent 80%);
+            radial-gradient(ellipse 70% 50% at 15% 0%, rgba(59,130,246,0.08) 0%, transparent 65%),
+            radial-gradient(ellipse 50% 40% at 85% 100%, rgba(96,165,250,0.08) 0%, transparent 60%),
+            radial-gradient(ellipse 40% 60% at 50% 50%, rgba(219,234,254,0.3) 0%, transparent 80%);
         }
 
         /* ══ HEADER ══ */
@@ -218,35 +218,35 @@ export default function Home() {
           position: fixed;
           top: 0; left: 0; right: 0; z-index: 900;
           height: 56px;
-          background: rgba(2, 8, 20, 0.9);
-          backdrop-filter: blur(24px) saturate(180%);
-          -webkit-backdrop-filter: blur(24px) saturate(180%);
-          border-bottom: 1px solid rgba(56, 189, 248, 0.1);
+          background: rgba(255, 255, 255, 0.8);
+          backdrop-filter: blur(20px) saturate(180%);
+          -webkit-backdrop-filter: blur(20px) saturate(180%);
+          border-bottom: 1px solid rgba(147, 197, 253, 0.45);
           display: flex; align-items: center;
           padding: 0 14px; gap: 10px;
           animation: headerSlide 0.35s cubic-bezier(0.16,1,0.3,1);
-          box-shadow: 0 1px 0 rgba(56,189,248,0.06), 0 4px 24px rgba(0,0,0,0.3);
+          box-shadow: 0 4px 20px rgba(59, 130, 246, 0.08);
         }
 
         /* Back button */
         .hdr-back {
           display: flex; align-items: center; gap: 6px;
           padding: 6px 12px;
-          background: rgba(56, 189, 248, 0.06);
-          border: 1px solid rgba(56, 189, 248, 0.15);
+          background: rgba(219, 234, 254, 0.7);
+          border: 1px solid rgba(147, 197, 253, 0.5);
           border-radius: 9px;
-          color: #7dd3fc;
+          color: #1e40af;
           font-size: 12px; font-weight: 700;
           cursor: pointer; transition: all 0.17s ease;
           white-space: nowrap; flex-shrink: 0;
           font-family: inherit;
         }
         .hdr-back:hover {
-          background: rgba(56, 189, 248, 0.14);
-          border-color: rgba(56, 189, 248, 0.4);
-          color: #bae6fd;
+          background: rgba(191, 219, 254, 0.85);
+          border-color: rgba(59, 130, 246, 0.6);
+          color: #1d4ed8;
           transform: translateX(-2px);
-          box-shadow: 0 0 16px rgba(56,189,248,0.15);
+          box-shadow: 0 2px 12px rgba(59,130,246,0.18);
         }
         .hdr-back:active { transform: translateX(-4px); }
 
@@ -258,17 +258,17 @@ export default function Home() {
         .hdr-platform-icon {
           width: 28px; height: 28px; border-radius: 7px;
           display: flex; align-items: center; justify-content: center;
-          flex-shrink: 0; color: #38bdf8;
-          background: rgba(56, 189, 248, 0.12);
-          border: 1px solid rgba(56, 189, 248, 0.22);
+          flex-shrink: 0; color: #2563eb;
+          background: rgba(219, 234, 254, 0.7);
+          border: 1px solid rgba(147, 197, 253, 0.5);
         }
         .hdr-platform-icon.danger {
-          color: #f87171;
-          background: rgba(239, 68, 68, 0.12);
-          border-color: rgba(239, 68, 68, 0.25);
+          color: #dc2626;
+          background: rgba(254, 226, 226, 0.7);
+          border-color: rgba(252, 165, 165, 0.5);
         }
         .hdr-platform-name {
-          font-size: 13px; font-weight: 700; color: #e2e8f0;
+          font-size: 13px; font-weight: 700; color: #0f172a;
           white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
         }
         .hdr-admin-pill {
@@ -277,10 +277,10 @@ export default function Home() {
           border-radius: 999px; flex-shrink: 0;
         }
         .hdr-admin-pill.danger {
-          background: rgba(239,68,68,0.15); border: 1px solid rgba(239,68,68,0.3); color: #fca5a5;
+          background: rgba(254, 226, 226, 0.7); border: 1px solid rgba(252, 165, 165, 0.5); color: #dc2626;
         }
         .hdr-admin-pill.info {
-          background: rgba(56,189,248,0.1); border: 1px solid rgba(56,189,248,0.25); color: #38bdf8;
+          background: rgba(219, 234, 254, 0.7); border: 1px solid rgba(147, 197, 253, 0.5); color: #1e40af;
         }
 
         /* Brand (dashboard mode) */
@@ -290,13 +290,13 @@ export default function Home() {
         }
         .hdr-logo {
           width: 32px; height: 32px; border-radius: 9px; flex-shrink: 0;
-          background: linear-gradient(135deg, #0ea5e9 0%, #0369a1 100%);
+          background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
           display: flex; align-items: center; justify-content: center;
-          box-shadow: 0 2px 12px rgba(14,165,233,0.35), inset 0 1px 0 rgba(255,255,255,0.15);
+          box-shadow: 0 2px 12px rgba(59,130,246,0.35), inset 0 1px 0 rgba(255,255,255,0.3);
         }
         .hdr-brand-text { display: flex; flex-direction: column; }
-        .hdr-brand-name { font-size: 13px; font-weight: 800; color: #f0f8ff; letter-spacing: -0.01em; line-height: 1.2; }
-        .hdr-brand-sub  { font-size: 9px; color: rgba(255,255,255,0.35); line-height: 1; }
+        .hdr-brand-name { font-size: 13px; font-weight: 800; color: #0f172a; letter-spacing: -0.01em; line-height: 1.2; }
+        .hdr-brand-sub  { font-size: 9px; color: #64748b; line-height: 1; }
 
         /* Right controls */
         .hdr-right { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
@@ -304,16 +304,17 @@ export default function Home() {
         .token-pill {
           display: flex; align-items: center; gap: 5px;
           padding: 5px 10px;
-          background: rgba(255,255,255,0.04);
-          border: 1px solid rgba(255,255,255,0.08);
+          background: rgba(219, 234, 254, 0.6);
+          border: 1px solid rgba(147, 197, 253, 0.5);
           border-radius: 999px;
           font-size: 11px; font-weight: 700; font-family: 'JetBrains Mono', 'Fira Code', monospace;
+          color: #1e40af;
           transition: all 0.2s;
           cursor: pointer;
         }
         .token-pill:hover {
-          background: rgba(56, 189, 248, 0.12);
-          border-color: rgba(56, 189, 248, 0.35);
+          background: rgba(191, 219, 254, 0.8);
+          border-color: rgba(59, 130, 246, 0.5);
           transform: translateY(-1px);
         }
         .token-dot {
@@ -323,64 +324,65 @@ export default function Home() {
 
         .avatar-btn {
           width: 32px; height: 32px; border-radius: 9px;
-          background: linear-gradient(135deg, #0ea5e9, #0369a1);
+          background: linear-gradient(135deg, #3b82f6, #2563eb);
           color: #ffffff; font-size: 12px; font-weight: 800;
           border: 2px solid transparent;
           cursor: pointer; display: flex; align-items: center; justify-content: center;
           transition: all 0.17s ease;
-          box-shadow: 0 2px 8px rgba(14,165,233,0.25);
+          box-shadow: 0 2px 8px rgba(59,130,246,0.3);
           font-family: inherit;
         }
-        .avatar-btn:hover { transform: scale(1.05); box-shadow: 0 4px 16px rgba(14,165,233,0.4); }
+        .avatar-btn:hover { transform: scale(1.05); box-shadow: 0 4px 16px rgba(59,130,246,0.45); }
         .avatar-btn.open {
-          border-color: #38bdf8;
-          box-shadow: 0 0 0 3px rgba(56,189,248,0.2), 0 4px 16px rgba(14,165,233,0.4);
+          border-color: #3b82f6;
+          box-shadow: 0 0 0 3px rgba(59,130,246,0.25), 0 4px 16px rgba(59,130,246,0.4);
         }
 
         /* ══ PROFILE DROPDOWN ══ */
         .profile-drop {
           position: fixed; top: 63px; right: 12px; width: 280px;
-          background: rgba(3, 10, 26, 0.97);
+          background: rgba(255, 255, 255, 0.94);
           backdrop-filter: blur(28px) saturate(200%);
           -webkit-backdrop-filter: blur(28px) saturate(200%);
-          border: 1px solid rgba(56, 189, 248, 0.18);
+          border: 1px solid rgba(147, 197, 253, 0.5);
           border-radius: 16px;
-          box-shadow: 0 24px 64px rgba(0,0,0,0.65), 0 0 0 1px rgba(56,189,248,0.05);
+          box-shadow: 0 20px 48px rgba(59, 130, 246, 0.16), 0 1px 3px rgba(0,0,0,0.05);
           animation: dropIn 0.2s cubic-bezier(0.16,1,0.3,1);
           z-index: 2000; overflow: hidden;
         }
         .pd-header {
           padding: 16px 16px 14px;
           display: flex; align-items: center; gap: 12px;
-          border-bottom: 1px solid rgba(255,255,255,0.06);
+          border-bottom: 1px solid rgba(147, 197, 253, 0.3);
         }
         .pd-avatar {
           width: 40px; height: 40px; border-radius: 11px;
-          background: linear-gradient(135deg, #0ea5e9, #0369a1);
+          background: linear-gradient(135deg, #3b82f6, #2563eb);
           display: flex; align-items: center; justify-content: center;
           font-size: 15px; font-weight: 800; color: #ffffff;
-          box-shadow: 0 4px 14px rgba(14,165,233,0.3); flex-shrink: 0;
+          box-shadow: 0 4px 14px rgba(59,130,246,0.35); flex-shrink: 0;
         }
-        .pd-name  { font-size: 13px; font-weight: 700; color: #f0f8ff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .pd-email { font-size: 10.5px; color: rgba(255,255,255,0.4); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 1px; }
+        .pd-name  { font-size: 13px; font-weight: 700; color: #0f172a; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .pd-email { font-size: 10.5px; color: #64748b; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 1px; }
 
         .pd-tokens {
           padding: 12px 16px;
-          border-bottom: 1px solid rgba(255,255,255,0.05);
+          border-bottom: 1px solid rgba(147, 197, 253, 0.3);
         }
         .pd-tokens-label {
           display: flex; align-items: center; justify-content: space-between;
           margin-bottom: 8px; font-size: 10px;
           font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em;
+          color: #64748b;
         }
 
         .pd-premium-btn {
           width: 100%;
           padding: 10px 14px;
-          background: linear-gradient(135deg, rgba(14,165,233,0.18), rgba(99,102,241,0.18));
-          border: 1px solid rgba(56, 189, 248, 0.3);
+          background: linear-gradient(135deg, rgba(219,234,254,0.7), rgba(254,243,199,0.7));
+          border: 1px solid rgba(245, 158, 11, 0.4);
           border-radius: 10px;
-          color: #bae6fd;
+          color: #92400e;
           font-size: 12px;
           font-weight: 700;
           cursor: pointer;
@@ -393,22 +395,22 @@ export default function Home() {
           font-family: inherit;
         }
         .pd-premium-btn:hover {
-          background: linear-gradient(135deg, rgba(14,165,233,0.32), rgba(99,102,241,0.32));
-          border-color: rgba(56, 189, 248, 0.55);
-          color: #ffffff;
+          background: linear-gradient(135deg, rgba(191,219,254,0.85), rgba(253,230,138,0.85));
+          border-color: rgba(245, 158, 11, 0.6);
+          color: #78350f;
           transform: translateY(-1px);
-          box-shadow: 0 4px 14px rgba(14, 165, 233, 0.25);
+          box-shadow: 0 4px 14px rgba(245, 158, 11, 0.2);
         }
 
         .pd-logout {
           width: 100%; padding: 12px 16px;
           background: transparent; border: none;
-          color: rgba(248, 113, 113, 0.8); font-size: 12.5px; font-weight: 700;
+          color: #dc2626; font-size: 12.5px; font-weight: 700;
           cursor: pointer; display: flex; align-items: center;
           justify-content: center; gap: 7px;
           transition: all 0.15s; font-family: inherit;
         }
-        .pd-logout:hover { background: rgba(239,68,68,0.08); color: #f87171; }
+        .pd-logout:hover { background: rgba(254,226,226,0.6); color: #b91c1c; }
 
         /* ══ MAIN CONTENT ══ */
         .app-main {
