@@ -5,7 +5,7 @@
  *
  * Perbedaan dari lib/groq.ts (umum):
  *   - Membaca API key dari GROQ_API_KEY_RISET (bukan GROQ_API_KEY_1..10)
- *   - Model yang dipakai: llama-3.3-70b-versatile (teks only, bukan vision)
+ *   - Model yang dipakai: openai/gpt-oss-120b (teks only, bukan vision)
  *   - Implements AiClient interface dari RESEARCH_ENGINE & RESEARCH_ENGINE_DEEP
  *   - Retry logic + temperature control sesuai kebutuhan research engine
  *
@@ -22,12 +22,10 @@ import { getGroqRisetApiKey } from "@/lib/config";
 const GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions";
 
 /**
- * Model untuk riset — dibaca dari env variable MODEL_AI.
- * Set MODEL_AI=llama-3.3-70b-versatile di .env.local dan Vercel.
- * Fallback ke llama-3.3-70b-versatile jika env tidak ada.
+ * Model untuk riset: openai/gpt-oss-120b
  */
-const RISET_MODEL = process.env.MODEL_AI ?? "llama-3.3-70b-versatile";
-const RISET_FALLBACK_MODEL = process.env.MODEL_AI ?? "llama-3.3-70b-versatile";
+const RISET_MODEL = "openai/gpt-oss-120b";
+const RISET_FALLBACK_MODEL = "openai/gpt-oss-120b";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 

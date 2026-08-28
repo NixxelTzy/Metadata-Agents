@@ -55,7 +55,7 @@ async function groqChat(messages: { role: "system" | "user" | "assistant"; conte
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      model: process.env.MODEL_AI ?? "llama-3.3-70b-versatile",
+      model: "openai/gpt-oss-120b",
       messages,
       temperature: 0.1,       // low temp for consistent security decisions
       max_tokens: 1024,
