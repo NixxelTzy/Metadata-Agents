@@ -61,6 +61,11 @@ export default function NativeNavBar() {
     setNotifications([]);
   };
 
+  // Only render on native Capacitor Android platform
+  if (!isNative) {
+    return null;
+  }
+
   return (
     <>
       {/* ── NATIVE / MOBILE BOTTOM NAVIGATION BAR ── */}

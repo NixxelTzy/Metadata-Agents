@@ -399,21 +399,21 @@ export default function ImageUploader({ onTokensUpdated }: Props = {}) {
     <div style={{ maxWidth: 1060, margin: "0 auto", padding: "24px 20px 60px", fontFamily: "var(--font)" }}>
       {/* ── Hero Header ── */}
       <div style={{ marginBottom: 28 }}>
-        <div style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "4px 10px", background: "rgba(14,165,233,0.12)", border: "1px solid rgba(14,165,233,0.25)", borderRadius: 999, fontSize: 11, fontWeight: 700, color: "#38bdf8", marginBottom: 12 }}>
-          <Sparkles size={13} />
+        <div style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "4px 12px", background: "rgba(219, 234, 254, 0.8)", border: "1px solid rgba(147, 197, 253, 0.6)", borderRadius: 999, fontSize: 11, fontWeight: 800, color: "#1e40af", marginBottom: 12 }}>
+          <Sparkles size={13} color="#2563eb" />
           <span>AI Vision Multimodal Analysis</span>
         </div>
-        <h1 style={{ fontSize: "clamp(22px, 3.5vw, 30px)", fontWeight: 800, color: "#f0f8ff", letterSpacing: "-0.02em", marginBottom: 8 }}>
+        <h1 style={{ fontSize: "clamp(22px, 3.5vw, 30px)", fontWeight: 900, color: "#0f172a", letterSpacing: "-0.02em", marginBottom: 8 }}>
           Stock AI Metadata Generator
         </h1>
-        <p style={{ fontSize: 13, color: "rgba(255,255,255,0.5)", lineHeight: 1.6, maxWidth: 640 }}>
+        <p style={{ fontSize: 13.5, color: "#475569", lineHeight: 1.6, maxWidth: 680, fontWeight: 500 }}>
           Upload foto atau video, AI otomatis membaca konteks visual dan menghasilkan Judul SEO, Keywords komprehensif, serta kategori yang siap diekspor ke format CSV.
         </p>
       </div>
 
       {/* ── Platform Selector Cards ── */}
       <div style={{ marginBottom: 24 }}>
-        <div style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", color: "rgba(255,255,255,0.4)", marginBottom: 10 }}>
+        <div style={{ fontSize: 11, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.08em", color: "#1e40af", marginBottom: 10 }}>
           Pilih Target Platform
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 12 }}>
@@ -423,10 +423,12 @@ export default function ImageUploader({ onTokensUpdated }: Props = {}) {
             onClick={() => { setPlatform("adobe_stock"); setResults([]); }}
             style={{
               padding: "16px 18px",
-              borderRadius: 14,
-              border: platform === "adobe_stock" ? "1.5px solid #38bdf8" : "1px solid rgba(149,199,255,0.15)",
-              background: platform === "adobe_stock" ? "rgba(14,165,233,0.18)" : "rgba(149,199,255,0.04)",
-              boxShadow: platform === "adobe_stock" ? "0 4px 20px rgba(14,165,233,0.25), inset 0 0 0 1px rgba(56,189,248,0.3)" : "none",
+              borderRadius: 16,
+              border: platform === "adobe_stock" ? "2px solid #2563eb" : "1px solid rgba(147, 197, 253, 0.45)",
+              background: platform === "adobe_stock" ? "rgba(219, 234, 254, 0.85)" : "rgba(255, 255, 255, 0.75)",
+              backdropFilter: "blur(16px)",
+              WebkitBackdropFilter: "blur(16px)",
+              boxShadow: platform === "adobe_stock" ? "0 8px 24px rgba(37, 99, 235, 0.18)" : "0 2px 10px rgba(59, 130, 246, 0.05)",
               display: "flex",
               alignItems: "center",
               justifyContent: "space-between",
@@ -436,15 +438,15 @@ export default function ImageUploader({ onTokensUpdated }: Props = {}) {
             }}
           >
             <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-              <div style={{ width: 38, height: 38, borderRadius: 10, background: "linear-gradient(135deg, #0ea5e9, #0284c7)", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontWeight: 900, fontSize: 13, boxShadow: "0 0 12px rgba(56,189,248,0.3)" }}>
+              <div style={{ width: 40, height: 40, borderRadius: 12, background: "linear-gradient(135deg, #3b82f6, #1d4ed8)", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontWeight: 900, fontSize: 14, boxShadow: "0 4px 12px rgba(37,99,235,0.3)" }}>
                 As
               </div>
               <div>
-                <div style={{ fontSize: 13, fontWeight: 700, color: "#f0f8ff" }}>Adobe Stock</div>
-                <div style={{ fontSize: 11, color: "rgba(255,255,255,0.45)", marginTop: 2 }}>Title + 49 Keywords</div>
+                <div style={{ fontSize: 14, fontWeight: 800, color: "#0f172a" }}>Adobe Stock</div>
+                <div style={{ fontSize: 11.5, color: "#64748b", marginTop: 2, fontWeight: 600 }}>Title + 49 Keywords</div>
               </div>
             </div>
-            {platform === "adobe_stock" && <CheckCircle2 size={18} color="#38bdf8" />}
+            {platform === "adobe_stock" && <CheckCircle2 size={20} color="#2563eb" />}
           </button>
 
           {/* Shutterstock */}
@@ -453,10 +455,12 @@ export default function ImageUploader({ onTokensUpdated }: Props = {}) {
             onClick={() => { setPlatform("shutterstock"); setResults([]); }}
             style={{
               padding: "16px 18px",
-              borderRadius: 14,
-              border: platform === "shutterstock" ? "1.5px solid #38bdf8" : "1px solid rgba(149,199,255,0.15)",
-              background: platform === "shutterstock" ? "rgba(14,165,233,0.18)" : "rgba(149,199,255,0.04)",
-              boxShadow: platform === "shutterstock" ? "0 4px 20px rgba(14,165,233,0.25), inset 0 0 0 1px rgba(56,189,248,0.3)" : "none",
+              borderRadius: 16,
+              border: platform === "shutterstock" ? "2px solid #2563eb" : "1px solid rgba(147, 197, 253, 0.45)",
+              background: platform === "shutterstock" ? "rgba(219, 234, 254, 0.85)" : "rgba(255, 255, 255, 0.75)",
+              backdropFilter: "blur(16px)",
+              WebkitBackdropFilter: "blur(16px)",
+              boxShadow: platform === "shutterstock" ? "0 8px 24px rgba(37, 99, 235, 0.18)" : "0 2px 10px rgba(59, 130, 246, 0.05)",
               display: "flex",
               alignItems: "center",
               justifyContent: "space-between",
@@ -466,15 +470,15 @@ export default function ImageUploader({ onTokensUpdated }: Props = {}) {
             }}
           >
             <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-              <div style={{ width: 38, height: 38, borderRadius: 10, background: "linear-gradient(135deg, #0ea5e9, #0284c7)", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontWeight: 900, fontSize: 13, boxShadow: "0 0 12px rgba(56,189,248,0.3)" }}>
+              <div style={{ width: 40, height: 40, borderRadius: 12, background: "linear-gradient(135deg, #ef4444, #b91c1c)", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontWeight: 900, fontSize: 14, boxShadow: "0 4px 12px rgba(239,68,68,0.3)" }}>
                 Ss
               </div>
               <div>
-                <div style={{ fontSize: 13, fontWeight: 700, color: "#f0f8ff" }}>Shutterstock</div>
-                <div style={{ fontSize: 11, color: "rgba(255,255,255,0.45)", marginTop: 2 }}>50 Keywords + 2 Kategori</div>
+                <div style={{ fontSize: 14, fontWeight: 800, color: "#0f172a" }}>Shutterstock</div>
+                <div style={{ fontSize: 11.5, color: "#64748b", marginTop: 2, fontWeight: 600 }}>50 Keywords + 2 Kategori</div>
               </div>
             </div>
-            {platform === "shutterstock" && <CheckCircle2 size={18} color="#38bdf8" />}
+            {platform === "shutterstock" && <CheckCircle2 size={20} color="#2563eb" />}
           </button>
 
           {/* Magnific */}
@@ -483,10 +487,12 @@ export default function ImageUploader({ onTokensUpdated }: Props = {}) {
             onClick={() => { setPlatform("magnific"); setResults([]); }}
             style={{
               padding: "16px 18px",
-              borderRadius: 14,
-              border: platform === "magnific" ? "1.5px solid #38bdf8" : "1px solid rgba(149,199,255,0.15)",
-              background: platform === "magnific" ? "rgba(14,165,233,0.18)" : "rgba(149,199,255,0.04)",
-              boxShadow: platform === "magnific" ? "0 4px 20px rgba(14,165,233,0.25), inset 0 0 0 1px rgba(56,189,248,0.3)" : "none",
+              borderRadius: 16,
+              border: platform === "magnific" ? "2px solid #2563eb" : "1px solid rgba(147, 197, 253, 0.45)",
+              background: platform === "magnific" ? "rgba(219, 234, 254, 0.85)" : "rgba(255, 255, 255, 0.75)",
+              backdropFilter: "blur(16px)",
+              WebkitBackdropFilter: "blur(16px)",
+              boxShadow: platform === "magnific" ? "0 8px 24px rgba(37, 99, 235, 0.18)" : "0 2px 10px rgba(59, 130, 246, 0.05)",
               display: "flex",
               alignItems: "center",
               justifyContent: "space-between",
@@ -496,15 +502,15 @@ export default function ImageUploader({ onTokensUpdated }: Props = {}) {
             }}
           >
             <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-              <div style={{ width: 38, height: 38, borderRadius: 10, background: "linear-gradient(135deg, #0ea5e9, #0284c7)", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontWeight: 900, fontSize: 13, boxShadow: "0 0 12px rgba(56,189,248,0.3)" }}>
+              <div style={{ width: 40, height: 40, borderRadius: 12, background: "linear-gradient(135deg, #8b5cf6, #6d28d9)", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontWeight: 900, fontSize: 14, boxShadow: "0 4px 12px rgba(139,92,246,0.3)" }}>
                 Mg
               </div>
               <div>
-                <div style={{ fontSize: 13, fontWeight: 700, color: "#f0f8ff" }}>Magnific</div>
-                <div style={{ fontSize: 11, color: "rgba(255,255,255,0.45)", marginTop: 2 }}>50 Keywords + AI Prompt</div>
+                <div style={{ fontSize: 14, fontWeight: 800, color: "#0f172a" }}>Magnific</div>
+                <div style={{ fontSize: 11.5, color: "#64748b", marginTop: 2, fontWeight: 600 }}>50 Keywords + AI Prompt</div>
               </div>
             </div>
-            {platform === "magnific" && <CheckCircle2 size={18} color="#38bdf8" />}
+            {platform === "magnific" && <CheckCircle2 size={20} color="#2563eb" />}
           </button>
         </div>
       </div>
@@ -516,12 +522,14 @@ export default function ImageUploader({ onTokensUpdated }: Props = {}) {
         onDrop={handleDrop}
         onClick={() => inputRef.current?.click()}
         style={{
-          border: dragOver ? "2px dashed #38bdf8" : "2px dashed rgba(149,199,255,0.25)",
-          borderRadius: 18,
+          border: dragOver ? "2px dashed #2563eb" : "2px dashed rgba(147, 197, 253, 0.75)",
+          borderRadius: 20,
           padding: "44px 24px",
           textAlign: "center",
-          background: dragOver ? "rgba(14,165,233,0.12)" : "rgba(149,199,255,0.03)",
-          boxShadow: dragOver ? "0 0 30px rgba(56,189,248,0.25)" : "none",
+          background: dragOver ? "rgba(219, 234, 254, 0.8)" : "rgba(255, 255, 255, 0.7)",
+          backdropFilter: "blur(16px)",
+          WebkitBackdropFilter: "blur(16px)",
+          boxShadow: dragOver ? "0 0 30px rgba(59, 130, 246, 0.25)" : "0 4px 20px rgba(59, 130, 246, 0.06)",
           cursor: "pointer",
           transition: "all 0.2s cubic-bezier(0.16,1,0.3,1)",
           marginBottom: 24,
@@ -539,16 +547,16 @@ export default function ImageUploader({ onTokensUpdated }: Props = {}) {
             e.target.value = "";
           }}
         />
-        <div style={{ width: 56, height: 56, borderRadius: 16, background: "linear-gradient(135deg, rgba(14,165,233,0.2), rgba(99,102,241,0.15))", border: "1px solid rgba(14,165,233,0.3)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 16px", color: "#38bdf8" }}>
-          <UploadCloud size={28} />
+        <div style={{ width: 60, height: 60, borderRadius: 18, background: "linear-gradient(135deg, rgba(219, 234, 254, 0.95), rgba(191, 219, 254, 0.8))", border: "1px solid rgba(147, 197, 253, 0.7)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 16px", color: "#2563eb", boxShadow: "0 4px 16px rgba(37,99,235,0.12)" }}>
+          <UploadCloud size={30} />
         </div>
-        <div style={{ fontSize: 15, fontWeight: 700, color: "#f0f8ff", marginBottom: 6 }}>
-          Seret & lepas file foto atau video ke sini
+        <div style={{ fontSize: 16, fontWeight: 800, color: "#0f172a", marginBottom: 6 }}>
+          Seret &amp; lepas file foto atau video ke sini
         </div>
-        <div style={{ fontSize: 12, color: "rgba(255,255,255,0.45)", marginBottom: 12 }}>
+        <div style={{ fontSize: 13, color: "#64748b", marginBottom: 14, fontWeight: 500 }}>
           atau klik untuk memilih dari perangkat Anda
         </div>
-        <div style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "4px 12px", background: "rgba(255,255,255,0.05)", borderRadius: 999, fontSize: 11, color: "rgba(255,255,255,0.4)" }}>
+        <div style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "4px 14px", background: "rgba(219, 234, 254, 0.7)", border: "1px solid rgba(147, 197, 253, 0.5)", borderRadius: 999, fontSize: 11.5, color: "#1e40af", fontWeight: 700 }}>
           <span>Maksimal {MAX_IMAGES} file sekaligus</span>
           <span>•</span>
           <span>JPG, PNG, WEBP, MP4, MOV</span>
@@ -557,21 +565,21 @@ export default function ImageUploader({ onTokensUpdated }: Props = {}) {
 
       {/* ── Selected Images Preview & Generator Control ── */}
       {images.length > 0 && (
-        <section style={{ background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 18, padding: "20px", marginBottom: 28 }}>
+        <section style={{ background: "rgba(255, 255, 255, 0.75)", border: "1px solid rgba(147, 197, 253, 0.5)", backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)", borderRadius: 20, padding: "22px", marginBottom: 28, boxShadow: "0 6px 24px rgba(59, 130, 246, 0.08)" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <Layers size={18} color="#38bdf8" />
-              <span style={{ fontSize: 14, fontWeight: 700, color: "#f0f8ff" }}>
+              <Layers size={18} color="#2563eb" />
+              <span style={{ fontSize: 15, fontWeight: 800, color: "#0f172a" }}>
                 File Siap Proses
               </span>
-              <span style={{ padding: "2px 8px", background: "rgba(14,165,233,0.15)", color: "#38bdf8", borderRadius: 999, fontSize: 11, fontWeight: 700 }}>
+              <span style={{ padding: "2px 10px", background: "rgba(219, 234, 254, 0.8)", color: "#1e40af", border: "1px solid rgba(147, 197, 253, 0.6)", borderRadius: 999, fontSize: 11.5, fontWeight: 800 }}>
                 {images.length}/{MAX_IMAGES}
               </span>
             </div>
             <button
               type="button"
               onClick={clearAll}
-              style={{ display: "flex", alignItems: "center", gap: 5, padding: "6px 12px", background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.2)", borderRadius: 8, color: "#fca5a5", fontSize: 11, fontWeight: 600, cursor: "pointer", transition: "background 0.15s" }}
+              style={{ display: "flex", alignItems: "center", gap: 5, padding: "6px 12px", background: "rgba(254, 226, 226, 0.8)", border: "1px solid rgba(252, 165, 165, 0.8)", borderRadius: 8, color: "#dc2626", fontSize: 11.5, fontWeight: 700, cursor: "pointer", transition: "background 0.15s" }}
             >
               <Trash2 size={13} />
               Hapus Semua
@@ -588,8 +596,8 @@ export default function ImageUploader({ onTokensUpdated }: Props = {}) {
                   alignItems: "center",
                   justifyContent: "space-between",
                   padding: "10px 14px",
-                  background: "rgba(0,10,30,0.5)",
-                  border: "1px solid rgba(255,255,255,0.06)",
+                  background: "rgba(255, 255, 255, 0.85)",
+                  border: "1px solid rgba(147, 197, 253, 0.45)",
                   borderRadius: 12,
                   gap: 14
                 }}
@@ -598,10 +606,10 @@ export default function ImageUploader({ onTokensUpdated }: Props = {}) {
                   <img
                     src={img.preview}
                     alt={img.file.name}
-                    style={{ width: 44, height: 44, objectFit: "cover", borderRadius: 8, border: "1px solid rgba(255,255,255,0.1)", flexShrink: 0 }}
+                    style={{ width: 46, height: 46, objectFit: "cover", borderRadius: 8, border: "1px solid rgba(147, 197, 253, 0.5)", flexShrink: 0 }}
                   />
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 12, fontWeight: 600, color: "#f0f8ff", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    <div style={{ fontSize: 12.5, fontWeight: 700, color: "#0f172a", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                       {img.file.name}
                     </div>
                     <input
@@ -614,13 +622,13 @@ export default function ImageUploader({ onTokensUpdated }: Props = {}) {
                       }}
                       style={{
                         width: "100%",
-                        padding: "5px 9px",
-                        fontSize: 11,
+                        padding: "6px 10px",
+                        fontSize: 11.5,
                         marginTop: 4,
-                        background: "rgba(255,255,255,0.03)",
-                        border: "1px solid rgba(255,255,255,0.08)",
+                        background: "rgba(248, 250, 252, 0.9)",
+                        border: "1px solid rgba(147, 197, 253, 0.5)",
                         borderRadius: 6,
-                        color: "rgba(255,255,255,0.85)",
+                        color: "#0f172a",
                         outline: "none"
                       }}
                     />
@@ -629,7 +637,7 @@ export default function ImageUploader({ onTokensUpdated }: Props = {}) {
                 <button
                   type="button"
                   onClick={() => removeImage(img.id)}
-                  style={{ background: "rgba(255,255,255,0.05)", border: "none", width: 28, height: 28, borderRadius: 6, display: "flex", alignItems: "center", justifyContent: "center", color: "rgba(255,255,255,0.4)", cursor: "pointer" }}
+                  style={{ background: "rgba(241, 245, 249, 0.8)", border: "1px solid rgba(203, 213, 225, 0.6)", width: 28, height: 28, borderRadius: 6, display: "flex", alignItems: "center", justifyContent: "center", color: "#64748b", cursor: "pointer" }}
                   aria-label="Hapus file"
                 >
                   <X size={14} />
@@ -639,18 +647,18 @@ export default function ImageUploader({ onTokensUpdated }: Props = {}) {
           </div>
 
           {/* Stabilizer and Compliance Settings */}
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 12, padding: "14px 16px", background: "rgba(0,10,30,0.3)", border: "1px solid rgba(255,255,255,0.05)", borderRadius: 12, marginBottom: 20 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 12, padding: "14px 16px", background: "rgba(219, 234, 254, 0.5)", border: "1px solid rgba(147, 197, 253, 0.5)", borderRadius: 14, marginBottom: 20 }}>
             <label style={{ display: "flex", alignItems: "flex-start", gap: 10, cursor: "pointer" }}>
               <input
                 type="checkbox"
                 checked={stabilized}
                 onChange={(e) => setStabilized(e.target.checked)}
                 disabled={loading}
-                style={{ marginTop: 2, accentColor: "#0ea5e9" }}
+                style={{ marginTop: 2, accentColor: "#2563eb" }}
               />
               <div>
-                <div style={{ fontSize: 12, fontWeight: 700, color: "#f0f8ff" }}>Mode Stabil (Individual Queue)</div>
-                <div style={{ fontSize: 11, color: "rgba(255,255,255,0.4)", marginTop: 1 }}>Memproses file per baris agar tidak gagal semua saat terjadi rate limit.</div>
+                <div style={{ fontSize: 12.5, fontWeight: 800, color: "#0f172a" }}>Mode Stabil (Individual Queue)</div>
+                <div style={{ fontSize: 11.5, color: "#475569", marginTop: 2, fontWeight: 500 }}>Memproses file per baris agar tidak gagal semua saat terjadi rate limit.</div>
               </div>
             </label>
 
@@ -660,11 +668,11 @@ export default function ImageUploader({ onTokensUpdated }: Props = {}) {
                 checked={complianceGuard}
                 onChange={(e) => setComplianceGuard(e.target.checked)}
                 disabled={loading}
-                style={{ marginTop: 2, accentColor: "#0ea5e9" }}
+                style={{ marginTop: 2, accentColor: "#2563eb" }}
               />
               <div>
-                <div style={{ fontSize: 12, fontWeight: 700, color: "#f0f8ff" }}>Adobe Stock Compliance Guard</div>
-                <div style={{ fontSize: 11, color: "rgba(255,255,255,0.4)", marginTop: 1 }}>Filter otomatis agar judul mematuhi aturan konten editorial/komersial.</div>
+                <div style={{ fontSize: 12.5, fontWeight: 800, color: "#0f172a" }}>Adobe Stock Compliance Guard</div>
+                <div style={{ fontSize: 11.5, color: "#475569", marginTop: 2, fontWeight: 500 }}>Filter otomatis agar judul mematuhi aturan konten editorial/komersial.</div>
               </div>
             </label>
           </div>
@@ -677,18 +685,18 @@ export default function ImageUploader({ onTokensUpdated }: Props = {}) {
             style={{
               width: "100%",
               padding: "14px",
-              borderRadius: 12,
+              borderRadius: 14,
               border: "none",
-              background: loading ? "rgba(14,165,233,0.3)" : "linear-gradient(135deg, #0ea5e9, #0284c7)",
+              background: loading ? "rgba(59, 130, 246, 0.5)" : "linear-gradient(135deg, #3b82f6, #2563eb)",
               color: "white",
-              fontSize: 14,
+              fontSize: 14.5,
               fontWeight: 800,
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
               gap: 8,
               cursor: loading ? "not-allowed" : "pointer",
-              boxShadow: "0 4px 20px rgba(14,165,233,0.35)",
+              boxShadow: "0 6px 20px rgba(37, 99, 235, 0.35)",
               transition: "transform 0.15s ease, box-shadow 0.15s ease"
             }}
           >
@@ -709,14 +717,14 @@ export default function ImageUploader({ onTokensUpdated }: Props = {}) {
 
       {/* ── Status Alerts ── */}
       {progress && !error && (
-        <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "12px 16px", background: "rgba(14,165,233,0.12)", border: "1px solid rgba(14,165,233,0.3)", borderRadius: 12, color: "#38bdf8", fontSize: 12, fontWeight: 600, marginBottom: 20 }}>
-          <Info size={16} />
+        <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "14px 18px", background: "rgba(219, 234, 254, 0.8)", border: "1px solid rgba(147, 197, 253, 0.7)", borderRadius: 14, color: "#1e40af", fontSize: 13, fontWeight: 700, marginBottom: 20 }}>
+          <Info size={18} color="#2563eb" />
           <span>{progress}</span>
         </div>
       )}
       {error && (
-        <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "12px 16px", background: "rgba(239,68,68,0.12)", border: "1px solid rgba(239,68,68,0.3)", borderRadius: 12, color: "#f87171", fontSize: 12, fontWeight: 600, marginBottom: 20 }}>
-          <AlertCircle size={16} />
+        <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "14px 18px", background: "rgba(254, 226, 226, 0.85)", border: "1px solid rgba(252, 165, 165, 0.8)", borderRadius: 14, color: "#b91c1c", fontSize: 13, fontWeight: 700, marginBottom: 20 }}>
+          <AlertCircle size={18} color="#dc2626" />
           <span>{error}</span>
         </div>
       )}
@@ -725,38 +733,38 @@ export default function ImageUploader({ onTokensUpdated }: Props = {}) {
       {results.length > 0 && (
         <section style={{ marginTop: 32 }}>
           {/* Header Workspace */}
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 14, marginBottom: 20, paddingBottom: 16, borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 14, marginBottom: 20, paddingBottom: 16, borderBottom: "1px solid rgba(147, 197, 253, 0.4)" }}>
             <div>
-              <h2 style={{ fontSize: 18, fontWeight: 800, color: "#f0f8ff", letterSpacing: "-0.01em" }}>
-                Hasil Metadata & Workspace Editor
+              <h2 style={{ fontSize: 20, fontWeight: 900, color: "#0f172a", letterSpacing: "-0.01em" }}>
+                Hasil Metadata &amp; Workspace Editor
               </h2>
-              <div style={{ fontSize: 11, color: "rgba(255,255,255,0.4)", marginTop: 2 }}>
+              <div style={{ fontSize: 12, color: "#64748b", marginTop: 2, fontWeight: 500 }}>
                 Edit teks dan keywords langsung di bawah sebelum mengekspor ke format CSV.
               </div>
             </div>
 
             <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 6, background: "rgba(255,255,255,0.04)", padding: "4px 10px", borderRadius: 8, border: "1px solid rgba(255,255,255,0.08)" }}>
-                <span style={{ fontSize: 11, color: "rgba(255,255,255,0.4)" }}>Format Ekstensi CSV:</span>
+              <div style={{ display: "flex", alignItems: "center", gap: 6, background: "rgba(255, 255, 255, 0.8)", padding: "5px 12px", borderRadius: 10, border: "1px solid rgba(147, 197, 253, 0.5)" }}>
+                <span style={{ fontSize: 11.5, color: "#64748b", fontWeight: 600 }}>Format Ekstensi CSV:</span>
                 <select
                   value={csvExtension}
                   onChange={(e) => setCsvExtension(e.target.value as any)}
                   style={{
                     background: "transparent",
                     border: "none",
-                    color: "#38bdf8",
-                    fontSize: 11,
-                    fontWeight: 700,
+                    color: "#2563eb",
+                    fontSize: 12,
+                    fontWeight: 800,
                     cursor: "pointer",
                     outline: "none"
                   }}
                 >
-                  <option value="original" style={{ background: "#001122", color: "#fff" }}>Asli (.jpg/.png)</option>
-                  <option value="jpg" style={{ background: "#001122", color: "#fff" }}>Force .jpg</option>
-                  <option value="mp4" style={{ background: "#001122", color: "#fff" }}>Force .mp4</option>
-                  <option value="mov" style={{ background: "#001122", color: "#fff" }}>Force .mov</option>
-                  <option value="eps" style={{ background: "#001122", color: "#fff" }}>Force .eps</option>
-                  <option value="ai" style={{ background: "#001122", color: "#fff" }}>Force .ai</option>
+                  <option value="original">Asli (.jpg/.png)</option>
+                  <option value="jpg">Force .jpg</option>
+                  <option value="mp4">Force .mp4</option>
+                  <option value="mov">Force .mov</option>
+                  <option value="eps">Force .eps</option>
+                  <option value="ai">Force .ai</option>
                 </select>
               </div>
 
@@ -768,18 +776,18 @@ export default function ImageUploader({ onTokensUpdated }: Props = {}) {
                   display: "inline-flex",
                   alignItems: "center",
                   gap: 6,
-                  padding: "8px 16px",
-                  borderRadius: 10,
+                  padding: "10px 18px",
+                  borderRadius: 12,
                   border: "none",
-                  background: hasGeneratedResults ? "linear-gradient(135deg, #10b981, #059669)" : "rgba(255,255,255,0.06)",
-                  color: hasGeneratedResults ? "white" : "rgba(255,255,255,0.3)",
-                  fontSize: 12,
-                  fontWeight: 700,
+                  background: hasGeneratedResults ? "linear-gradient(135deg, #10b981, #059669)" : "rgba(203, 213, 225, 0.6)",
+                  color: hasGeneratedResults ? "white" : "#94a3b8",
+                  fontSize: 12.5,
+                  fontWeight: 800,
                   cursor: hasGeneratedResults ? "pointer" : "not-allowed",
-                  boxShadow: hasGeneratedResults ? "0 4px 14px rgba(16,185,129,0.3)" : "none"
+                  boxShadow: hasGeneratedResults ? "0 4px 16px rgba(16,185,129,0.35)" : "none"
                 }}
               >
-                <FileSpreadsheet size={15} />
+                <FileSpreadsheet size={16} />
                 <span>Export {platform.toUpperCase()} CSV</span>
               </button>
             </div>
@@ -796,16 +804,16 @@ export default function ImageUploader({ onTokensUpdated }: Props = {}) {
                       display: "flex",
                       gap: 16,
                       padding: "16px 20px",
-                      background: "rgba(239,68,68,0.08)",
-                      border: "1px solid rgba(239,68,68,0.2)",
-                      borderRadius: 14,
+                      background: "rgba(254, 226, 226, 0.75)",
+                      border: "1px solid rgba(252, 165, 165, 0.8)",
+                      borderRadius: 16,
                       alignItems: "center"
                     }}
                   >
-                    <img src={images[i]?.preview} alt={result.filename} style={{ width: 60, height: 60, objectFit: "cover", borderRadius: 8 }} />
+                    <img src={images[i]?.preview} alt={result.filename} style={{ width: 60, height: 60, objectFit: "cover", borderRadius: 8, border: "1px solid rgba(252,165,165,0.6)" }} />
                     <div>
-                      <div style={{ fontSize: 12, color: "rgba(255,255,255,0.5)", wordBreak: "break-all" }}>{result.filename}</div>
-                      <div style={{ color: "#f87171", fontSize: 13, fontWeight: 700, marginTop: 4 }}>❌ {result.error}</div>
+                      <div style={{ fontSize: 12, color: "#64748b", wordBreak: "break-all", fontWeight: 600 }}>{result.filename}</div>
+                      <div style={{ color: "#dc2626", fontSize: 13.5, fontWeight: 800, marginTop: 4 }}>❌ {result.error}</div>
                     </div>
                   </div>
                 );
@@ -818,23 +826,26 @@ export default function ImageUploader({ onTokensUpdated }: Props = {}) {
                     display: "grid",
                     gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
                     gap: 20,
-                    padding: "20px",
-                    background: "rgba(255,255,255,0.025)",
-                    border: "1px solid rgba(255,255,255,0.07)",
-                    borderRadius: 16,
+                    padding: "22px",
+                    background: "rgba(255, 255, 255, 0.8)",
+                    border: "1px solid rgba(147, 197, 253, 0.5)",
+                    borderRadius: 18,
+                    backdropFilter: "blur(16px)",
+                    WebkitBackdropFilter: "blur(16px)",
+                    boxShadow: "0 6px 24px rgba(59, 130, 246, 0.07)",
                     position: "relative"
                   }}
                 >
                   {/* Left Column: Thumbnail + Copy Meta */}
                   <div style={{ display: "flex", flexDirection: "column", gap: 12, alignItems: "center" }}>
-                    <div style={{ position: "relative", width: "100%", maxWidth: 160, aspectRatio: "1/1", borderRadius: 12, overflow: "hidden", border: "1px solid rgba(255,255,255,0.1)" }}>
+                    <div style={{ position: "relative", width: "100%", maxWidth: 160, aspectRatio: "1/1", borderRadius: 14, overflow: "hidden", border: "1px solid rgba(147, 197, 253, 0.6)", boxShadow: "0 4px 12px rgba(59,130,246,0.1)" }}>
                       <img
                         src={images[i]?.preview}
                         alt={result.filename}
                         style={{ width: "100%", height: "100%", objectFit: "cover" }}
                       />
                     </div>
-                    <div style={{ fontSize: 11, color: "rgba(255,255,255,0.5)", wordBreak: "break-all", textAlign: "center", fontWeight: 600 }}>
+                    <div style={{ fontSize: 11.5, color: "#64748b", wordBreak: "break-all", textAlign: "center", fontWeight: 700 }}>
                       {result.filename}
                     </div>
                     <button
@@ -844,17 +855,17 @@ export default function ImageUploader({ onTokensUpdated }: Props = {}) {
                         display: "flex",
                         alignItems: "center",
                         gap: 6,
-                        padding: "5px 10px",
-                        borderRadius: 6,
-                        border: "1px solid rgba(255,255,255,0.1)",
-                        background: "rgba(255,255,255,0.04)",
-                        color: copiedIdx === i ? "#4ade80" : "rgba(255,255,255,0.6)",
-                        fontSize: 10,
-                        fontWeight: 700,
+                        padding: "6px 12px",
+                        borderRadius: 8,
+                        border: "1px solid rgba(147, 197, 253, 0.6)",
+                        background: copiedIdx === i ? "rgba(220, 252, 231, 0.9)" : "rgba(219, 234, 254, 0.7)",
+                        color: copiedIdx === i ? "#15803d" : "#1e40af",
+                        fontSize: 11,
+                        fontWeight: 800,
                         cursor: "pointer"
                       }}
                     >
-                      {copiedIdx === i ? <Check size={12} /> : <Copy size={12} />}
+                      {copiedIdx === i ? <Check size={13} /> : <Copy size={13} />}
                       <span>{copiedIdx === i ? "Tersalin!" : "Salin Meta"}</span>
                     </button>
                   </div>
@@ -862,7 +873,7 @@ export default function ImageUploader({ onTokensUpdated }: Props = {}) {
                   {/* Center Column: Description & Keywords Editor */}
                   <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
                     <div>
-                      <label style={{ fontSize: 10, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.08em", color: "rgba(255,255,255,0.4)", display: "block", marginBottom: 6 }}>
+                      <label style={{ fontSize: 11, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.08em", color: "#1e40af", display: "block", marginBottom: 6 }}>
                         Judul / Deskripsi
                       </label>
                       <input
@@ -871,13 +882,13 @@ export default function ImageUploader({ onTokensUpdated }: Props = {}) {
                         onChange={(e) => handleUpdateResult(i, { title: e.target.value })}
                         style={{
                           width: "100%",
-                          padding: "8px 12px",
+                          padding: "10px 14px",
                           fontSize: 13,
-                          background: "rgba(0,10,30,0.6)",
-                          border: "1px solid rgba(255,255,255,0.1)",
-                          borderRadius: 8,
-                          color: "#f0f8ff",
-                          fontWeight: 600,
+                          background: "rgba(248, 250, 252, 0.95)",
+                          border: "1px solid rgba(147, 197, 253, 0.6)",
+                          borderRadius: 10,
+                          color: "#0f172a",
+                          fontWeight: 700,
                           outline: "none"
                         }}
                       />
@@ -885,10 +896,10 @@ export default function ImageUploader({ onTokensUpdated }: Props = {}) {
 
                     <div>
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-                        <label style={{ fontSize: 10, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.08em", color: "rgba(255,255,255,0.4)" }}>
+                        <label style={{ fontSize: 11, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.08em", color: "#1e40af" }}>
                           Keywords ({result.keywords.length})
                         </label>
-                        <span style={{ fontSize: 10, color: result.keywords.length >= 45 ? "#4ade80" : "#fbbf24" }}>
+                        <span style={{ fontSize: 11, fontWeight: 700, color: result.keywords.length >= 45 ? "#16a34a" : "#d97706" }}>
                           {result.keywords.length} kata kunci
                         </span>
                       </div>
@@ -902,9 +913,9 @@ export default function ImageUploader({ onTokensUpdated }: Props = {}) {
                           maxHeight: 140,
                           overflowY: "auto",
                           padding: 10,
-                          background: "rgba(0,10,30,0.6)",
-                          border: "1px solid rgba(255,255,255,0.08)",
-                          borderRadius: 8,
+                          background: "rgba(248, 250, 252, 0.9)",
+                          border: "1px solid rgba(147, 197, 253, 0.5)",
+                          borderRadius: 10,
                           marginBottom: 8
                         }}
                       >
@@ -915,20 +926,20 @@ export default function ImageUploader({ onTokensUpdated }: Props = {}) {
                               display: "inline-flex",
                               alignItems: "center",
                               gap: 4,
-                              background: "rgba(14,165,233,0.12)",
-                              border: "1px solid rgba(14,165,233,0.25)",
-                              padding: "2px 8px",
+                              background: "rgba(219, 234, 254, 0.8)",
+                              border: "1px solid rgba(147, 197, 253, 0.6)",
+                              padding: "3px 9px",
                               borderRadius: 999,
-                              fontSize: 10,
-                              color: "#93c5fd",
-                              fontWeight: 600
+                              fontSize: 10.5,
+                              color: "#1e40af",
+                              fontWeight: 700
                             }}
                           >
                             {kw}
                             <button
                               type="button"
                               onClick={() => handleRemoveKeyword(i, kwIdx)}
-                              style={{ border: "none", background: "none", color: "rgba(255,255,255,0.4)", cursor: "pointer", padding: 0, display: "flex", alignItems: "center" }}
+                              style={{ border: "none", background: "none", color: "#64748b", cursor: "pointer", padding: 0, display: "flex", alignItems: "center" }}
                             >
                               <X size={10} />
                             </button>
@@ -951,12 +962,13 @@ export default function ImageUploader({ onTokensUpdated }: Props = {}) {
                           }}
                           style={{
                             width: "100%",
-                            padding: "6px 10px",
-                            fontSize: 11,
-                            background: "rgba(255,255,255,0.03)",
-                            border: "1px dashed rgba(255,255,255,0.12)",
-                            borderRadius: 6,
-                            color: "white",
+                            padding: "8px 12px",
+                            fontSize: 11.5,
+                            background: "rgba(255, 255, 255, 0.95)",
+                            border: "1.5px dashed rgba(147, 197, 253, 0.8)",
+                            borderRadius: 8,
+                            color: "#0f172a",
+                            fontWeight: 600,
                             outline: "none"
                           }}
                         />
@@ -965,10 +977,10 @@ export default function ImageUploader({ onTokensUpdated }: Props = {}) {
                   </div>
 
                   {/* Right Column: Platform-Specific Controls */}
-                  <div style={{ display: "flex", flexDirection: "column", gap: 12, paddingLeft: 12, borderLeft: "1px solid rgba(255,255,255,0.06)" }}>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 12, paddingLeft: 12, borderLeft: "1px solid rgba(147, 197, 253, 0.4)" }}>
                     {platform === "shutterstock" ? (
                       <>
-                        <label style={{ fontSize: 10, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.08em", color: "rgba(255,255,255,0.4)" }}>
+                        <label style={{ fontSize: 11, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.08em", color: "#1e40af" }}>
                           Kategori Shutterstock
                         </label>
                         <select
@@ -979,11 +991,11 @@ export default function ImageUploader({ onTokensUpdated }: Props = {}) {
                             cats[0] = e.target.value;
                             handleUpdateResult(i, { categories: cats });
                           }}
-                          style={{ background: "rgba(0,10,30,0.6)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 6, color: "white", fontSize: 11, padding: 6, width: "100%", outline: "none" }}
+                          style={{ background: "rgba(248, 250, 252, 0.95)", border: "1px solid rgba(147, 197, 253, 0.6)", borderRadius: 8, color: "#0f172a", fontSize: 11.5, padding: 8, width: "100%", fontWeight: 600, outline: "none" }}
                         >
-                          <option value="" style={{ background: "#001122" }}>-- Kategori 1 --</option>
+                          <option value="">-- Kategori 1 --</option>
                           {CATEGORIES_LIST.map((cat) => (
-                            <option key={cat} value={cat} style={{ background: "#001122" }}>{cat}</option>
+                            <option key={cat} value={cat}>{cat}</option>
                           ))}
                         </select>
                         <select
@@ -994,49 +1006,49 @@ export default function ImageUploader({ onTokensUpdated }: Props = {}) {
                             cats[1] = e.target.value;
                             handleUpdateResult(i, { categories: cats });
                           }}
-                          style={{ background: "rgba(0,10,30,0.6)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 6, color: "white", fontSize: 11, padding: 6, width: "100%", outline: "none" }}
+                          style={{ background: "rgba(248, 250, 252, 0.95)", border: "1px solid rgba(147, 197, 253, 0.6)", borderRadius: 8, color: "#0f172a", fontSize: 11.5, padding: 8, width: "100%", fontWeight: 600, outline: "none" }}
                         >
-                          <option value="" style={{ background: "#001122" }}>-- Kategori 2 --</option>
+                          <option value="">-- Kategori 2 --</option>
                           {CATEGORIES_LIST.map((cat) => (
-                            <option key={cat} value={cat} style={{ background: "#001122" }}>{cat}</option>
+                            <option key={cat} value={cat}>{cat}</option>
                           ))}
                         </select>
 
-                        <div style={{ fontSize: 10, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.08em", color: "rgba(255,255,255,0.4)", marginTop: 6 }}>
+                        <div style={{ fontSize: 11, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.08em", color: "#1e40af", marginTop: 6 }}>
                           Atribut Teknis
                         </div>
                         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
                           <div>
-                            <span style={{ fontSize: 10, color: "rgba(255,255,255,0.4)" }}>Editorial</span>
+                            <span style={{ fontSize: 10.5, color: "#64748b", fontWeight: 700 }}>Editorial</span>
                             <select
                               value={result.editorial || "no"}
                               onChange={(e) => handleUpdateResult(i, { editorial: e.target.value as "yes" | "no" })}
-                              style={{ background: "rgba(0,10,30,0.6)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 6, color: "white", fontSize: 11, padding: 4, width: "100%" }}
+                              style={{ background: "rgba(248, 250, 252, 0.95)", border: "1px solid rgba(147, 197, 253, 0.6)", borderRadius: 8, color: "#0f172a", fontSize: 11.5, padding: 6, width: "100%", fontWeight: 600 }}
                             >
-                              <option value="no" style={{ background: "#001122" }}>No</option>
-                              <option value="yes" style={{ background: "#001122" }}>Yes</option>
+                              <option value="no">No</option>
+                              <option value="yes">Yes</option>
                             </select>
                           </div>
                           <div>
-                            <span style={{ fontSize: 10, color: "rgba(255,255,255,0.4)" }}>Mature</span>
+                            <span style={{ fontSize: 10.5, color: "#64748b", fontWeight: 700 }}>Mature</span>
                             <select
                               value={result.matureContent || "no"}
                               onChange={(e) => handleUpdateResult(i, { matureContent: e.target.value as "yes" | "no" })}
-                              style={{ background: "rgba(0,10,30,0.6)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 6, color: "white", fontSize: 11, padding: 4, width: "100%" }}
+                              style={{ background: "rgba(248, 250, 252, 0.95)", border: "1px solid rgba(147, 197, 253, 0.6)", borderRadius: 8, color: "#0f172a", fontSize: 11.5, padding: 6, width: "100%", fontWeight: 600 }}
                             >
-                              <option value="no" style={{ background: "#001122" }}>No</option>
-                              <option value="yes" style={{ background: "#001122" }}>Yes</option>
+                              <option value="no">No</option>
+                              <option value="yes">Yes</option>
                             </select>
                           </div>
                         </div>
                       </>
                     ) : platform === "magnific" ? (
                       <>
-                        <label style={{ fontSize: 10, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.08em", color: "rgba(255,255,255,0.4)" }}>
+                        <label style={{ fontSize: 11, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.08em", color: "#1e40af" }}>
                           Info AI Magnific
                         </label>
                         <div>
-                          <span style={{ fontSize: 10, color: "rgba(255,255,255,0.4)", display: "block", marginBottom: 3 }}>Prompt AI</span>
+                          <span style={{ fontSize: 10.5, color: "#64748b", display: "block", marginBottom: 3, fontWeight: 700 }}>Prompt AI</span>
                           <textarea
                             rows={3}
                             placeholder="Prompt yang digunakan..."
@@ -1047,41 +1059,42 @@ export default function ImageUploader({ onTokensUpdated }: Props = {}) {
                             }}
                             style={{
                               width: "100%",
-                              padding: "6px 8px",
-                              fontSize: 11,
-                              background: "rgba(0,10,30,0.6)",
-                              border: "1px solid rgba(255,255,255,0.1)",
-                              borderRadius: 6,
-                              color: "white",
+                              padding: "8px 10px",
+                              fontSize: 11.5,
+                              background: "rgba(248, 250, 252, 0.95)",
+                              border: "1px solid rgba(147, 197, 253, 0.6)",
+                              borderRadius: 8,
+                              color: "#0f172a",
+                              fontWeight: 600,
                               resize: "vertical"
                             }}
                           />
                         </div>
                         <div>
-                          <span style={{ fontSize: 10, color: "rgba(255,255,255,0.4)", display: "block", marginBottom: 3 }}>Model AI</span>
+                          <span style={{ fontSize: 10.5, color: "#64748b", display: "block", marginBottom: 3, fontWeight: 700 }}>Model AI</span>
                           <select
                             value={magnificModels[images[i]?.id ?? ""] ?? ""}
                             onChange={(e) => {
                               const id = images[i]?.id ?? "";
                               setMagnificModels(prev => ({ ...prev, [id]: e.target.value }));
                             }}
-                            style={{ width: "100%", background: "rgba(0,10,30,0.6)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 6, color: "white", fontSize: 11, padding: 6 }}
+                            style={{ width: "100%", background: "rgba(248, 250, 252, 0.95)", border: "1px solid rgba(147, 197, 253, 0.6)", borderRadius: 8, color: "#0f172a", fontSize: 11.5, padding: 8, fontWeight: 600 }}
                           >
-                            <option value="" style={{ background: "#001122" }}>-- Non-AI / Manual --</option>
-                            <option value="Midjourney 6" style={{ background: "#001122" }}>Midjourney 6</option>
-                            <option value="Midjourney 5" style={{ background: "#001122" }}>Midjourney 5</option>
-                            <option value="Stable Diffusion XL" style={{ background: "#001122" }}>Stable Diffusion XL</option>
-                            <option value="DALL-E 3" style={{ background: "#001122" }}>DALL-E 3</option>
-                            <option value="Adobe Firefly" style={{ background: "#001122" }}>Adobe Firefly</option>
-                            <option value="Flux" style={{ background: "#001122" }}>Flux</option>
+                            <option value="">-- Non-AI / Manual --</option>
+                            <option value="Midjourney 6">Midjourney 6</option>
+                            <option value="Midjourney 5">Midjourney 5</option>
+                            <option value="Stable Diffusion XL">Stable Diffusion XL</option>
+                            <option value="DALL-E 3">DALL-E 3</option>
+                            <option value="Adobe Firefly">Adobe Firefly</option>
+                            <option value="Flux">Flux</option>
                           </select>
                         </div>
                       </>
                     ) : (
-                      <div style={{ display: "flex", flexDirection: "column", height: "100%", justifyContent: "center", alignItems: "center", color: "rgba(255,255,255,0.4)", fontSize: 11, textAlign: "center", gap: 6, padding: "16px 0" }}>
-                        <ShieldCheck size={28} color="#38bdf8" />
-                        <span style={{ fontWeight: 700, color: "#f0f8ff" }}>Adobe Stock Ready</span>
-                        <span style={{ fontSize: 10, maxWidth: 180 }}>Title & 49 Keywords terstruktur otomatis sesuai panduan resmi kontributor.</span>
+                      <div style={{ display: "flex", flexDirection: "column", height: "100%", justifyContent: "center", alignItems: "center", color: "#64748b", fontSize: 11.5, textAlign: "center", gap: 6, padding: "16px 0" }}>
+                        <ShieldCheck size={32} color="#2563eb" />
+                        <span style={{ fontWeight: 800, color: "#0f172a", fontSize: 13 }}>Adobe Stock Ready</span>
+                        <span style={{ fontSize: 10.5, maxWidth: 180, lineHeight: 1.4 }}>Title &amp; 49 Keywords terstruktur otomatis sesuai panduan resmi kontributor.</span>
                       </div>
                     )}
                   </div>

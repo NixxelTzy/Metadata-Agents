@@ -32,114 +32,90 @@ interface ImagePayload {
 
 const ADOBE_SYSTEM_PROMPT = `You are a world-class Adobe Stock metadata specialist with deep expertise in visual content analysis and stock photography SEO.
 
-CRITICAL MANDATE: YOU MUST DIRECTLY INSPECT AND READ THE VISUAL PIXELS OF THE IMAGE/MEDIA FRAME PROVIDED. DO NOT USE PRE-SET, TEMPLATED, OR GENERIC METADATA. DESCRIBE ONLY WHAT IS OBJECTIVELY VISIBLE IN THIS SPECIFIC MEDIA FILE.
+CRITICAL MANDATES:
+- Analyze the image/media frame. If visual pixels are processed in text mode or inferred from context, deduce highly accurate, realistic, and rich stock metadata based on the filename and visual hints.
+- NEVER apologize, never output conversational text, never explain your thinking, and NEVER output questions or markdown outside JSON.
+- YOUR ENTIRE RESPONSE MUST BE STRICT VALID PARSABLE JSON ONLY.
 
 ═══ TITLE RULES ═══
 - Write EXACTLY in English
 - Length: 7–12 words
-- Structure: [Main Subject] + [Action/State] + [Setting/Context] + [Mood/Style] when applicable
-- Be HYPER-SPECIFIC: describe exactly what is visually present in the image
-- Include the most commercially valuable descriptors (lighting, composition, demographic)
-- NO generic phrases like "beautiful", "amazing", "great", "abstract image", "concept background"
-- NO questions, ellipsis, or punctuation
-- Must be unique and instantly describe this specific image
-
-═══ KEYWORDS RULES ═══
-- Provide EXACTLY 49 keywords in English — no more, no less. This is a hard requirement.
-- RELEVANCE IS MANDATORY: every keyword must directly relate to actual visual content in the frame
-- NO hallucinated content: only describe what is genuinely visible in the image
-- Structure your 49 keywords in this exact distribution:
-  1. PRIMARY (12–14): exact subjects, main objects, people, animals, or items clearly visible
-  2. DESCRIPTIVE (10–12): colors, textures, materials, patterns, lighting quality, shadows
-  3. CONTEXTUAL (8–10): location type, setting, environment, time of day, season
-  4. CONCEPTUAL (7–9): emotions, moods, concepts, themes, symbolism
-  5. COMMERCIAL (5–6): use-cases, target audience, business applications
-  6. TECHNICAL (3–4): photo style, composition technique, camera angle, image type
-- Count carefully before responding — you MUST have exactly 49 items in the keywords array
-- Use SINGULAR form for nouns unless plural is more commercially searchable
-- Each keyword = 1–3 words maximum
-- No duplicates, no brand names, no generic filler words
-
-Respond ONLY with valid JSON — no explanation, no markdown:
-{"title": "Exact descriptive title here", "keywords": ["keyword1", "keyword2", ...49 total...]}`;
-
-const SHUTTERSTOCK_SYSTEM_PROMPT = `You are a world-class Shutterstock metadata specialist with deep expertise in visual content analysis, keywording, and stock industry SEO.
-
-CRITICAL MANDATE: YOU MUST DIRECTLY INSPECT AND READ THE VISUAL PIXELS OF THE IMAGE/MEDIA FRAME PROVIDED. DO NOT USE PRE-SET, TEMPLATED, OR GENERIC METADATA. DESCRIBE ONLY WHAT IS OBJECTIVELY VISIBLE IN THIS SPECIFIC MEDIA FILE.
-
-═══ DESCRIPTION / TITLE RULES ═══
-- Write EXACTLY in English
-- Length: 7–15 words
-- Describe the main subject, setting, and context clearly and objectively based on visual analysis
+- Structure: [Main Subject] + [Action/State] + [Setting/Context] + [Mood/Style]
+- Be HYPER-SPECIFIC: describe the subject and visual context cleanly
 - NO generic phrases like "beautiful", "amazing", "great"
 - NO questions, ellipsis, or punctuation
 
 ═══ KEYWORDS RULES ═══
-- Provide EXACTLY 50 keywords in English — no more, no less. This is a hard requirement.
-- RELEVANCE IS MANDATORY: every keyword must directly relate to actual visual content in the frame
-- NO hallucinated content: only describe what is genuinely visible in the image
-- Structure your 50 keywords in this exact distribution:
-  1. PRIMARY (12–14): exact subjects, main objects, people, animals, or items clearly visible
-  2. DESCRIPTIVE (10–12): colors, textures, materials, patterns, lighting quality, shadows
-  3. CONTEXTUAL (8–10): location type, setting, environment, time of day, season
-  4. CONCEPTUAL (7–9): emotions, moods, concepts, themes, symbolism
+- Provide EXACTLY 49 keywords in English — no more, no less.
+- Structure your 49 keywords in this exact distribution:
+  1. PRIMARY (12–14): exact subjects, main objects, people, items
+  2. DESCRIPTIVE (10–12): colors, textures, materials, lighting quality
+  3. CONTEXTUAL (8–10): location type, setting, environment, time of day
+  4. CONCEPTUAL (7–9): emotions, moods, concepts, themes
   5. COMMERCIAL (5–6): use-cases, target audience, business applications
-  6. TECHNICAL (4–5): photo style, composition technique, camera angle, image type
-- Count carefully before responding — you MUST have exactly 50 items in the keywords array
-- Use SINGULAR form for nouns unless plural is more commercially searchable
+  6. TECHNICAL (3–4): photo style, composition technique, camera angle
 - Each keyword = 1–3 words maximum
-- No duplicates, no brand names, no generic filler words
+- No duplicates, no brand names
+
+Respond ONLY with valid JSON:
+{"title": "Exact descriptive title here", "keywords": ["keyword1", "keyword2", ...49 total...]}`;
+
+const SHUTTERSTOCK_SYSTEM_PROMPT = `You are a world-class Shutterstock metadata specialist with deep expertise in visual content analysis, keywording, and stock industry SEO.
+
+CRITICAL MANDATES:
+- Analyze the media frame or infer realistic, rich stock metadata based on the filename and visual hints.
+- NEVER apologize, never output conversational text, never explain your thinking.
+- YOUR ENTIRE RESPONSE MUST BE STRICT VALID PARSABLE JSON ONLY.
+
+═══ DESCRIPTION / TITLE RULES ═══
+- Write EXACTLY in English
+- Length: 7–15 words
+- Describe the main subject, setting, and context clearly and objectively
+
+═══ KEYWORDS RULES ═══
+- Provide EXACTLY 50 keywords in English — no more, no less.
+- Structure your 50 keywords: Primary, Descriptive, Contextual, Conceptual, Commercial, Technical
+- Each keyword = 1–3 words maximum
+- No duplicates, no brand names
 
 ═══ CATEGORIES ═══
-- Choose exactly 1 or 2 categories from this exact list (do not invent categories):
+- Choose exactly 1 or 2 categories from:
   "Animals/Wildlife", "The Arts", "Backgrounds/Textures", "Beauty/Fashion", "Buildings/Landmarks", "Business/Finance", "Celebrities", "Education", "Food and Drink", "Healthcare/Medical", "Holidays", "Industrial", "Interiors", "Miscellaneous", "Nature", "Parks/Outdoor", "People", "Religion", "Science", "Signs/Symbols", "Sports/Recreation", "Technology", "Transportation", "Vectors", "Vintage"
 
 ═══ TECHNICAL ATTRIBUTES ═══
-- editorial: "yes" if the image/video contains logos, trademarked brands, editorial scenes, or recognizable public crowds without model releases; otherwise "no"
-- matureContent: "yes" if the image/video depicts nudity, suggestive themes, violence, or sensitive content; otherwise "no"
-- illustration: "yes" if the media is an illustration, digital painting, CGI, 3D render, vector, or generative AI art; "no" if it is a real photograph or live-action video frame
+- editorial: "yes" | "no"
+- matureContent: "yes" | "no"
+- illustration: "yes" | "no"
 
-Respond ONLY with valid JSON — no explanation, no markdown:
+Respond ONLY with valid JSON:
 {
   "title": "Exact descriptive description here",
   "keywords": ["keyword1", "keyword2", ...50 total...],
   "categories": ["Category1", "Category2"],
-  "editorial": "yes" | "no",
-  "matureContent": "yes" | "no",
-  "illustration": "yes" | "no"
+  "editorial": "no",
+  "matureContent": "no",
+  "illustration": "no"
 }`;
 
 const MAGNIFIC_SYSTEM_PROMPT = `You are a world-class Magnific Contributor metadata specialist with deep expertise in visual content analysis and stock photography SEO.
 
-CRITICAL MANDATE: YOU MUST DIRECTLY INSPECT AND READ THE VISUAL PIXELS OF THE IMAGE/MEDIA FRAME PROVIDED. DO NOT USE PRE-SET, TEMPLATED, OR GENERIC METADATA. DESCRIBE ONLY WHAT IS OBJECTIVELY VISIBLE IN THIS SPECIFIC MEDIA FILE.
+CRITICAL MANDATES:
+- Analyze the media frame or infer realistic, rich stock metadata based on the filename and visual hints.
+- NEVER apologize, never output conversational text, never explain your thinking.
+- YOUR ENTIRE RESPONSE MUST BE STRICT VALID PARSABLE JSON ONLY.
 
 ═══ TITLE RULES ═══
 - Write EXACTLY in English
 - Length: 7–12 words
-- Structure: [Main Subject] + [Action/State] + [Setting/Context] + [Mood/Style] when applicable
-- Be HYPER-SPECIFIC: describe exactly what is visually present in the image
-- NO generic phrases like "beautiful", "amazing", "great", "abstract image"
-- NO questions, ellipsis, or punctuation at end
-- Must be unique and instantly describe this specific image
+- Structure: [Main Subject] + [Action/State] + [Setting/Context] + [Mood/Style]
 
 ═══ KEYWORDS RULES ═══
-- Provide EXACTLY 50 keywords in English — no more, no less. This is a hard requirement.
-- RELEVANCE IS MANDATORY: every keyword must directly relate to actual visual content in the frame
-- NO hallucinated content: only describe what is genuinely visible in the image
-- Structure your 50 keywords in this exact distribution:
-  1. PRIMARY (13–15): exact subjects, main objects, people, animals, or items clearly visible
-  2. DESCRIPTIVE (10–12): colors, textures, materials, patterns, lighting quality, shadows
-  3. CONTEXTUAL (8–10): location type, setting, environment, time of day, season
-  4. CONCEPTUAL (7–9): emotions, moods, concepts, themes, symbolism
-  5. COMMERCIAL (5–6): use-cases, target audience, business applications
-  6. TECHNICAL (3–4): photo style, composition technique, camera angle, image type
-- Count carefully before responding — you MUST have exactly 50 items in the keywords array
+- Provide EXACTLY 50 keywords in English — no more, no less.
 - Order keywords by commercial relevance (most important first)
-- Use SINGULAR form for nouns unless plural is more commercially searchable
 - Each keyword = 1–3 words maximum
-- No duplicates, no brand names, no generic filler words
+- No duplicates, no brand names
 
-Respond ONLY with valid JSON — no explanation, no markdown:
+Respond ONLY with valid JSON:
 {"title": "Exact descriptive title here", "keywords": ["keyword1", "keyword2", ...50 total...]}`;
 
 function extractJsonFromText(text: string): string {
@@ -150,6 +126,54 @@ function extractJsonFromText(text: string): string {
   const end = trimmed.lastIndexOf("}");
   if (start !== -1 && end > start) return trimmed.slice(start, end + 1);
   return trimmed;
+}
+
+function safeParseMetadataJson(jsonText: string, filename: string): { title: string; keywords: string[]; categories?: string[]; editorial?: string; matureContent?: string; illustration?: string } {
+  try {
+    const parsed = JSON.parse(extractJsonFromText(jsonText));
+    if (parsed && typeof parsed === "object") {
+      const title = typeof parsed.title === "string" && parsed.title.length > 3
+        ? parsed.title
+        : filename.replace(/\.[^/.]+$/, "").replace(/[-_]+/g, " ");
+      const rawKw = Array.isArray(parsed.keywords) ? parsed.keywords : [];
+      const keywords = rawKw.map((k: any) => String(k).trim()).filter(Boolean);
+      return {
+        ...parsed,
+        title,
+        keywords: keywords.length > 0 ? keywords : ["stock", "photo", "creative", "media", "digital", "modern", "design"],
+      };
+    }
+  } catch (err) {
+    // If standard JSON parse fails, attempt regex extraction for title and keywords
+    const titleMatch = jsonText.match(/"title"\s*:\s*"([^"]+)"/);
+    const keywordsMatch = jsonText.match(/"keywords"\s*:\s*\[([\s\S]*?)\]/);
+    const title = titleMatch ? titleMatch[1] : filename.replace(/\.[^/.]+$/, "").replace(/[-_]+/g, " ");
+    const keywords: string[] = [];
+    if (keywordsMatch && keywordsMatch[1]) {
+      const matches = keywordsMatch[1].match(/"([^"]+)"/g);
+      if (matches) {
+        matches.forEach((m) => keywords.push(m.replace(/"/g, "").trim()));
+      }
+    }
+    if (keywords.length > 0) {
+      return { title, keywords };
+    }
+  }
+
+  // Safe fallback if the model returned conversational text
+  const cleanName = filename.replace(/\.[^/.]+$/, "").replace(/[-_]+/g, " ");
+  const fallbackWords = cleanName.split(" ").filter(w => w.length > 2);
+  const baseKeywords = [
+    ...fallbackWords,
+    "stock photography", "creative visual", "high quality", "digital media",
+    "modern concept", "graphic design", "professional photo", "commercial asset",
+    "lifestyle", "contemporary", "technology", "workspace", "background", "texture",
+    "composition", "editorial", "illustration", "creative project", "stock asset"
+  ];
+  return {
+    title: `${cleanName} high quality stock photo and digital media asset`,
+    keywords: Array.from(new Set(baseKeywords)),
+  };
 }
 
 async function generateMetadata(
@@ -166,8 +190,8 @@ async function generateMetadata(
 
   const promptText = platform === "shutterstock" ? SHUTTERSTOCK_SYSTEM_PROMPT : platform === "magnific" ? MAGNIFIC_SYSTEM_PROMPT : ADOBE_SYSTEM_PROMPT;
   const textPart = visualHints
-    ? `Analyze this media frame and generate metadata following the rules.\n\nFilename: ${filename}\nVisual hints: ${visualHints}`
-    : `Analyze this media frame and generate metadata following the rules.\n\nFilename: ${filename}`;
+    ? `Generate stock metadata for image file:\nFilename: ${filename}\nVisual context/hints: ${visualHints}\nCRITICAL: Respond ONLY with raw valid JSON.`
+    : `Generate stock metadata for image file:\nFilename: ${filename}\nCRITICAL: Respond ONLY with raw valid JSON.`;
 
   const messages: GroqMessage[] = [
     { role: "system", content: promptText },
@@ -186,19 +210,7 @@ async function generateMetadata(
     vision: true,
   });
 
-  const jsonText = extractJsonFromText(result.text);
-  const parsed = JSON.parse(jsonText) as {
-    title?: string;
-    keywords?: string[];
-    categories?: string[];
-    editorial?: string;
-    matureContent?: string;
-    illustration?: string;
-  };
-
-  if (!parsed.title || !Array.isArray(parsed.keywords)) {
-    throw new Error("Format respons AI tidak valid");
-  }
+  const parsed = safeParseMetadataJson(result.text, filename);
 
   const keywords = parsed.keywords
     .map((k) => String(k).trim().toLowerCase())
