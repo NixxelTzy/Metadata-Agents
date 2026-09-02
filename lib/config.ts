@@ -144,3 +144,4 @@ export function getFirewallAiKey(): string {
 export function getFirewallOperatorKey(): string {
   return process.env.FIREWALL_OPERATOR_KEY ?? "";
 }
+
