@@ -103,14 +103,14 @@ export default function ServerShutdownPanel() {
       {/* ── Header ── */}
       <div style={{ marginBottom: 24, display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 14 }}>
         <div>
-          <div style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "4px 10px", background: "rgba(239,68,68,0.12)", border: "1px solid rgba(239,68,68,0.3)", borderRadius: 999, fontSize: 11, fontWeight: 800, color: "#fca5a5", marginBottom: 8 }}>
+          <div style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "4px 10px", background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.3)", borderRadius: 999, fontSize: 11, fontWeight: 800, color: "#b91c1c", marginBottom: 8 }}>
             <ShieldAlert size={13} />
             <span>Kontrol Darurat &amp; Hak Akses Server</span>
           </div>
-          <h1 style={{ fontSize: "clamp(22px, 3.5vw, 28px)", fontWeight: 800, color: "#f0f8ff", letterSpacing: "-0.02em", marginBottom: 6 }}>
+          <h1 style={{ fontSize: "clamp(22px, 3.5vw, 28px)", fontWeight: 800, color: "#0f172a", letterSpacing: "-0.02em", marginBottom: 6 }}>
             Server Shutdown &amp; Maintenance Control
           </h1>
-          <p style={{ fontSize: 13, color: "rgba(255,255,255,0.5)", lineHeight: 1.6, maxWidth: 620 }}>
+          <p style={{ fontSize: 13, color: "#475569", lineHeight: 1.6, maxWidth: 620 }}>
             Tutup akses publik ke seluruh website saat perbaikan mendesak. Pengguna biasa akan melihat halaman pemeliharaan, sementara email administrator tetap dapat mengakses dengan bypass otomatis.
           </p>
         </div>
@@ -124,10 +124,10 @@ export default function ServerShutdownPanel() {
             alignItems: "center",
             gap: 6,
             padding: "8px 14px",
-            background: "rgba(255,255,255,0.05)",
-            border: "1px solid rgba(255,255,255,0.12)",
+            background: "rgba(255,255,255,0.85)",
+            border: "1px solid rgba(147,197,253,0.6)",
             borderRadius: 10,
-            color: "#bae6fd",
+            color: "#334155",
             fontSize: 12,
             fontWeight: 700,
             cursor: "pointer"
@@ -147,9 +147,9 @@ export default function ServerShutdownPanel() {
           padding: "14px 18px",
           borderRadius: 12,
           marginBottom: 20,
-          background: result.ok ? "rgba(34,197,94,0.15)" : "rgba(239,68,68,0.15)",
-          border: `1px solid ${result.ok ? "rgba(34,197,94,0.35)" : "rgba(239,68,68,0.35)"}`,
-          color: result.ok ? "#86efac" : "#fca5a5",
+          background: result.ok ? "rgba(34,197,94,0.1)" : "rgba(239,68,68,0.08)",
+          border: `1px solid ${result.ok ? "rgba(34,197,94,0.3)" : "rgba(239,68,68,0.3)"}`,
+          color: result.ok ? "#15803d" : "#b91c1c",
           fontSize: 13,
           fontWeight: 700
         }}>
@@ -163,34 +163,34 @@ export default function ServerShutdownPanel() {
         padding: "24px 22px",
         borderRadius: 18,
         background: isActive
-          ? "linear-gradient(135deg, rgba(239,68,68,0.18) 0%, rgba(153,27,27,0.12) 100%)"
-          : "linear-gradient(135deg, rgba(14,165,233,0.14) 0%, rgba(34,197,94,0.08) 100%)",
-        border: `1.5px solid ${isActive ? "rgba(239,68,68,0.4)" : "rgba(56,189,248,0.35)"}`,
-        boxShadow: isActive ? "0 8px 32px rgba(239,68,68,0.25)" : "0 8px 32px rgba(14,165,233,0.15)",
+          ? "linear-gradient(135deg, rgba(239,68,68,0.1) 0%, rgba(153,27,27,0.06) 100%)"
+          : "linear-gradient(135deg, rgba(219,234,254,0.7) 0%, rgba(187,247,208,0.4) 100%)",
+        border: `1.5px solid ${isActive ? "rgba(239,68,68,0.35)" : "rgba(147,197,253,0.6)"}`,
+        boxShadow: isActive ? "0 8px 32px rgba(239,68,68,0.12)" : "0 8px 32px rgba(59,130,246,0.1)",
         marginBottom: 24
       }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 16, marginBottom: 20 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
             <div style={{
               width: 52, height: 52, borderRadius: 14,
-              background: isActive ? "rgba(239,68,68,0.25)" : "rgba(34,197,94,0.2)",
-              border: `1px solid ${isActive ? "rgba(239,68,68,0.5)" : "rgba(34,197,94,0.4)"}`,
+              background: isActive ? "rgba(239,68,68,0.15)" : "rgba(34,197,94,0.15)",
+              border: `1px solid ${isActive ? "rgba(239,68,68,0.35)" : "rgba(34,197,94,0.35)"}`,
               display: "flex", alignItems: "center", justifyContent: "center",
-              boxShadow: isActive ? "0 0 20px rgba(239,68,68,0.4)" : "0 0 20px rgba(34,197,94,0.3)",
+              boxShadow: isActive ? "0 0 20px rgba(239,68,68,0.2)" : "0 0 20px rgba(34,197,94,0.15)",
               flexShrink: 0
             }}>
-              <Power size={26} color={isActive ? "#f87171" : "#4ade80"} />
+              <Power size={26} color={isActive ? "#dc2626" : "#16a34a"} />
             </div>
             <div>
-              <div style={{ fontSize: 11, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.08em", color: isActive ? "#fca5a5" : "#86efac" }}>
+              <div style={{ fontSize: 11, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.08em", color: isActive ? "#b91c1c" : "#15803d" }}>
                 Status Sistem Saat Ini
               </div>
-              <div style={{ fontSize: "clamp(18px, 3.5vw, 24px)", fontWeight: 900, color: "#f0f8ff", letterSpacing: "-0.02em", display: "flex", alignItems: "center", gap: 10 }}>
+              <div style={{ fontSize: "clamp(18px, 3.5vw, 24px)", fontWeight: 900, color: "#0f172a", letterSpacing: "-0.02em", display: "flex", alignItems: "center", gap: 10 }}>
                   <span style={{
                     display: "inline-flex", alignItems: "center", justifyContent: "center",
                     width: 12, height: 12, borderRadius: "50%", flexShrink: 0,
                     background: isActive ? "#ef4444" : "#22c55e",
-                    boxShadow: isActive ? "0 0 12px rgba(239,68,68,0.7)" : "0 0 12px rgba(34,197,94,0.7)",
+                    boxShadow: isActive ? "0 0 12px rgba(239,68,68,0.5)" : "0 0 12px rgba(34,197,94,0.5)",
                   }} />
                   {isActive ? "SERVER DITUTUP — Maintenance Aktif" : "SERVER ONLINE — Akses Publik Terbuka"}
                 </div>
@@ -201,7 +201,7 @@ export default function ServerShutdownPanel() {
         {/* Big Action Button */}
         {isActive ? (
           <div>
-            <div style={{ fontSize: 13, color: "rgba(255,255,255,0.7)", marginBottom: 14, lineHeight: 1.5 }}>
+            <div style={{ fontSize: 13, color: "#475569", marginBottom: 14, lineHeight: 1.5, fontWeight: 600 }}>
               Server saat ini sedang ditutup untuk umum. Klik tombol hijau di bawah ini untuk membuka akses kembali secara instan.
             </div>
             <button
@@ -223,7 +223,7 @@ export default function ServerShutdownPanel() {
                 justifyContent: "center",
                 gap: 10,
                 cursor: saving ? "wait" : "pointer",
-                boxShadow: "0 6px 24px rgba(16,185,129,0.4)",
+                boxShadow: "0 6px 24px rgba(16,185,129,0.35)",
                 transition: "all 0.18s ease"
               }}
             >
@@ -233,7 +233,7 @@ export default function ServerShutdownPanel() {
           </div>
         ) : (
           <div>
-            <div style={{ fontSize: 13, color: "rgba(255,255,255,0.7)", marginBottom: 14, lineHeight: 1.5 }}>
+            <div style={{ fontSize: 13, color: "#475569", marginBottom: 14, lineHeight: 1.5, fontWeight: 600 }}>
               Klik tombol merah di bawah ini untuk mengaktifkan mode maintenance dan menutup akses bagi pengguna umum.
             </div>
             <button
@@ -255,7 +255,7 @@ export default function ServerShutdownPanel() {
                 justifyContent: "center",
                 gap: 10,
                 cursor: saving ? "wait" : "pointer",
-                boxShadow: "0 6px 24px rgba(239,68,68,0.45)",
+                boxShadow: "0 6px 24px rgba(239,68,68,0.35)",
                 transition: "all 0.18s ease"
               }}
             >
@@ -268,23 +268,25 @@ export default function ServerShutdownPanel() {
 
       {/* ── Configuration Form (Reason & Estimated Time) ── */}
       <div style={{
-        background: "rgba(255,255,255,0.03)",
-        border: "1px solid rgba(255,255,255,0.08)",
+        background: "rgba(255,255,255,0.85)",
+        backdropFilter: "blur(12px)",
+        border: "1px solid rgba(147,197,253,0.55)",
         borderRadius: 16,
         padding: "22px",
-        marginBottom: 24
+        marginBottom: 24,
+        boxShadow: "0 2px 12px rgba(59,130,246,0.06)"
       }}>
-        <div style={{ fontSize: 14, fontWeight: 800, color: "#f0f8ff", marginBottom: 4 }}>
+        <div style={{ fontSize: 14, fontWeight: 800, color: "#0f172a", marginBottom: 4 }}>
           Pesan &amp; Informasi Halaman Pemeliharaan
         </div>
-        <div style={{ fontSize: 12, color: "rgba(255,255,255,0.45)", marginBottom: 18 }}>
+        <div style={{ fontSize: 12, color: "#64748b", marginBottom: 18, fontWeight: 500 }}>
           Informasi ini akan ditampilkan kepada pengguna ketika mereka mencoba membuka website saat maintenance.
         </div>
 
         <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
           {/* Title */}
           <div>
-            <label style={{ fontSize: 11, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.06em", color: "rgba(255,255,255,0.4)", display: "block", marginBottom: 6 }}>
+            <label style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "#334155", display: "block", marginBottom: 6 }}>
               Judul Banner Maintenance
             </label>
             <input
@@ -295,19 +297,20 @@ export default function ServerShutdownPanel() {
               style={{
                 width: "100%",
                 padding: "10px 14px",
-                background: "rgba(0,10,30,0.6)",
-                border: "1px solid rgba(255,255,255,0.12)",
+                background: "rgba(255,255,255,0.9)",
+                border: "1px solid rgba(147,197,253,0.6)",
                 borderRadius: 8,
-                color: "#f0f8ff",
+                color: "#0f172a",
                 fontSize: 13,
-                outline: "none"
+                outline: "none",
+                boxSizing: "border-box"
               }}
             />
           </div>
 
           {/* Quick Reasons */}
           <div>
-            <label style={{ fontSize: 11, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.06em", color: "rgba(255,255,255,0.4)", display: "block", marginBottom: 8 }}>
+            <label style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "#334155", display: "block", marginBottom: 8 }}>
               Pilih Alasan Cepat
             </label>
             <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
@@ -322,9 +325,9 @@ export default function ServerShutdownPanel() {
                     fontSize: 11,
                     fontWeight: 600,
                     cursor: "pointer",
-                    background: reason === r ? "rgba(14,165,233,0.25)" : "rgba(255,255,255,0.04)",
-                    border: reason === r ? "1px solid #38bdf8" : "1px solid rgba(255,255,255,0.08)",
-                    color: reason === r ? "#38bdf8" : "rgba(255,255,255,0.7)",
+                    background: reason === r ? "rgba(219,234,254,0.9)" : "rgba(219,234,254,0.4)",
+                    border: reason === r ? "1px solid #3b82f6" : "1px solid rgba(147,197,253,0.5)",
+                    color: reason === r ? "#1d4ed8" : "#475569",
                     transition: "all 0.15s ease"
                   }}
                 >
@@ -336,7 +339,7 @@ export default function ServerShutdownPanel() {
 
           {/* Reason Textarea */}
           <div>
-            <label style={{ fontSize: 11, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.06em", color: "rgba(255,255,255,0.4)", display: "block", marginBottom: 6 }}>
+            <label style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "#334155", display: "block", marginBottom: 6 }}>
               Deskripsi / Pesan Lengkap
             </label>
             <textarea
@@ -347,20 +350,21 @@ export default function ServerShutdownPanel() {
               style={{
                 width: "100%",
                 padding: "10px 14px",
-                background: "rgba(0,10,30,0.6)",
-                border: "1px solid rgba(255,255,255,0.12)",
+                background: "rgba(255,255,255,0.9)",
+                border: "1px solid rgba(147,197,253,0.6)",
                 borderRadius: 8,
-                color: "#f0f8ff",
+                color: "#0f172a",
                 fontSize: 13,
                 outline: "none",
-                resize: "vertical"
+                resize: "vertical",
+                boxSizing: "border-box"
               }}
             />
           </div>
 
           {/* Estimated End Time */}
           <div>
-            <label style={{ fontSize: 11, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.06em", color: "rgba(255,255,255,0.4)", display: "block", marginBottom: 6 }}>
+            <label style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "#334155", display: "block", marginBottom: 6 }}>
               Estimasi Selesai (Opsional)
             </label>
             <input
@@ -369,10 +373,10 @@ export default function ServerShutdownPanel() {
               onChange={e => setEstimatedEnd(e.target.value)}
               style={{
                 padding: "10px 14px",
-                background: "rgba(0,10,30,0.6)",
-                border: "1px solid rgba(255,255,255,0.12)",
+                background: "rgba(255,255,255,0.9)",
+                border: "1px solid rgba(147,197,253,0.6)",
                 borderRadius: 8,
-                color: "#f0f8ff",
+                color: "#0f172a",
                 fontSize: 13,
                 outline: "none"
               }}
@@ -384,16 +388,16 @@ export default function ServerShutdownPanel() {
       {/* ── Admin Bypass Info ── */}
       <div style={{
         padding: "14px 18px",
-        background: "rgba(56,189,248,0.06)",
-        border: "1px solid rgba(56,189,248,0.2)",
+        background: "rgba(219,234,254,0.6)",
+        border: "1px solid rgba(147,197,253,0.55)",
         borderRadius: 12,
         display: "flex",
         alignItems: "center",
         gap: 10
       }}>
-        <Info size={18} color="#38bdf8" style={{ flexShrink: 0 }} />
-        <div style={{ fontSize: 12, color: "rgba(255,255,255,0.7)", lineHeight: 1.5 }}>
-          <strong>Admin Bypass Aktif:</strong> Akun admin (<code style={{ color: "#38bdf8" }}>nixxeltzy@gmail.com</code>) tetap dapat login dan mengakses seluruh fitur kapan saja meskipun maintenance sedang aktif.
+        <Info size={18} color="#2563eb" style={{ flexShrink: 0 }} />
+        <div style={{ fontSize: 12, color: "#334155", lineHeight: 1.5, fontWeight: 500 }}>
+          <strong style={{ color: "#0f172a" }}>Admin Bypass Aktif:</strong> Akun admin (<code style={{ color: "#1d4ed8", fontWeight: 700 }}>nixxeltzy@gmail.com</code>) tetap dapat login dan mengakses seluruh fitur kapan saja meskipun maintenance sedang aktif.
         </div>
       </div>
     </div>

@@ -159,14 +159,14 @@ export default function ClosingFeaturesPanel() {
           </div>
           <div className="pl-stat-item">
             <div className="pl-stat-item__label">Aktif</div>
-            <div className="pl-stat-item__value" style={{ color: "#86efac" }}>
+            <div className="pl-stat-item__value" style={{ color: "#15803d" }}>
               {MANAGED_FEATURES.length - closedCount}
             </div>
             <div className="pl-stat-item__sub">Dapat diakses pengguna</div>
           </div>
           <div className="pl-stat-item">
             <div className="pl-stat-item__label">Ditutup</div>
-            <div className="pl-stat-item__value" style={{ color: closedCount > 0 ? "#fca5a5" : "#e2e8f0" }}>
+            <div className="pl-stat-item__value" style={{ color: closedCount > 0 ? "#b91c1c" : "#0f172a" }}>
               {closedCount}
             </div>
             <div className="pl-stat-item__sub">Maintenance mode</div>
@@ -180,8 +180,8 @@ export default function ClosingFeaturesPanel() {
               <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                 <div style={{
                   width: 38, height: 38, borderRadius: 9,
-                  background: `${selectedFeature.color}18`,
-                  border: `1px solid ${selectedFeature.color}44`,
+                  background: "rgba(219, 234, 254, 0.8)",
+                  border: "1px solid rgba(147, 197, 253, 0.6)",
                   display: "flex", alignItems: "center", justifyContent: "center",
                   fontSize: 18, flexShrink: 0,
                 }}>{selectedFeature.icon}</div>
@@ -201,14 +201,14 @@ export default function ClosingFeaturesPanel() {
               <div style={{
                 display: "flex", alignItems: "center", gap: 8,
                 padding: "10px 14px", borderRadius: 8,
-                background: selectedEntry.closed ? "rgba(239,68,68,0.06)" : "rgba(74,222,128,0.06)",
-                border: `1px solid ${selectedEntry.closed ? "rgba(239,68,68,0.18)" : "rgba(74,222,128,0.15)"}`,
+                background: selectedEntry.closed ? "rgba(239,68,68,0.08)" : "rgba(34,197,94,0.08)",
+                border: `1px solid ${selectedEntry.closed ? "rgba(239,68,68,0.3)" : "rgba(34,197,94,0.3)"}`,
               }}>
                 <div style={{
                   width: 8, height: 8, borderRadius: "50%",
-                  background: selectedEntry.closed ? "#ef4444" : "#4ade80",
+                  background: selectedEntry.closed ? "#ef4444" : "#22c55e",
                 }} />
-                <span style={{ fontSize: 12.5, fontWeight: 600, color: selectedEntry.closed ? "#fca5a5" : "#86efac" }}>
+                <span style={{ fontSize: 12.5, fontWeight: 700, color: selectedEntry.closed ? "#b91c1c" : "#15803d" }}>
                   {selectedEntry.closed ? "Fitur ditutup — pengguna melihat halaman maintenance" : "Fitur aktif — dapat diakses semua pengguna"}
                 </span>
               </div>
@@ -226,7 +226,7 @@ export default function ClosingFeaturesPanel() {
               </div>
 
               {selectedEntry.updatedAt && (
-                <div style={{ fontSize: 11, color: "rgba(255,255,255,0.25)" }}>
+                <div style={{ fontSize: 11, color: "#64748b", fontWeight: 600 }}>
                   Terakhir diubah: {new Date(selectedEntry.updatedAt).toLocaleString("id-ID")}
                 </div>
               )}
@@ -245,24 +245,25 @@ export default function ClosingFeaturesPanel() {
                     display: "flex", alignItems: "center", gap: 12,
                     padding: "14px 16px",
                     borderRadius: 12,
-                    background: entry.closed ? "rgba(239,68,68,0.05)" : "rgba(255,255,255,0.025)",
-                    border: `1px solid ${entry.closed ? "rgba(239,68,68,0.2)" : "rgba(255,255,255,0.07)"}`,
-                    cursor: "pointer", transition: "border-color 0.15s",
+                    background: entry.closed ? "rgba(239,68,68,0.08)" : "rgba(255,255,255,0.85)",
+                    border: `1px solid ${entry.closed ? "rgba(239,68,68,0.35)" : "rgba(147,197,253,0.5)"}`,
+                    boxShadow: "0 2px 8px rgba(59,130,246,0.06)",
+                    cursor: "pointer", transition: "border-color 0.15s, box-shadow 0.15s",
                     textAlign: "left", fontFamily: "inherit",
                   }}
                 >
                   <div style={{
                     width: 36, height: 36, borderRadius: 9, flexShrink: 0,
-                    background: `${f.color}18`, border: `1px solid ${f.color}33`,
+                    background: "rgba(219, 234, 254, 0.8)", border: "1px solid rgba(147, 197, 253, 0.6)",
                     display: "flex", alignItems: "center", justifyContent: "center", fontSize: 17,
                   }}>{f.icon}</div>
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 13, fontWeight: 600, color: "#e2e8f0" }}>{f.name}</div>
-                    <div style={{ fontSize: 11, color: "rgba(255,255,255,0.3)", marginTop: 2 }}>{f.desc}</div>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: "#0f172a" }}>{f.name}</div>
+                    <div style={{ fontSize: 11, color: "#475569", marginTop: 2, fontWeight: 500 }}>{f.desc}</div>
                   </div>
                   <div style={{
                     fontSize: 11, fontWeight: 700, flexShrink: 0,
-                    color: entry.closed ? "#fca5a5" : "#86efac",
+                    color: entry.closed ? "#b91c1c" : "#15803d",
                   }}>
                     {entry.closed ? "Ditutup" : "Aktif"}
                   </div>

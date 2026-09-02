@@ -17,6 +17,10 @@ export interface MetadataResult {
   editorial?: "yes" | "no";
   matureContent?: "yes" | "no";
   illustration?: "yes" | "no";
+  prompt?: string;
+  model?: string;
+  primaryConcept?: string;
+  visualDescription?: string;
   error?: string;
   attempts?: number;
   stabilized?: boolean;
@@ -30,93 +34,192 @@ interface ImagePayload {
   visualHints?: string;
 }
 
-const ADOBE_SYSTEM_PROMPT = `You are a world-class Adobe Stock metadata specialist with deep expertise in visual content analysis and stock photography SEO.
+const MASTER_PROMPT_CORE = `# MASTER PROMPT — MICROSTOCK METADATA OPTIMIZER
+### Adobe Stock • Shutterstock • Magnific Contributor
 
-CRITICAL MANDATES:
-- Analyze the image/media frame. If visual pixels are processed in text mode or inferred from context, deduce highly accurate, realistic, and rich stock metadata based on the filename and visual hints.
-- NEVER apologize, never output conversational text, never explain your thinking, and NEVER output questions or markdown outside JSON.
-- YOUR ENTIRE RESPONSE MUST BE STRICT VALID PARSABLE JSON ONLY.
+Anda adalah Senior Microstock Metadata Specialist yang membuat metadata profesional untuk aset PHOTO dan VIDEO yang akan dijual di platform microstock seperti:
+* Adobe Stock
+* Shutterstock
+* Magnific Contributor
+* Platform microstock lain yang menggunakan sistem pencarian berbasis metadata
 
-═══ TITLE RULES ═══
-- Write EXACTLY in English
-- Length: 7–12 words
-- Structure: [Main Subject] + [Action/State] + [Setting/Context] + [Mood/Style]
-- Be HYPER-SPECIFIC: describe the subject and visual context cleanly
-- NO generic phrases like "beautiful", "amazing", "great"
-- NO questions, ellipsis, or punctuation
+Tujuan utama adalah menghasilkan metadata yang sangat relevan dengan visual, searchable, commercially useful, dan tidak misleading.
+Jangan mengejar jumlah keyword dengan mengorbankan relevansi.
 
-═══ KEYWORDS RULES ═══
-- Provide EXACTLY 49 keywords in English — no more, no less.
-- Structure your 49 keywords in this exact distribution:
-  1. PRIMARY (12–14): exact subjects, main objects, people, items
-  2. DESCRIPTIVE (10–12): colors, textures, materials, lighting quality
-  3. CONTEXTUAL (8–10): location type, setting, environment, time of day
-  4. CONCEPTUAL (7–9): emotions, moods, concepts, themes
-  5. COMMERCIAL (5–6): use-cases, target audience, business applications
-  6. TECHNICAL (3–4): photo style, composition technique, camera angle
-- Each keyword = 1–3 words maximum
-- No duplicates, no brand names
+---
 
-Respond ONLY with valid JSON:
-{"title": "Exact descriptive title here", "keywords": ["keyword1", "keyword2", ...49 total...]}`;
+# CORE PRINCIPLE
+VISUAL ACCURACY > RELEVANCE > SEARCH INTENT > COMMERCIAL VALUE > KEYWORD QUANTITY
+Metadata harus berasal dari apa yang benar-benar terlihat atau dapat disimpulkan secara wajar dari visual.
+Jangan membuat metadata berdasarkan asumsi.
+Jangan memasukkan keyword hanya karena keyword tersebut populer.
+Jangan memasukkan keyword yang tidak berhubungan hanya untuk meningkatkan kemungkinan muncul dalam pencarian.
 
-const SHUTTERSTOCK_SYSTEM_PROMPT = `You are a world-class Shutterstock metadata specialist with deep expertise in visual content analysis, keywording, and stock industry SEO.
+---
 
-CRITICAL MANDATES:
-- Analyze the media frame or infer realistic, rich stock metadata based on the filename and visual hints.
-- NEVER apologize, never output conversational text, never explain your thinking.
-- YOUR ENTIRE RESPONSE MUST BE STRICT VALID PARSABLE JSON ONLY.
+# STEP 1 — VISUAL FORENSICS
+Sebelum membuat metadata, lakukan analisis visual secara internal:
+### SUBJECT: Subjek utama, subjek sekunder, jumlah objek/orang, karakteristik visual penting
+### OBJECTS: Objek utama, objek pendukung, peralatan, produk, properti, material, tekstur
+### ACTION: Jika ada, apa yang sedang dilakukan, siapa/apa yang melakukan, bagaimana aktivitas dilakukan
+### ENVIRONMENT: Indoor/outdoor, office, home, studio, street, nature, industrial, retail, classroom, kitchen, workplace, dll
+### COMPOSITION: Close-up, medium shot, wide shot, top view, front view, side view, overhead, low angle, high angle, symmetrical, minimal, copy space (hanya jika benar terlihat)
+### LIGHTING: Natural light, soft light, hard light, studio lighting, backlighting, dramatic lighting, low key, high key
+### COLOR: Identifikasi warna dominan jika menjadi karakteristik visual yang jelas
+### MOOD: calm, professional, modern, energetic, peaceful, dramatic, minimalist, dll
 
-═══ DESCRIPTION / TITLE RULES ═══
-- Write EXACTLY in English
-- Length: 7–15 words
-- Describe the main subject, setting, and context clearly and objectively
+---
 
-═══ KEYWORDS RULES ═══
-- Provide EXACTLY 50 keywords in English — no more, no less.
-- Structure your 50 keywords: Primary, Descriptive, Contextual, Conceptual, Commercial, Technical
-- Each keyword = 1–3 words maximum
-- No duplicates, no brand names
+# STEP 2 — IDENTIFY THE PRIMARY CONCEPT
+Tentukan satu konsep utama yang paling kuat dari visual.
 
-═══ CATEGORIES ═══
-- Choose exactly 1 or 2 categories from:
+---
+
+# STEP 3 — COMMERCIAL INTENT
+Tentukan kemungkinan penggunaan komersial berdasarkan visual yang benar-benar didukung (Business, Finance, Technology, Marketing, Education, Healthcare, Lifestyle, Travel, Food, E-commerce, Sustainability, Environment, Industry, Communication, Remote work, Social media, Digital technology, Corporate content).
+
+---
+
+# STEP 4 — TITLE GENERATION
+Buat 1 title utama dalam bahasa Inggris (7–12 kata).
+Title harus: Akurat, Natural, Deskriptif, Mudah dipahami buyer, Memuat subjek utama, Memuat aktivitas/konsep utama jika ada, Tidak keyword stuffing, Tidak berupa daftar keyword, Tidak clickbait, Tidak ada klaim palsu.
+Struktur natural: MAIN SUBJECT + ACTION/STATE + CONTEXT
+
+---
+
+# STEP 5 — KEYWORD ARCHITECTURE
+Buat keyword berdasarkan hierarki kepentingan (Tier 1–4):
+## TIER 1 — PRIMARY SEARCH TERMS (Nomor 1–10): Subjek utama, objek utama, aktivitas utama, konsep utama
+## TIER 2 — SECONDARY VISUAL TERMS (Nomor 11–20): Objek pendukung, environment, setting, visual characteristics, composition
+## TIER 3 — COMMERCIAL CONCEPTS (Nomor 21–35): Konsep komersial yang benar-benar didukung visual
+## TIER 4 — SUPPORTING TERMS (Nomor 36–49/50): Detail visual, mood, style, lighting, perspective, additional useful search terms
+
+---
+
+# STEP 6 — KEYWORD ORDER
+Urutan keyword: MOST IMPORTANT → LESS IMPORTANT. Paling spesifik dan relevan di awal. Jangan alfabetis, jangan acak, jangan taruh kata generik di awal.
+
+---
+
+# STEP 7 — SEARCH INTENT
+Pikirkan apa yang dicari buyer: "Apa yang kemungkinan besar akan saya ketik untuk menemukan visual ini?"
+
+---
+
+# STEP 8 — SPECIFICITY
+Gunakan keyword yang spesifik ketika visual memungkinkan.
+
+---
+
+# STEP 9 — SYNONYM CONTROL
+Jangan membuang slot keyword untuk sinonim berulang yang hampir identik.
+
+---
+
+# STEP 10 — PEOPLE & HUMAN SUBJECTS
+Identifikasi hanya karakteristik yang dapat diamati (man, woman, adult, child, businesswoman, dll). Jangan menebak etnisitas, agama, kondisi medis.
+
+---
+
+# STEP 11 — BRAND & TRADEMARK CONTROL
+Jangan memasukkan nama brand/logo/copyrighted character sebagai keyword/title.
+
+---
+
+# STEP 12 — LOCATION CONTROL
+Jangan membuat lokasi spesifik jika tidak terlihat secara jelas.
+
+---
+
+# STEP 13 — VIDEO-SPECIFIC METADATA
+Jika aset adalah video, analisis motion, camera movement, shot type, temporal characteristics jika terlihat.
+
+---
+
+# STEP 14 — AI-GENERATED CONTENT & PROMPT RECREATION
+Fokus metadata pada subject, action, environment, dan concept yang terlihat.
+Wajib sertakan pula field "prompt" berisi deskripsi prompt generative AI dalam bahasa Inggris yang sangat detail, fotorealistik, dan kaya (menyebutkan subjek, busana/warna, setting, sudut kamera, pencahayaan, tekstur fotorealistik, 8k quality) untuk keperluan reproduksi visual di platform seperti Magnific/Midjourney. Tentukan pula field "model" (default "Midjourney 6" atau "Flux").
+
+---
+
+# STEP 15 — FINAL VALIDATION
+Pastikan title dan keyword akurat, tidak ada duplikat, tidak irrelevant, urutan prioritas benar.
+
+---
+
+# ABSOLUTE RULE
+NEVER sacrifice relevance for keyword quantity.
+Every keyword must answer: "Why would a buyer search this keyword and expect to find this exact asset?"
+Analyze first. Generate second. Validate third.`;
+
+const ADOBE_SYSTEM_PROMPT = `${MASTER_PROMPT_CORE}
+
+═══ PLATFORM SPECIFIC: ADOBE STOCK ═══
+- Title: 7–12 words natural English title following Step 4.
+- Keywords: EXACTLY 49 keywords in English ordered strictly from Tier 1 to Tier 4 (Step 5 & 6).
+- Prompt: Detailed generative AI prompt in English recreating the visual (subject, lighting, composition, camera angle, details).
+- Model: AI model used/detected (default "Midjourney 6").
+- Primary Concept: One primary concept.
+- Visual Description: Brief summary.
+
+CRITICAL: YOUR ENTIRE RESPONSE MUST BE STRICT VALID PARSABLE JSON ONLY (NO CONVERSATION, NO MARKDOWN OUTSIDE JSON):
+{
+  "title": "Exact descriptive title here",
+  "keywords": ["kw1", "kw2", ...exact 49 keywords in priority order...],
+  "primaryConcept": "Primary concept name",
+  "visualDescription": "Brief summary of visual",
+  "prompt": "Detailed AI image prompt recreating the subject, lighting, angle, details",
+  "model": "Midjourney 6"
+}`;
+
+const SHUTTERSTOCK_SYSTEM_PROMPT = `${MASTER_PROMPT_CORE}
+
+═══ PLATFORM SPECIFIC: SHUTTERSTOCK ═══
+- Title / Description: 7–15 words natural English title/description following Step 4.
+- Keywords: EXACTLY 50 keywords in English ordered strictly from Tier 1 to Tier 4 (Step 5 & 6).
+- Categories: Choose exactly 1 or 2 categories from:
   "Animals/Wildlife", "The Arts", "Backgrounds/Textures", "Beauty/Fashion", "Buildings/Landmarks", "Business/Finance", "Celebrities", "Education", "Food and Drink", "Healthcare/Medical", "Holidays", "Industrial", "Interiors", "Miscellaneous", "Nature", "Parks/Outdoor", "People", "Religion", "Science", "Signs/Symbols", "Sports/Recreation", "Technology", "Transportation", "Vectors", "Vintage"
+- Editorial: "yes" | "no"
+- Mature Content: "yes" | "no"
+- Illustration: "yes" | "no"
+- Prompt: Detailed generative AI prompt in English recreating the visual.
+- Model: AI model used/detected (default "Midjourney 6").
+- Primary Concept: Primary concept.
+- Visual Description: Brief summary.
 
-═══ TECHNICAL ATTRIBUTES ═══
-- editorial: "yes" | "no"
-- matureContent: "yes" | "no"
-- illustration: "yes" | "no"
-
-Respond ONLY with valid JSON:
+CRITICAL: YOUR ENTIRE RESPONSE MUST BE STRICT VALID PARSABLE JSON ONLY (NO CONVERSATION, NO MARKDOWN OUTSIDE JSON):
 {
   "title": "Exact descriptive description here",
-  "keywords": ["keyword1", "keyword2", ...50 total...],
+  "keywords": ["kw1", "kw2", ...exact 50 keywords in priority order...],
   "categories": ["Category1", "Category2"],
   "editorial": "no",
   "matureContent": "no",
-  "illustration": "no"
+  "illustration": "no",
+  "primaryConcept": "Primary concept",
+  "visualDescription": "Brief summary",
+  "prompt": "Detailed AI image prompt recreating subject, lighting, angle, details",
+  "model": "Midjourney 6"
 }`;
 
-const MAGNIFIC_SYSTEM_PROMPT = `You are a world-class Magnific Contributor metadata specialist with deep expertise in visual content analysis and stock photography SEO.
+const MAGNIFIC_SYSTEM_PROMPT = `${MASTER_PROMPT_CORE}
 
-CRITICAL MANDATES:
-- Analyze the media frame or infer realistic, rich stock metadata based on the filename and visual hints.
-- NEVER apologize, never output conversational text, never explain your thinking.
-- YOUR ENTIRE RESPONSE MUST BE STRICT VALID PARSABLE JSON ONLY.
+═══ PLATFORM SPECIFIC: MAGNIFIC CONTRIBUTOR ═══
+- Title: 7–12 words natural English title following Step 4.
+- Keywords: EXACTLY 50 keywords in English ordered strictly from Tier 1 to Tier 4 (Step 5 & 6).
+- Prompt: MANDATORY. Highly detailed and photorealistic generative AI prompt in English accurately describing the subject, environment, lighting, camera angle, textures, colors, and styling details to recreate this exact asset for Magnific Contributor.
+- Model: MANDATORY. Choose the most appropriate model from ["Midjourney 6", "Flux", "Stable Diffusion XL", "Midjourney 5", "DALL-E 3", "Adobe Firefly"] (Default "Midjourney 6").
+- Primary Concept: Primary concept.
+- Visual Description: Brief summary.
 
-═══ TITLE RULES ═══
-- Write EXACTLY in English
-- Length: 7–12 words
-- Structure: [Main Subject] + [Action/State] + [Setting/Context] + [Mood/Style]
-
-═══ KEYWORDS RULES ═══
-- Provide EXACTLY 50 keywords in English — no more, no less.
-- Order keywords by commercial relevance (most important first)
-- Each keyword = 1–3 words maximum
-- No duplicates, no brand names
-
-Respond ONLY with valid JSON:
-{"title": "Exact descriptive title here", "keywords": ["keyword1", "keyword2", ...50 total...]}`;
+CRITICAL: YOUR ENTIRE RESPONSE MUST BE STRICT VALID PARSABLE JSON ONLY (NO CONVERSATION, NO MARKDOWN OUTSIDE JSON):
+{
+  "title": "Exact descriptive title here",
+  "keywords": ["kw1", "kw2", ...exact 50 keywords in priority order...],
+  "prompt": "Detailed photorealistic generative AI prompt in English describing subject, lighting, angle, colors, texture, camera lens, 8k resolution",
+  "model": "Midjourney 6",
+  "primaryConcept": "Primary concept name",
+  "visualDescription": "Brief visual summary"
+}`;
 
 function extractJsonFromText(text: string): string {
   const trimmed = text.trim();
@@ -128,7 +231,18 @@ function extractJsonFromText(text: string): string {
   return trimmed;
 }
 
-function safeParseMetadataJson(jsonText: string, filename: string): { title: string; keywords: string[]; categories?: string[]; editorial?: string; matureContent?: string; illustration?: string } {
+function safeParseMetadataJson(jsonText: string, filename: string): {
+  title: string;
+  keywords: string[];
+  categories?: string[];
+  editorial?: string;
+  matureContent?: string;
+  illustration?: string;
+  prompt?: string;
+  model?: string;
+  primaryConcept?: string;
+  visualDescription?: string;
+} {
   try {
     const parsed = JSON.parse(extractJsonFromText(jsonText));
     if (parsed && typeof parsed === "object") {
@@ -137,17 +251,34 @@ function safeParseMetadataJson(jsonText: string, filename: string): { title: str
         : filename.replace(/\.[^/.]+$/, "").replace(/[-_]+/g, " ");
       const rawKw = Array.isArray(parsed.keywords) ? parsed.keywords : [];
       const keywords = rawKw.map((k: any) => String(k).trim()).filter(Boolean);
+      const prompt = typeof parsed.prompt === "string" && parsed.prompt.length > 5
+        ? parsed.prompt
+        : `${title}, photorealistic, high resolution, cinematic lighting, 8k, detailed textures`;
+      const model = typeof parsed.model === "string" && parsed.model.length > 2
+        ? parsed.model
+        : "Midjourney 6";
+
       return {
         ...parsed,
         title,
         keywords: keywords.length > 0 ? keywords : ["stock", "photo", "creative", "media", "digital", "modern", "design"],
+        prompt,
+        model,
+        primaryConcept: typeof parsed.primaryConcept === "string" ? parsed.primaryConcept : "",
+        visualDescription: typeof parsed.visualDescription === "string" ? parsed.visualDescription : "",
       };
     }
   } catch (err) {
-    // If standard JSON parse fails, attempt regex extraction for title and keywords
+    // If standard JSON parse fails, attempt regex extraction for title, keywords, prompt, model
     const titleMatch = jsonText.match(/"title"\s*:\s*"([^"]+)"/);
     const keywordsMatch = jsonText.match(/"keywords"\s*:\s*\[([\s\S]*?)\]/);
+    const promptMatch = jsonText.match(/"prompt"\s*:\s*"([^"]+)"/);
+    const modelMatch = jsonText.match(/"model"\s*:\s*"([^"]+)"/);
+
     const title = titleMatch ? titleMatch[1] : filename.replace(/\.[^/.]+$/, "").replace(/[-_]+/g, " ");
+    const prompt = promptMatch ? promptMatch[1] : `${title}, photorealistic, high resolution, cinematic lighting, 8k, detailed textures`;
+    const model = modelMatch ? modelMatch[1] : "Midjourney 6";
+
     const keywords: string[] = [];
     if (keywordsMatch && keywordsMatch[1]) {
       const matches = keywordsMatch[1].match(/"([^"]+)"/g);
@@ -156,7 +287,7 @@ function safeParseMetadataJson(jsonText: string, filename: string): { title: str
       }
     }
     if (keywords.length > 0) {
-      return { title, keywords };
+      return { title, keywords, prompt, model };
     }
   }
 
@@ -173,6 +304,8 @@ function safeParseMetadataJson(jsonText: string, filename: string): { title: str
   return {
     title: `${cleanName} high quality stock photo and digital media asset`,
     keywords: Array.from(new Set(baseKeywords)),
+    prompt: `${cleanName}, high quality professional stock photo, cinematic lighting, 8k resolution, photorealistic`,
+    model: "Midjourney 6",
   };
 }
 
@@ -298,6 +431,10 @@ async function generateMetadata(
     editorial,
     matureContent,
     illustration,
+    prompt: parsed.prompt,
+    model: parsed.model,
+    primaryConcept: parsed.primaryConcept,
+    visualDescription: parsed.visualDescription,
     modelUsed: result.modelUsed,
     stabilized: true,
     attempts: attempt,

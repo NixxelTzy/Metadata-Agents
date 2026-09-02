@@ -47,7 +47,19 @@ export default function ImageUploader({ onTokensUpdated }: Props = {}) {
   // Magnific-specific per-image fields: prompt and AI model
   const [magnificPrompts, setMagnificPrompts] = useState<Record<string, string>>({});
   const [magnificModels, setMagnificModels] = useState<Record<string, string>>({});
+  const [globalMagnificModel, setGlobalMagnificModel] = useState("Midjourney 6");
   const inputRef = useRef<HTMLInputElement>(null);
+
+  const handleGlobalModelChange = (model: string) => {
+    setGlobalMagnificModel(model);
+    setMagnificModels((prev) => {
+      const updated: Record<string, string> = {};
+      images.forEach((img) => {
+        updated[img.id] = model;
+      });
+      return { ...prev, ...updated };
+    });
+  };
 
   const addFiles = useCallback(
     async (files: FileList | File[]) => {
@@ -206,7 +218,19 @@ export default function ImageUploader({ onTokensUpdated }: Props = {}) {
                 await sleep(RATE_LIMIT_PAUSE_MS);
               }
             } else {
-              collected.push(...(data.results as MetadataResult[]));
+              const newResults = data.results as MetadataResult[];
+              collected.push(...newResults);
+              const r = newResults[0];
+              if (r) {
+                if (r.prompt) {
+                  setMagnificPrompts((prev) => ({ ...prev, [img.id]: r.prompt! }));
+                }
+                if (r.model) {
+                  setMagnificModels((prev) => ({ ...prev, [img.id]: r.model! }));
+                } else {
+                  setMagnificModels((prev) => ({ ...prev, [img.id]: prev[img.id] || globalMagnificModel }));
+                }
+              }
             }
           } catch (loopError) {
             collected.push({
@@ -255,7 +279,22 @@ export default function ImageUploader({ onTokensUpdated }: Props = {}) {
           throw new Error(data.error || "Gagal menghubungi server");
         }
 
-        setResults(data.results as MetadataResult[]);
+        const resList = data.results as MetadataResult[];
+        setResults(resList);
+
+        const newPrompts: Record<string, string> = {};
+        const newModels: Record<string, string> = {};
+        images.forEach((img, idx) => {
+          const r = resList[idx];
+          if (r) {
+            if (r.prompt) newPrompts[img.id] = r.prompt;
+            if (r.model) newModels[img.id] = r.model;
+            else newModels[img.id] = globalMagnificModel;
+          }
+        });
+        setMagnificPrompts((prev) => ({ ...prev, ...newPrompts }));
+        setMagnificModels((prev) => ({ ...prev, ...newModels }));
+
         setProgress(`✅ Selesai! ${data.results.length} file diproses`);
       }
     } catch (err) {
@@ -349,8 +388,11 @@ export default function ImageUploader({ onTokensUpdated }: Props = {}) {
         const keywordsArr = Array.isArray(r?.keywords) ? r!.keywords : [];
         const keywords = `'${keywordsArr.map(k => esc(k.trim())).join(',')}'`;
 
-        const prompt = magnificPrompts[imgId] ? `'${esc(magnificPrompts[imgId]!)}'` : `''`;
-        const model = magnificModels[imgId] ? `'${esc(magnificModels[imgId]!)}'` : `''`;
+        const promptVal = magnificPrompts[imgId] || r?.prompt || "";
+        const modelVal = magnificModels[imgId] || r?.model || globalMagnificModel;
+
+        const prompt = promptVal ? `'${esc(promptVal)}'` : `''`;
+        const model = modelVal ? `'${esc(modelVal)}'` : `''`;
 
         return [filename, title, keywords, prompt, model].join(';');
       });
@@ -507,12 +549,67 @@ export default function ImageUploader({ onTokensUpdated }: Props = {}) {
               </div>
               <div>
                 <div style={{ fontSize: 14, fontWeight: 800, color: "#0f172a" }}>Magnific</div>
-                <div style={{ fontSize: 11.5, color: "#64748b", marginTop: 2, fontWeight: 600 }}>50 Keywords + AI Prompt</div>
+                <div style={{ fontSize: 11.5, color: "#64748b", marginTop: 2, fontWeight: 600 }}>50 Keywords + Auto AI Prompt</div>
               </div>
             </div>
             {platform === "magnific" && <CheckCircle2 size={20} color="#2563eb" />}
           </button>
         </div>
+
+        {/* Magnific Global Model & Auto Prompt Banner */}
+        {platform === "magnific" && (
+          <div style={{
+            marginTop: 14,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            flexWrap: "wrap",
+            gap: 12,
+            padding: "14px 18px",
+            background: "rgba(219, 234, 254, 0.75)",
+            border: "1px solid rgba(147, 197, 253, 0.7)",
+            borderRadius: 14,
+            backdropFilter: "blur(12px)",
+            WebkitBackdropFilter: "blur(12px)"
+          }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <Sparkles size={18} color="#2563eb" />
+              <div>
+                <div style={{ fontSize: 13, fontWeight: 800, color: "#0f172a" }}>
+                  Auto Visual Prompt Analysis &amp; Model Sync
+                </div>
+                <div style={{ fontSize: 11.5, color: "#475569", marginTop: 2, fontWeight: 500 }}>
+                  Prompt AI otomatis dibuat secara mendalam dari analisis foto/video dan model AI diterapkan seragam.
+                </div>
+              </div>
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <span style={{ fontSize: 12, fontWeight: 800, color: "#1e40af" }}>Model AI Seragam:</span>
+              <select
+                value={globalMagnificModel}
+                onChange={(e) => handleGlobalModelChange(e.target.value)}
+                style={{
+                  padding: "7px 14px",
+                  background: "white",
+                  border: "1px solid rgba(147, 197, 253, 0.8)",
+                  borderRadius: 8,
+                  fontSize: 12,
+                  fontWeight: 800,
+                  color: "#0f172a",
+                  cursor: "pointer",
+                  outline: "none"
+                }}
+              >
+                <option value="Midjourney 6">Midjourney 6 (Default)</option>
+                <option value="Flux">Flux</option>
+                <option value="Stable Diffusion XL">Stable Diffusion XL</option>
+                <option value="Midjourney 5">Midjourney 5</option>
+                <option value="DALL-E 3">DALL-E 3</option>
+                <option value="Adobe Firefly">Adobe Firefly</option>
+              </select>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* ── Dropzone Area ── */}
@@ -1044,15 +1141,20 @@ export default function ImageUploader({ onTokensUpdated }: Props = {}) {
                       </>
                     ) : platform === "magnific" ? (
                       <>
-                        <label style={{ fontSize: 11, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.08em", color: "#1e40af" }}>
-                          Info AI Magnific
-                        </label>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                          <label style={{ fontSize: 11, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.08em", color: "#1e40af" }}>
+                            Info AI Magnific
+                          </label>
+                          <span style={{ fontSize: 10, fontWeight: 700, color: "#15803d", background: "rgba(220,252,231,0.9)", padding: "2px 6px", borderRadius: 4, border: "1px solid rgba(187,247,208,0.8)" }}>
+                            Auto Generated
+                          </span>
+                        </div>
                         <div>
-                          <span style={{ fontSize: 10.5, color: "#64748b", display: "block", marginBottom: 3, fontWeight: 700 }}>Prompt AI</span>
+                          <span style={{ fontSize: 10.5, color: "#1e40af", display: "block", marginBottom: 3, fontWeight: 700 }}>Prompt AI (Auto-Visual Analysis)</span>
                           <textarea
                             rows={3}
-                            placeholder="Prompt yang digunakan..."
-                            value={magnificPrompts[images[i]?.id ?? ""] ?? ""}
+                            placeholder="Prompt generative AI otomatis terisi setelah analisis foto..."
+                            value={magnificPrompts[images[i]?.id ?? ""] ?? result.prompt ?? ""}
                             onChange={(e) => {
                               const id = images[i]?.id ?? "";
                               setMagnificPrompts(prev => ({ ...prev, [id]: e.target.value }));
@@ -1071,22 +1173,21 @@ export default function ImageUploader({ onTokensUpdated }: Props = {}) {
                           />
                         </div>
                         <div>
-                          <span style={{ fontSize: 10.5, color: "#64748b", display: "block", marginBottom: 3, fontWeight: 700 }}>Model AI</span>
+                          <span style={{ fontSize: 10.5, color: "#1e40af", display: "block", marginBottom: 3, fontWeight: 700 }}>Model AI</span>
                           <select
-                            value={magnificModels[images[i]?.id ?? ""] ?? ""}
+                            value={magnificModels[images[i]?.id ?? ""] ?? result.model ?? globalMagnificModel}
                             onChange={(e) => {
                               const id = images[i]?.id ?? "";
                               setMagnificModels(prev => ({ ...prev, [id]: e.target.value }));
                             }}
-                            style={{ width: "100%", background: "rgba(248, 250, 252, 0.95)", border: "1px solid rgba(147, 197, 253, 0.6)", borderRadius: 8, color: "#0f172a", fontSize: 11.5, padding: 8, fontWeight: 600 }}
+                            style={{ width: "100%", background: "rgba(248, 250, 252, 0.95)", border: "1px solid rgba(147, 197, 253, 0.6)", borderRadius: 8, color: "#0f172a", fontSize: 11.5, padding: 8, fontWeight: 700, outline: "none" }}
                           >
-                            <option value="">-- Non-AI / Manual --</option>
                             <option value="Midjourney 6">Midjourney 6</option>
-                            <option value="Midjourney 5">Midjourney 5</option>
+                            <option value="Flux">Flux</option>
                             <option value="Stable Diffusion XL">Stable Diffusion XL</option>
+                            <option value="Midjourney 5">Midjourney 5</option>
                             <option value="DALL-E 3">DALL-E 3</option>
                             <option value="Adobe Firefly">Adobe Firefly</option>
-                            <option value="Flux">Flux</option>
                           </select>
                         </div>
                       </>

@@ -131,8 +131,8 @@ export default function StoragePanel() {
               { label: "DB Online", value: `${data.databases.filter(d => d.online).length}/${data.databases.length}` },
             ].map(s => (
               <div key={s.label} style={{ display: "flex", justifyContent: "space-between", fontSize: 11 }}>
-                <span style={{ color: "rgba(255,255,255,0.4)" }}>{s.label}</span>
-                <span style={{ color: "#e2e8f0", fontWeight: 700, fontFamily: "monospace" }}>{s.value}</span>
+                <span style={{ color: "#475569", fontWeight: 600 }}>{s.label}</span>
+                <span style={{ color: "#0f172a", fontWeight: 700, fontFamily: "monospace" }}>{s.value}</span>
               </div>
             ))}
           </div>
@@ -163,10 +163,10 @@ export default function StoragePanel() {
                 <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                   <div style={{
                     width: 34, height: 34, borderRadius: 8,
-                    background: "rgba(14,165,233,0.15)", border: "1px solid rgba(56,189,248,0.3)",
+                    background: "rgba(219,234,254,0.8)", border: "1px solid rgba(147,197,253,0.6)",
                     display: "flex", alignItems: "center", justifyContent: "center",
                   }}>
-                    <Database size={16} color="#38bdf8" />
+                    <Database size={16} color="#2563eb" />
                   </div>
                   <div>
                     <div className="pl-card__title">{activeDb.name}</div>
@@ -187,7 +187,7 @@ export default function StoragePanel() {
                       <label className="pl-label" style={{ margin: 0 }}>Memory Usage</label>
                       <span style={{ fontSize: 12, fontFamily: "monospace" }}>
                         <span style={{ color: memColor(activeDb.usedPercent), fontWeight: 700 }}>{activeDb.usedMemoryHuman}</span>
-                        <span style={{ color: "rgba(255,255,255,0.4)" }}> / {activeDb.maxMemoryHuman !== "0B" ? activeDb.maxMemoryHuman : "Unlimited"}</span>
+                        <span style={{ color: "#475569" }}> / {activeDb.maxMemoryHuman !== "0B" ? activeDb.maxMemoryHuman : "Unlimited"}</span>
                         {activeDb.usedPercent !== null && (
                           <span style={{ color: memColor(activeDb.usedPercent), marginLeft: 6 }}>({activeDb.usedPercent}%)</span>
                         )}
@@ -196,7 +196,7 @@ export default function StoragePanel() {
                     <div className="pl-progress-track">
                       <div className="pl-progress-fill" style={{ width: `${Math.min(activeDb.usedPercent ?? 0, 100)}%`, background: memColor(activeDb.usedPercent) }} />
                     </div>
-                    <div style={{ fontSize: 11, color: "rgba(255,255,255,0.35)", marginTop: 4 }}>Peak: {activeDb.peakMemoryHuman}</div>
+                    <div style={{ fontSize: 11, color: "#64748b", marginTop: 4, fontWeight: 600 }}>Peak: {activeDb.peakMemoryHuman}</div>
                   </div>
 
                   {/* Stats grid */}
@@ -211,10 +211,10 @@ export default function StoragePanel() {
                     ].map(s => (
                       <div key={s.label} style={{
                         padding: "12px 14px", borderRadius: 9,
-                        background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.06)",
+                        background: "rgba(219,234,254,0.45)", border: "1px solid rgba(147,197,253,0.5)",
                       }}>
-                        <div style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.07em", color: "rgba(255,255,255,0.35)", marginBottom: 4 }}>{s.label}</div>
-                        <div style={{ fontSize: 17, fontWeight: 800, color: "#e2e8f0", fontFamily: "monospace" }}>{s.value}</div>
+                        <div style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.07em", color: "#475569", marginBottom: 4 }}>{s.label}</div>
+                        <div style={{ fontSize: 17, fontWeight: 800, color: "#0f172a", fontFamily: "monospace" }}>{s.value}</div>
                       </div>
                     ))}
                   </div>
@@ -228,12 +228,12 @@ export default function StoragePanel() {
                           const pct = activeDb.totalKeys > 0 ? (cat.count / activeDb.totalKeys) * 100 : 0;
                           return (
                             <div key={cat.prefix} style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                              <Layers size={14} color="#38bdf8" style={{ flexShrink: 0 }} />
-                              <span style={{ fontSize: 12, color: "rgba(255,255,255,0.65)", width: 140, flexShrink: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{cat.label}</span>
-                              <div style={{ flex: 1, height: 5, background: "rgba(255,255,255,0.06)", borderRadius: 999, overflow: "hidden" }}>
-                                <div style={{ height: "100%", width: `${pct}%`, background: "rgba(14,165,233,0.7)", borderRadius: 999, transition: "width 0.3s" }} />
+                              <Layers size={14} color="#2563eb" style={{ flexShrink: 0 }} />
+                              <span style={{ fontSize: 12, color: "#334155", fontWeight: 600, width: 140, flexShrink: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{cat.label}</span>
+                              <div style={{ flex: 1, height: 5, background: "rgba(219,234,254,0.6)", borderRadius: 999, overflow: "hidden", border: "1px solid rgba(147,197,253,0.3)" }}>
+                                <div style={{ height: "100%", width: `${pct}%`, background: "#3b82f6", borderRadius: 999, transition: "width 0.3s" }} />
                               </div>
-                              <span style={{ fontSize: 12, fontWeight: 700, fontFamily: "monospace", color: "#e2e8f0", width: 30, textAlign: "right", flexShrink: 0 }}>{cat.count}</span>
+                              <span style={{ fontSize: 12, fontWeight: 700, fontFamily: "monospace", color: "#0f172a", width: 30, textAlign: "right", flexShrink: 0 }}>{cat.count}</span>
                             </div>
                           );
                         })}
@@ -264,11 +264,11 @@ export default function StoragePanel() {
                   <div
                     key={db.name}
                     className="pl-stat-item"
-                    style={{ cursor: "pointer", border: selectedDb === db.name ? "1px solid rgba(56,189,248,0.4)" : undefined }}
+                    style={{ cursor: "pointer", border: selectedDb === db.name ? "1px solid rgba(59,130,246,0.6)" : undefined }}
                     onClick={() => setSelectedDb(db.name)}
                   >
                     <div className="pl-stat-item__label">{db.name}</div>
-                    <div className="pl-stat-item__value" style={{ fontSize: 16, color: db.online ? "#86efac" : "#fca5a5" }}>
+                    <div className="pl-stat-item__value" style={{ fontSize: 16, color: db.online ? "#15803d" : "#b91c1c" }}>
                       {fmtNum(db.totalKeys)} keys
                     </div>
                     <div className="pl-stat-item__sub">{db.usedMemoryHuman} used</div>

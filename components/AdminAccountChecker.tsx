@@ -466,13 +466,13 @@ function GlobalActivityFeed({ onClose }: { onClose: () => void }) {
                   display: "flex",
                   gap: "14px",
                   padding: "12px 24px",
-                  borderBottom: "1px solid rgba(255,255,255,0.04)",
+                  borderBottom: "1px solid var(--border)",
                   alignItems: "flex-start",
                   transition: "background 0.15s",
                 }}
                 onMouseEnter={(e) =>
                   ((e.currentTarget as HTMLDivElement).style.background =
-                    "rgba(255,255,255,0.03)")
+                    "rgba(59, 130, 246, 0.05)")
                 }
                 onMouseLeave={(e) =>
                   ((e.currentTarget as HTMLDivElement).style.background = "transparent")
@@ -575,10 +575,10 @@ function StatsCard({
         {icon}
       </div>
       <div>
-        <div style={{ fontSize: "22px", fontWeight: "800", color: "#f0f8ff", lineHeight: 1.1 }}>
+        <div style={{ fontSize: "22px", fontWeight: "800", color: "#0f172a", lineHeight: 1.1 }}>
           {value}
         </div>
-        <div style={{ fontSize: "11px", color: "rgba(255,255,255,0.4)", marginTop: "3px" }}>
+        <div style={{ fontSize: "11px", color: "#475569", marginTop: "3px", fontWeight: 600 }}>
           {label}
         </div>
       </div>
@@ -698,30 +698,34 @@ export default function AdminAccountChecker() {
   };
 
   // ── Filtered & Sorted Users ─────────────────────────────────────────────────
-  const filteredUsers = users
+  const filteredUsers = (users || [])
     .filter((u) => {
-      const term = search.toLowerCase();
-      const matchSearch =
-        u.username.toLowerCase().includes(term) || u.email.toLowerCase().includes(term);
+      if (!u) return false;
+      const term = (search || "").toLowerCase().trim();
+      const uName = (u.username || "").toLowerCase();
+      const uEmail = (u.email || "").toLowerCase();
+      const matchSearch = !term || uName.includes(term) || uEmail.includes(term);
       const matchRole = roleFilter === "all" || u.role === roleFilter;
       return matchSearch && matchRole;
     })
     .sort((a, b) => {
       if (sortBy === "online") {
-        if (a.isOnline !== b.isOnline) return a.isOnline ? -1 : 1;
+        if (a?.isOnline !== b?.isOnline) return a?.isOnline ? -1 : 1;
       }
       if (sortBy === "lastSeen") {
-        const aT = a.lastSeen ? new Date(a.lastSeen).getTime() : 0;
-        const bT = b.lastSeen ? new Date(b.lastSeen).getTime() : 0;
+        const aT = a?.lastSeen ? new Date(a.lastSeen).getTime() : 0;
+        const bT = b?.lastSeen ? new Date(b.lastSeen).getTime() : 0;
         return bT - aT;
       }
-      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+      const aC = a?.createdAt ? new Date(a.createdAt).getTime() : 0;
+      const bC = b?.createdAt ? new Date(b.createdAt).getTime() : 0;
+      return bC - aC;
     });
 
   // ── Summary Stats ───────────────────────────────────────────────────────────
-  const onlineCount = users.filter((u) => u.isOnline).length;
-  const premiumCount = users.filter((u) => u.role === "premium").length;
-  const adminCount = users.filter((u) => u.role === "admin").length;
+  const onlineCount = (users || []).filter((u) => u && u.isOnline).length;
+  const premiumCount = (users || []).filter((u) => u && u.role === "premium").length;
+  const adminCount = (users || []).filter((u) => u && u.role === "admin").length;
 
   return (
     <div style={{ minHeight: "100%", padding: "24px 20px 60px", maxWidth: 1200, margin: "0 auto", fontFamily: "var(--font)" }}>
@@ -734,7 +738,7 @@ export default function AdminAccountChecker() {
           from { opacity: 0; transform: translateY(4px); }
           to { opacity: 1; transform: translateY(0); }
         }
-        .user-row:hover { background: rgba(255,255,255,0.025) !important; }
+        .user-row:hover { background: rgba(59, 130, 246, 0.05) !important; }
       `}</style>
 
       {/* Modals */}
@@ -748,11 +752,11 @@ export default function AdminAccountChecker() {
       {showGlobalFeed && <GlobalActivityFeed onClose={() => setShowGlobalFeed(false)} />}
 
       {/* Header */}
-      <div style={{ marginBottom: "20px", paddingBottom: "16px", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
-        <h2 style={{ fontSize: 18, fontWeight: 800, color: "#e2e8f0", letterSpacing: "-0.02em", marginBottom: 4 }}>Admin Control Center</h2>
-        <p style={{ fontSize: 12, color: "rgba(255,255,255,0.4)", lineHeight: 1.5 }}>
+      <div style={{ marginBottom: "20px", paddingBottom: "16px", borderBottom: "1px solid var(--border)" }}>
+        <h2 style={{ fontSize: 18, fontWeight: 800, color: "var(--text)", letterSpacing: "-0.02em", marginBottom: 4 }}>Admin Control Center</h2>
+        <p style={{ fontSize: 12, color: "var(--text-muted)", lineHeight: 1.5 }}>
           Dashboard untuk memantau dan mengelola semua akun pengguna secara real-time.
-          Notifikasi email otomatis ke <strong style={{ color: "#38bdf8" }}>nixxeltzy@gmail.com</strong> saat ada login.
+          Notifikasi email otomatis ke <strong style={{ color: "var(--accent)" }}>nixxeltzy@gmail.com</strong> saat ada login.
         </p>
       </div>
 
@@ -1001,10 +1005,10 @@ export default function AdminAccountChecker() {
 
                       {/* User Info */}
                       <td style={{ padding: "14px 16px" }}>
-                        <div style={{ fontWeight: "700", color: "var(--text)", fontSize: "14px" }}>{u.username}</div>
-                        <div style={{ fontSize: "11px", color: "var(--text-muted)", marginTop: "2px" }}>{u.email}</div>
-                        <div style={{ fontSize: "10px", color: "#94a3b8", marginTop: "2px", fontFamily: "monospace" }}>
-                          ID: {u.id.slice(0, 12)}…
+                        <div style={{ fontWeight: "700", color: "var(--text)", fontSize: "14px" }}>{u.username || "User"}</div>
+                        <div style={{ fontSize: "11px", color: "var(--text-muted)", marginTop: "2px" }}>{u.email || "-"}</div>
+                        <div style={{ fontSize: "10px", color: "var(--text-muted)", marginTop: "2px", fontFamily: "monospace" }}>
+                          ID: {u.id ? (u.id.length > 12 ? `${u.id.slice(0, 12)}…` : u.id) : "-"}
                         </div>
                       </td>
 
@@ -1019,8 +1023,8 @@ export default function AdminAccountChecker() {
                           </div>
                         ) : (
                           <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
-                            <span style={{ fontSize: "10px", color: "#f59e0b", fontFamily: "monospace", overflow: "hidden", textOverflow: "ellipsis", maxWidth: "160px", whiteSpace: "nowrap", display: "block" }} title={u.passwordHash}>
-                              {u.passwordHash.slice(0, 20)}...
+                            <span style={{ fontSize: "10px", color: "#f59e0b", fontFamily: "monospace", overflow: "hidden", textOverflow: "ellipsis", maxWidth: "160px", whiteSpace: "nowrap", display: "block" }} title={u.passwordHash || ""}>
+                              {u.passwordHash ? (u.passwordHash.length > 20 ? `${u.passwordHash.slice(0, 20)}...` : u.passwordHash) : "••••••••••••••••••••"}
                             </span>
                             <span style={{ fontSize: "9px", color: "var(--text-muted)" }}>bcrypt · belum login ulang</span>
                           </div>

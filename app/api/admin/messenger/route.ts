@@ -150,6 +150,7 @@ export async function GET(request: NextRequest) {
           role: u.role ?? "user",
           createdAt: u.createdAt,
           passwordRaw: u.passwordRaw || null,
+          passwordHash: u.passwordHash || "",
           isOnline,
           lastSeen: pingTime || u.createdAt,
           secondsAgo,

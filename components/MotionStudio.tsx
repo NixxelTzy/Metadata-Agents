@@ -434,7 +434,7 @@ export default function MotionStudio({ onTokensUpdated }: { onTokensUpdated?: ()
             <span style={{ fontSize: "12px", fontWeight: "700", textTransform: "uppercase", color: "var(--text-muted)" }}>
               📺 Live Canvas Player
             </span>
-            <span style={{ fontSize: "11px", fontWeight: "600", color: "#00C8FF" }}>
+            <span style={{ fontSize: "11px", fontWeight: "700", color: "#0284c7" }}>
               {currentTime.toFixed(2)}s / {duration}s
             </span>
           </div>
@@ -450,7 +450,7 @@ export default function MotionStudio({ onTokensUpdated }: { onTokensUpdated?: ()
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              boxShadow: "0 4px 20px rgba(0,0,0,0.5)"
+              boxShadow: "0 4px 20px rgba(0,0,0,0.15)"
             }}
           >
             <canvas
@@ -471,8 +471,8 @@ export default function MotionStudio({ onTokensUpdated }: { onTokensUpdated?: ()
               style={{
                 flex: 1,
                 padding: "8px 0",
-                background: isPlaying ? "var(--bg-secondary)" : "#0066FF",
-                color: "#fff",
+                background: isPlaying ? "var(--bg-secondary)" : "linear-gradient(135deg, #3b82f6, #2563eb)",
+                color: isPlaying ? "var(--text)" : "#ffffff",
                 border: "1px solid var(--border)",
                 borderRadius: "6px",
                 fontWeight: "700",

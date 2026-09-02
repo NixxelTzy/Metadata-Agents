@@ -93,6 +93,20 @@ export default function ResultCard({ result, preview }: Props) {
           </div>
         )}
 
+        {result.prompt && (
+          <div className="field">
+            <div className="field__header">
+              <label>AI Prompt ({result.model || "Midjourney 6"})</label>
+              <button type="button" className="copy-btn" onClick={() => handleCopy("all")}>
+                {copied === "all" ? "✓ Tersalin" : "Salin Prompt"}
+              </button>
+            </div>
+            <p className="field__value" style={{ fontSize: "12px", fontStyle: "italic", lineHeight: 1.5 }}>
+              {result.prompt}
+            </p>
+          </div>
+        )}
+
         <div className="field">
           <div className="field__header">
             <label>Keywords ({result.keywords.length})</label>

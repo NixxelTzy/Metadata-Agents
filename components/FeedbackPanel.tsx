@@ -83,8 +83,8 @@ export default function FeedbackPanel() {
           display: none;
           grid-column: 1 / -1;
           grid-row: 3;
-          border-top: 1px solid rgba(0,120,255,0.15);
-          background: rgba(0,15,40,0.88);
+          border-top: 1px solid rgba(147,197,253,0.4);
+          background: rgba(239,246,255,0.92);
           backdrop-filter: blur(20px);
         }
         .panel-mobile-tab {
@@ -93,16 +93,16 @@ export default function FeedbackPanel() {
           border: none; background: transparent; cursor: pointer; font-family: inherit;
         }
         .panel-mobile-tab__icon { font-size: 18px; }
-        .panel-mobile-tab__label { font-size: 10px; font-weight: 600; color: rgba(255,255,255,0.4); }
-        .panel-mobile-tab.active .panel-mobile-tab__label { color: #38bdf8; }
-        .panel-mobile-tab.active { background: rgba(14,165,233,0.1); }
+        .panel-mobile-tab__label { font-size: 10px; font-weight: 700; color: #64748b; }
+        .panel-mobile-tab.active .panel-mobile-tab__label { color: #2563eb; }
+        .panel-mobile-tab.active { background: rgba(219,234,254,0.7); }
       `}</style>
 
       {/* Header */}
       <div className="pl-header">
         <div className="pl-header__left">
           <div className="pl-header__icon">
-            <MessageSquare size={18} color="#38bdf8" />
+            <MessageSquare size={18} color="#2563eb" />
           </div>
           <div>
             <div className="pl-header__title">Laporan & Usulan</div>
@@ -124,14 +124,14 @@ export default function FeedbackPanel() {
           className={`pl-sidebar__item${activeTab === "form" ? " active" : ""}`}
           onClick={() => setActiveTab("form")}
         >
-          <span className="pl-sidebar__item-icon"><Send size={15} color="#38bdf8" /></span>
+          <span className="pl-sidebar__item-icon"><Send size={15} color="#2563eb" /></span>
           Kirim Laporan
         </button>
         <button
           className={`pl-sidebar__item${activeTab === "history" ? " active" : ""}`}
           onClick={() => setActiveTab("history")}
         >
-          <span className="pl-sidebar__item-icon"><History size={15} color="#38bdf8" /></span>
+          <span className="pl-sidebar__item-icon"><History size={15} color="#2563eb" /></span>
           Riwayat ({history.length})
         </button>
 
@@ -223,7 +223,7 @@ export default function FeedbackPanel() {
                 <div className="pl-card__title">Riwayat Laporan</div>
                 <div className="pl-card__desc">Laporan yang telah Anda kirimkan</div>
               </div>
-              <span style={{ fontSize: 12, color: "rgba(255,255,255,0.3)" }}>{history.length}</span>
+              <span style={{ fontSize: 12, color: "#64748b", fontWeight: 700 }}>{history.length}</span>
             </div>
             <div style={{ padding: "10px 14px", flex: 1, overflowY: "auto" }}>
               {loadingHistory ? (
@@ -232,7 +232,7 @@ export default function FeedbackPanel() {
                 </div>
               ) : history.length === 0 ? (
                 <div className="pl-empty">
-                  <span className="pl-empty__icon"><Inbox size={28} color="#38bdf8" /></span>
+                  <span className="pl-empty__icon"><Inbox size={28} color="#2563eb" /></span>
                   <span className="pl-empty__text">Belum ada riwayat laporan.</span>
                 </div>
               ) : (
@@ -242,24 +242,24 @@ export default function FeedbackPanel() {
                       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 7, gap: 8, flexWrap: "wrap" }}>
                         <span style={{
                           display: "inline-flex", alignItems: "center", gap: 5,
-                          padding: "3px 9px", borderRadius: 20, fontSize: 11, fontWeight: 600,
-                          background: "rgba(14,165,233,0.1)", border: "1px solid rgba(14,165,233,0.2)", color: "#38bdf8",
+                          padding: "3px 9px", borderRadius: 20, fontSize: 11, fontWeight: 700,
+                          background: "rgba(219,234,254,0.8)", border: "1px solid rgba(147,197,253,0.5)", color: "#1e40af",
                         }}>
                           {getTypeIcon(item.type)} {getTypeLabel(item.type)}
                         </span>
-                        <span style={{ fontSize: 11, color: "rgba(255,255,255,0.25)" }}>
+                        <span style={{ fontSize: 11, color: "#64748b", fontWeight: 600 }}>
                           {new Date(item.createdAt).toLocaleString("id-ID", { dateStyle: "medium", timeStyle: "short" })}
                         </span>
                       </div>
-                      <p style={{ fontSize: 12.5, color: "#cbd5e1", lineHeight: 1.6, margin: 0 }}>
+                      <p style={{ fontSize: 12.5, color: "#334155", lineHeight: 1.6, margin: 0, fontWeight: 500 }}>
                         {item.message}
                       </p>
                       <div style={{
                         marginTop: 7, padding: "7px 10px", borderRadius: 6,
-                        background: "rgba(14,165,233,0.05)", border: "1px solid rgba(14,165,233,0.1)",
-                        fontSize: 11, color: "rgba(255,255,255,0.5)", display: "flex", alignItems: "center", gap: 6,
+                        background: "rgba(219,234,254,0.5)", border: "1px solid rgba(147,197,253,0.4)",
+                        fontSize: 11, color: "#475569", display: "flex", alignItems: "center", gap: 6,
                       }}>
-                        <Bot size={13} color="#38bdf8" />
+                        <Bot size={13} color="#2563eb" />
                         <span>Diproses oleh AI dan dikirim ke tim via Gmail SMTP.</span>
                       </div>
                     </div>

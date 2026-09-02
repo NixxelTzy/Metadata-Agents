@@ -69,11 +69,11 @@ const ENGINE_PROFILES: Record<UpscaleEngine, EngineProfile> = {
     description: "Iterative 2× upscaling with bilateral denoise & adaptive unsharp masking",
     smoothing: "high",
     multiPass: true,
-    sharpen: 55,
-    denoise: 38,
-    contrast: 1.03,
-    saturation: 1.06,
-    quality: 94,
+    sharpen: 90,
+    denoise: 22,
+    contrast: 1.06,
+    saturation: 1.08,
+    quality: 98,
   },
   bicubic_crisp: {
     label: "Bicubic Crisp",
@@ -81,11 +81,11 @@ const ENGINE_PROFILES: Record<UpscaleEngine, EngineProfile> = {
     description: "Single-pass cubic resampling with strong sharpening for photography & portraits",
     smoothing: "high",
     multiPass: false,
-    sharpen: 72,
-    denoise: 18,
-    contrast: 1.05,
-    saturation: 1.02,
-    quality: 92,
+    sharpen: 110,
+    denoise: 10,
+    contrast: 1.08,
+    saturation: 1.04,
+    quality: 97,
   },
   bilinear_smooth: {
     label: "Bilinear Smooth",
@@ -93,11 +93,11 @@ const ENGINE_PROFILES: Record<UpscaleEngine, EngineProfile> = {
     description: "Smooth interpolation — ideal for vector art, illustrations, and graphic design",
     smoothing: "low",
     multiPass: false,
-    sharpen: 0,
-    denoise: 12,
-    contrast: 1.0,
+    sharpen: 30,
+    denoise: 8,
+    contrast: 1.02,
     saturation: 1.0,
-    quality: 90,
+    quality: 96,
   },
 };
 
@@ -299,7 +299,8 @@ function applyUnsharpMask(
   const imgData = ctx.getImageData(0, 0, w, h);
   const src = new Uint8ClampedArray(imgData.data);
   const data = imgData.data;
-  const mix = (amount / 100) * 0.52;
+  // Increased cap from 0.52 → 0.75 for stronger, non-blurry sharpening
+  const mix = (amount / 100) * 0.75;
   const cw = 1 + 4 * mix;
   const ew = -mix;
 
@@ -888,18 +889,17 @@ interface ResolutionPreset {
 }
 
 const RESOLUTION_PRESETS: ResolutionPreset[] = [
-  { label: "2000×2000", width: 2000, height: 2000, badge: "2K SQ",   desc: "Square · Stock standard" },
-  { label: "2048×2048", width: 2048, height: 2048, badge: "2K+",     desc: "Adobe Stock minimum" },
-  { label: "2048×3072", width: 2048, height: 3072, badge: "3:2 P",   desc: "Portrait · 2:3 ratio" },
-  { label: "3072×2048", width: 3072, height: 2048, badge: "3:2 L",   desc: "Landscape · 3:2 ratio" },
-  { label: "4096×4096", width: 4096, height: 4096, badge: "4K SQ",   desc: "High-res square" },
-  { label: "6144×4096", width: 6144, height: 4096, badge: "6K",      desc: "Ultra-wide · 3:2" },
-  { label: "8192×8192", width: 8192, height: 8192, badge: "8K SQ",   desc: "Max quality · pro" },
+  { label: "2× Scale",    width: 2000,  height: 2000,  badge: "2×",    desc: "2× original size · aspect ratio preserved" },
+  { label: "2048px",      width: 2048,  height: 2048,  badge: "2K",    desc: "Longer side ≥ 2048px · Stock minimum" },
+  { label: "3000px",      width: 3000,  height: 3000,  badge: "3K",    desc: "Longer side ≥ 3000px · High quality" },
+  { label: "4096px",      width: 4096,  height: 4096,  badge: "4K",    desc: "Longer side ≥ 4096px · Ultra HD" },
+  { label: "6000px",      width: 6000,  height: 6000,  badge: "6K",    desc: "Longer side ≥ 6000px · Pro stock" },
+  { label: "8192px",      width: 8192,  height: 8192,  badge: "8K",    desc: "Longer side ≥ 8192px · Max quality" },
 ];
 
 export default function ImageUpscaler() {
   const [images, setImages] = useState<MediaFile[]>([]);
-  const [selectedPreset, setSelectedPreset] = useState<ResolutionPreset>(RESOLUTION_PRESETS[3]!);
+  const [selectedPreset, setSelectedPreset] = useState<ResolutionPreset>(RESOLUTION_PRESETS[1]!);
   const [engine, setEngine] = useState<UpscaleEngine>("ai_super_res");
   const [loading, setLoading] = useState(false);
   const [progress, setProgress] = useState("");
@@ -1000,11 +1000,23 @@ export default function ImageUpscaler() {
           const imgEl = await loadImage(media.preview);
           const { naturalWidth: srcW, naturalHeight: srcH } = imgEl;
 
-          // Use exact preset dimensions — only upscale, never downscale
-          const targetW = Math.max(srcW, selectedPreset.width);
-          const targetH = Math.max(srcH, selectedPreset.height);
+          // Preserve original aspect ratio — scale uniformly so the longer
+          // side reaches the preset target. Never distort, never downscale.
+          const presetLonger = Math.max(selectedPreset.width, selectedPreset.height);
+          const srcLonger = Math.max(srcW, srcH);
+          let targetW: number;
+          let targetH: number;
+          if (presetLonger <= srcLonger) {
+            // Image already >= preset resolution → keep original size
+            targetW = srcW;
+            targetH = srcH;
+          } else {
+            const scaleFactor = presetLonger / srcLonger;
+            targetW = Math.round(srcW * scaleFactor);
+            targetH = Math.round(srcH * scaleFactor);
+          }
 
-          setProgress(`(${i + 1}/${images.length}) Memproses: ${media.name}`);
+          setProgress(`(${i + 1}/${images.length}) Memproses: ${media.name} (${srcW}×${srcH} → ${targetW}×${targetH})`);
 
           const dataUrl = await runUpscalePipeline(
             imgEl,
@@ -1029,13 +1041,26 @@ export default function ImageUpscaler() {
             )
           );
         } else {
-          // Video processing
-          setProgress(`(${i + 1}/${images.length}) Memproses Video: ${media.name}`);
+          // Video processing — preserve original aspect ratio
+          const vSrcLonger = Math.max(media.width, media.height);
+          const vPresetLonger = Math.max(selectedPreset.width, selectedPreset.height);
+          let vTargetW: number;
+          let vTargetH: number;
+          if (vPresetLonger <= vSrcLonger) {
+            vTargetW = media.width;
+            vTargetH = media.height;
+          } else {
+            const vScale = vPresetLonger / vSrcLonger;
+            vTargetW = Math.round(media.width * vScale);
+            vTargetH = Math.round(media.height * vScale);
+          }
+
+          setProgress(`(${i + 1}/${images.length}) Memproses Video: ${media.name} (${media.width}×${media.height} → ${vTargetW}×${vTargetH})`);
           const result = await processVideoFile(
             media,
             engine,
-            selectedPreset.width,
-            selectedPreset.height,
+            vTargetW,
+            vTargetH,
             (step, processed, total) => {
               setImages((p) =>
                 p.map((item, idx) =>

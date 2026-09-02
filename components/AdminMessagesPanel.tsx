@@ -80,9 +80,9 @@ export default function AdminMessagesPanel() {
     return <MessageSquare size={14} color="#38bdf8" />;
   };
 
-  const typeColor = (t: string) => ({ bug: "#fca5a5", feature: "#fde68a", other: "#bae6fd" }[t] ?? "#bae6fd");
-  const typeBg    = (t: string) => ({ bug: "rgba(239,68,68,0.1)", feature: "rgba(245,158,11,0.1)", other: "rgba(56,189,248,0.1)" }[t] ?? "rgba(56,189,248,0.1)");
-  const typeBorder= (t: string) => ({ bug: "rgba(239,68,68,0.25)", feature: "rgba(245,158,11,0.25)", other: "rgba(56,189,248,0.25)" }[t] ?? "rgba(56,189,248,0.25)");
+  const typeColor = (t: string) => ({ bug: "#b91c1c", feature: "#b45309", other: "#1d4ed8" }[t] ?? "#1d4ed8");
+  const typeBg    = (t: string) => ({ bug: "rgba(239,68,68,0.12)", feature: "rgba(245,158,11,0.12)", other: "rgba(59,130,246,0.12)" }[t] ?? "rgba(59,130,246,0.12)");
+  const typeBorder= (t: string) => ({ bug: "rgba(239,68,68,0.35)", feature: "rgba(245,158,11,0.35)", other: "rgba(59,130,246,0.35)" }[t] ?? "rgba(59,130,246,0.35)");
 
   const filtered = reports.filter(r => filterType === "all" || r.type === filterType);
 
@@ -92,7 +92,7 @@ export default function AdminMessagesPanel() {
       <div className="pl-header">
         <div className="pl-header__left">
           <div className="pl-header__icon">
-            <Megaphone size={18} color="#38bdf8" />
+            <Megaphone size={18} color="#2563eb" />
           </div>
           <div>
             <div className="pl-header__title">Pesan &amp; Broadcast</div>
@@ -118,14 +118,14 @@ export default function AdminMessagesPanel() {
           className={`pl-sidebar__item${activeTab === "inbox" ? " active" : ""}`}
           onClick={() => setActiveTab("inbox")}
         >
-          <span className="pl-sidebar__item-icon"><Inbox size={15} color="#38bdf8" /></span>
+          <span className="pl-sidebar__item-icon"><Inbox size={15} color="#2563eb" /></span>
           Inbox ({reports.length})
         </button>
         <button
           className={`pl-sidebar__item${activeTab === "broadcast" ? " active" : ""}`}
           onClick={() => setActiveTab("broadcast")}
         >
-          <span className="pl-sidebar__item-icon"><Send size={15} color="#38bdf8" /></span>
+          <span className="pl-sidebar__item-icon"><Send size={15} color="#2563eb" /></span>
           Broadcast Email
         </button>
 
@@ -144,7 +144,7 @@ export default function AdminMessagesPanel() {
                 </span>
                 {f.label}
                 {f.value !== "all" && (
-                  <span style={{ marginLeft: "auto", fontSize: 11, color: "rgba(255,255,255,0.4)" }}>
+                  <span style={{ marginLeft: "auto", fontSize: 11, color: "#64748b", fontWeight: 600 }}>
                     {reports.filter(r => r.type === f.value).length}
                   </span>
                 )}
@@ -171,19 +171,19 @@ export default function AdminMessagesPanel() {
               </div>
               <div className="pl-stat-item">
                 <div className="pl-stat-item__label">Bug Report</div>
-                <div className="pl-stat-item__value" style={{ color: "#fca5a5" }}>
+                <div className="pl-stat-item__value" style={{ color: "#b91c1c" }}>
                   {reports.filter(r => r.type === "bug").length}
                 </div>
               </div>
               <div className="pl-stat-item">
                 <div className="pl-stat-item__label">Usulan Fitur</div>
-                <div className="pl-stat-item__value" style={{ color: "#fde68a" }}>
+                <div className="pl-stat-item__value" style={{ color: "#b45309" }}>
                   {reports.filter(r => r.type === "feature").length}
                 </div>
               </div>
               <div className="pl-stat-item">
                 <div className="pl-stat-item__label">Lainnya</div>
-                <div className="pl-stat-item__value" style={{ color: "#bae6fd" }}>
+                <div className="pl-stat-item__value" style={{ color: "#1d4ed8" }}>
                   {reports.filter(r => r.type === "other").length}
                 </div>
               </div>
@@ -207,7 +207,7 @@ export default function AdminMessagesPanel() {
                 </div>
               ) : filtered.length === 0 ? (
                 <div className="pl-empty">
-                  <span className="pl-empty__icon"><Inbox size={32} color="#38bdf8" /></span>
+                  <span className="pl-empty__icon"><Inbox size={32} color="#2563eb" /></span>
                   <span className="pl-empty__text">Tidak ada pesan yang cocok dengan filter ini.</span>
                 </div>
               ) : (
@@ -224,18 +224,18 @@ export default function AdminMessagesPanel() {
                           }}>
                             {renderTypeIcon(r.type)} {r.type}
                           </span>
-                          <span style={{ fontSize: 13, fontWeight: 700, color: "#f0f8ff" }}>
+                          <span style={{ fontSize: 13, fontWeight: 700, color: "#0f172a" }}>
                             {r.username || "Anonim"}
                           </span>
-                          <span style={{ fontSize: 11, color: "rgba(255,255,255,0.4)" }}>
+                          <span style={{ fontSize: 11, color: "#475569", fontWeight: 500 }}>
                             ({r.email})
                           </span>
                         </div>
-                        <span style={{ fontSize: 11, color: "rgba(255,255,255,0.3)" }}>
+                        <span style={{ fontSize: 11, color: "#64748b", fontWeight: 600 }}>
                           {new Date(r.createdAt).toLocaleString("id-ID", { dateStyle: "medium", timeStyle: "short" })}
                         </span>
                       </div>
-                      <p style={{ fontSize: 13, color: "#cbd5e1", lineHeight: 1.6, margin: 0, whiteSpace: "pre-wrap" }}>
+                      <p style={{ fontSize: 13, color: "#334155", lineHeight: 1.6, margin: 0, whiteSpace: "pre-wrap", fontWeight: 500 }}>
                         {r.message}
                       </p>
                     </div>

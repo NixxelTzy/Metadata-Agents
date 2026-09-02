@@ -940,10 +940,10 @@ export default function WatermarkRemover() {
                         gap: "8px",
                         padding: "8px 12px",
                         borderRadius: "8px",
-                        border: `1px solid ${active ? "#38bdf8" : "rgba(149,199,255,0.15)"}`,
-                        background: active ? "rgba(14,165,233,0.2)" : "rgba(149,199,255,0.03)",
-                        color: active ? "#38bdf8" : "#f0f8ff",
-                        boxShadow: active ? "0 0 12px rgba(56,189,248,0.25)" : "none",
+                        border: `1px solid ${active ? "#3b82f6" : "rgba(147,197,253,0.45)"}`,
+                        background: active ? "rgba(219,234,254,0.9)" : "rgba(255,255,255,0.7)",
+                        color: active ? "#1d4ed8" : "#334155",
+                        boxShadow: active ? "0 2px 8px rgba(59,130,246,0.2)" : "none",
                         cursor: "pointer",
                         fontSize: "12px",
                         fontWeight: "700",
@@ -962,13 +962,14 @@ export default function WatermarkRemover() {
                 <div
                   style={{
                     fontSize: "10px",
-                    color: "#38bdf8",
+                    color: "#1e40af",
                     padding: "8px",
-                    background: "rgba(14,165,233,0.1)",
-                    border: "1px solid rgba(56,189,248,0.2)",
+                    background: "rgba(219,234,254,0.7)",
+                    border: "1px solid rgba(147,197,253,0.5)",
                     borderRadius: "6px",
                     marginTop: "6px",
                     lineHeight: 1.4,
+                    fontWeight: 600,
                   }}
                 >
                   <strong>Alt + Klik</strong> pada gambar untuk menetapkan sumber kloning, lalu coret di area watermark.

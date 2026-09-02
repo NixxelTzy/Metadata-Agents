@@ -404,8 +404,8 @@ export default function PremAccessPanel() {
             <h1 style={{ fontSize: "22px", fontWeight: "900", margin: 0, letterSpacing: "-0.02em", display: "flex", alignItems: "center", gap: "8px" }}>
               Prem Access <span style={{ fontSize: "12px", fontWeight: "800", color: "#facc15", background: "rgba(234, 179, 8, 0.15)", border: "1px solid rgba(234, 179, 8, 0.3)", padding: "2px 8px", borderRadius: "6px" }}>COMMAND CENTER</span>
             </h1>
-            <div style={{ fontSize: "12.5px", color: "rgba(255,255,255,0.5)", marginTop: "2px" }}>
-              Platform eksekusi perintah <code style={{ color: "#38bdf8" }}>prem</code>, <code style={{ color: "#38bdf8" }}>unprem</code>, <code style={{ color: "#38bdf8" }}>list prem</code> &amp; pencabutan otomatis saat masa aktif habis.
+            <div style={{ fontSize: "12.5px", color: "#475569", marginTop: "2px" }}>
+              Platform eksekusi perintah <code style={{ color: "#1d4ed8" }}>prem</code>, <code style={{ color: "#1d4ed8" }}>unprem</code>, <code style={{ color: "#1d4ed8" }}>list prem</code> &amp; pencabutan otomatis saat masa aktif habis.
             </div>
           </div>
         </div>
@@ -414,9 +414,9 @@ export default function PremAccessPanel() {
           <span
             className="pa-badge"
             style={{
-              background: "rgba(34, 197, 94, 0.15)",
-              border: "1px solid rgba(34, 197, 94, 0.4)",
-              color: "#4ade80",
+              background: "rgba(34, 197, 94, 0.12)",
+              border: "1px solid rgba(34, 197, 94, 0.35)",
+              color: "#15803d",
               padding: "6px 12px",
             }}
           >
@@ -440,17 +440,17 @@ export default function PremAccessPanel() {
       <div className="pa-card">
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "14px", flexWrap: "wrap", gap: "8px" }}>
           <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-            <Terminal size={18} color="#38bdf8" />
-            <span style={{ fontSize: "15px", fontWeight: "800" }}>Command Console</span>
+            <Terminal size={18} color="#2563eb" />
+            <span style={{ fontSize: "15px", fontWeight: "800", color: "#0f172a" }}>Command Console</span>
           </div>
-          <span style={{ fontSize: "11.5px", color: "rgba(255,255,255,0.45)" }}>
-            Format: <code style={{ color: "#38bdf8" }}>prem &lt;7 hari | 30 hari | 1 tahun&gt; &lt;email&gt;</code> atau <code style={{ color: "#38bdf8" }}>unprem &lt;email&gt;</code>
+          <span style={{ fontSize: "11.5px", color: "#475569", fontWeight: 600 }}>
+            Format: <code style={{ color: "#1d4ed8", fontWeight: 700 }}>prem &lt;7 hari | 30 hari | 1 tahun&gt; &lt;email&gt;</code> atau <code style={{ color: "#1d4ed8", fontWeight: 700 }}>unprem &lt;email&gt;</code>
           </span>
         </div>
 
         {/* Quick Command Template Chips */}
         <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", marginBottom: "14px" }}>
-          <span style={{ fontSize: "11.5px", color: "rgba(255,255,255,0.5)", alignSelf: "center", fontWeight: "700" }}>Template Cepat:</span>
+          <span style={{ fontSize: "11.5px", color: "#475569", alignSelf: "center", fontWeight: "700" }}>Template Cepat:</span>
           <button
             type="button"
             className="pa-chip"
@@ -499,7 +499,7 @@ export default function PremAccessPanel() {
           <button
             type="button"
             className="pa-chip"
-            style={{ background: "rgba(129, 140, 248, 0.12)", borderColor: "rgba(129, 140, 248, 0.3)", color: "#c7d2fe" }}
+            style={{ background: "rgba(219,234,254,0.7)", borderColor: "rgba(147,197,253,0.6)", color: "#1e40af" }}
             onClick={() => handleExecuteCommand("list prem")}
           >
             <FileText size={12} />
@@ -508,7 +508,7 @@ export default function PremAccessPanel() {
           <button
             type="button"
             className="pa-chip"
-            style={{ background: "rgba(255, 255, 255, 0.05)", borderColor: "rgba(255, 255, 255, 0.15)", color: "#e2e8f0" }}
+            style={{ background: "rgba(219,234,254,0.5)", borderColor: "rgba(147,197,253,0.5)", color: "#334155" }}
             onClick={() => handleExecuteCommand("help")}
           >
             <Info size={12} />
@@ -531,7 +531,7 @@ export default function PremAccessPanel() {
                 if (e.key === "Enter") handleExecuteCommand();
               }}
             />
-            <span style={{ position: "absolute", right: "12px", top: "50%", transform: "translateY(-50%)", color: "rgba(255,255,255,0.3)", fontSize: "11px", pointerEvents: "none" }}>
+            <span style={{ position: "absolute", right: "12px", top: "50%", transform: "translateY(-50%)", color: "#94a3b8", fontSize: "11px", pointerEvents: "none", fontWeight: 600 }}>
               ↵ Enter
             </span>
           </div>
@@ -555,7 +555,7 @@ export default function PremAccessPanel() {
               key={idx}
               style={{
                 paddingBottom: "12px",
-                borderBottom: idx === consoleHistory.length - 1 ? "none" : "1px solid rgba(255, 255, 255, 0.08)",
+                borderBottom: idx === consoleHistory.length - 1 ? "none" : "1px solid rgba(147, 197, 253, 0.15)",
               }}
             >
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "4px" }}>
@@ -566,8 +566,8 @@ export default function PremAccessPanel() {
                     className="pa-badge"
                     style={{
                       fontSize: "9.5px",
-                      background: item.status === "success" ? "rgba(34,197,94,0.15)" : item.status === "error" ? "rgba(239,68,68,0.15)" : "rgba(56,189,248,0.15)",
-                      border: `1px solid ${item.status === "success" ? "rgba(34,197,94,0.35)" : item.status === "error" ? "rgba(239,68,68,0.35)" : "rgba(56,189,248,0.35)"}`,
+                      background: item.status === "success" ? "rgba(34,197,94,0.2)" : item.status === "error" ? "rgba(239,68,68,0.2)" : "rgba(56,189,248,0.2)",
+                      border: `1px solid ${item.status === "success" ? "rgba(34,197,94,0.4)" : item.status === "error" ? "rgba(239,68,68,0.4)" : "rgba(56,189,248,0.4)"}`,
                       color: item.status === "success" ? "#4ade80" : item.status === "error" ? "#f87171" : "#38bdf8",
                     }}
                   >
@@ -575,11 +575,11 @@ export default function PremAccessPanel() {
                   </span>
                 </div>
                 <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                  <span style={{ fontSize: "10.5px", color: "rgba(255,255,255,0.4)" }}>{item.timestamp}</span>
+                  <span style={{ fontSize: "10.5px", color: "rgba(148,163,184,0.8)" }}>{item.timestamp}</span>
                   <button
                     type="button"
                     onClick={() => handleCopyText(item.reply, idx)}
-                    style={{ background: "transparent", border: "none", color: "rgba(255,255,255,0.4)", cursor: "pointer", padding: "2px" }}
+                    style={{ background: "transparent", border: "none", color: "rgba(148,163,184,0.7)", cursor: "pointer", padding: "2px" }}
                     title="Salin hasil output"
                   >
                     {copiedIndex === idx ? <Check size={12} color="#4ade80" /> : <Copy size={12} />}
@@ -607,13 +607,13 @@ export default function PremAccessPanel() {
       <div className="pa-card">
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "16px", flexWrap: "wrap", gap: "12px" }}>
           <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-            <Users size={18} color="#facc15" />
-            <span style={{ fontSize: "16px", fontWeight: "800" }}>Pengguna Premium Aktif ({filteredUsers.length})</span>
+            <Users size={18} color="#ca8a04" />
+            <span style={{ fontSize: "16px", fontWeight: "800", color: "#0f172a" }}>Pengguna Premium Aktif ({filteredUsers.length})</span>
           </div>
 
           <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
             <div style={{ position: "relative", minWidth: "220px" }}>
-              <Search size={14} style={{ position: "absolute", left: "10px", top: "50%", transform: "translateY(-50%)", color: "rgba(255,255,255,0.4)" }} />
+              <Search size={14} style={{ position: "absolute", left: "10px", top: "50%", transform: "translateY(-50%)", color: "#64748b" }} />
               <input
                 type="text"
                 className="pa-input"
@@ -631,9 +631,9 @@ export default function PremAccessPanel() {
               disabled={actionLoading === "check_exp"}
               style={{
                 fontSize: "11.5px",
-                background: "rgba(234, 179, 8, 0.12)",
-                border: "1px solid rgba(234, 179, 8, 0.3)",
-                color: "#facc15",
+                background: "rgba(234, 179, 8, 0.1)",
+                border: "1px solid rgba(234, 179, 8, 0.35)",
+                color: "#b45309",
               }}
             >
               <Clock size={13} />
@@ -643,39 +643,39 @@ export default function PremAccessPanel() {
         </div>
 
         {filteredUsers.length === 0 ? (
-          <div style={{ textAlign: "center", color: "rgba(255,255,255,0.4)", fontSize: "13px", padding: "36px 16px" }}>
+          <div style={{ textAlign: "center", color: "#64748b", fontSize: "13px", padding: "36px 16px", fontWeight: 600 }}>
             {searchFilter ? "Tidak ada pengguna premium yang cocok dengan pencarian." : "Belum ada pengguna dengan status premium aktif."}
           </div>
         ) : (
           <div style={{ overflowX: "auto" }}>
             <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "12.5px" }}>
               <thead>
-                <tr style={{ borderBottom: "1px solid rgba(255,255,255,0.1)", textAlign: "left", color: "rgba(255,255,255,0.5)" }}>
-                  <th style={{ padding: "10px 12px" }}>User &amp; Email</th>
-                  <th style={{ padding: "10px 12px" }}>Paket</th>
-                  <th style={{ padding: "10px 12px" }}>Sisa Waktu Masa Aktif</th>
-                  <th style={{ padding: "10px 12px" }}>Kadaluarsa Pada</th>
-                  <th style={{ padding: "10px 12px", textAlign: "right" }}>Aksi Cepat Admin</th>
+                <tr style={{ borderBottom: "1px solid rgba(147,197,253,0.45)", textAlign: "left", color: "#334155" }}>
+                  <th style={{ padding: "10px 12px", fontWeight: 700 }}>User &amp; Email</th>
+                  <th style={{ padding: "10px 12px", fontWeight: 700 }}>Paket</th>
+                  <th style={{ padding: "10px 12px", fontWeight: 700 }}>Sisa Waktu Masa Aktif</th>
+                  <th style={{ padding: "10px 12px", fontWeight: 700 }}>Kadaluarsa Pada</th>
+                  <th style={{ padding: "10px 12px", textAlign: "right", fontWeight: 700 }}>Aksi Cepat Admin</th>
                 </tr>
               </thead>
               <tbody>
                 {filteredUsers.map((u) => (
-                  <tr key={u.id} style={{ borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
+                  <tr key={u.id} style={{ borderBottom: "1px solid rgba(147,197,253,0.25)" }}>
                     <td style={{ padding: "12px" }}>
-                      <div style={{ fontWeight: "700", color: "#f0f8ff", display: "flex", alignItems: "center", gap: "6px" }}>
-                        <Crown size={14} color="#facc15" />
+                      <div style={{ fontWeight: "700", color: "#0f172a", display: "flex", alignItems: "center", gap: "6px" }}>
+                        <Crown size={14} color="#ca8a04" />
                         {u.username}
                       </div>
-                      <div style={{ fontSize: "11px", color: "rgba(255,255,255,0.45)" }}>{u.email}</div>
+                      <div style={{ fontSize: "11px", color: "#64748b", marginTop: 2 }}>{u.email}</div>
                     </td>
 
                     <td style={{ padding: "12px" }}>
                       <span
                         className="pa-badge"
                         style={{
-                          background: "rgba(234, 179, 8, 0.15)",
+                          background: "rgba(234, 179, 8, 0.12)",
                           border: "1px solid rgba(234, 179, 8, 0.35)",
-                          color: "#fde047",
+                          color: "#b45309",
                         }}
                       >
                         {u.premiumPlan}
@@ -686,9 +686,9 @@ export default function PremAccessPanel() {
                       <span
                         className="pa-badge"
                         style={{
-                          background: u.remainingDays <= 2 ? "rgba(239, 68, 68, 0.15)" : "rgba(34, 197, 94, 0.15)",
-                          border: `1px solid ${u.remainingDays <= 2 ? "rgba(239, 68, 68, 0.4)" : "rgba(34, 197, 94, 0.4)"}`,
-                          color: u.remainingDays <= 2 ? "#fca5a5" : "#86efac",
+                          background: u.remainingDays <= 2 ? "rgba(239, 68, 68, 0.1)" : "rgba(34, 197, 94, 0.1)",
+                          border: `1px solid ${u.remainingDays <= 2 ? "rgba(239, 68, 68, 0.35)" : "rgba(34, 197, 94, 0.35)"}`,
+                          color: u.remainingDays <= 2 ? "#b91c1c" : "#15803d",
                         }}
                       >
                         <Clock size={11} />
@@ -698,7 +698,7 @@ export default function PremAccessPanel() {
                       </span>
                     </td>
 
-                    <td style={{ padding: "12px", fontSize: "11.5px", color: "rgba(255,255,255,0.6)" }}>
+                    <td style={{ padding: "12px", fontSize: "11.5px", color: "#475569", fontWeight: 600 }}>
                       {new Date(u.premiumExpiresAt).toLocaleString("id-ID")}
                     </td>
 
@@ -709,7 +709,7 @@ export default function PremAccessPanel() {
                           className="pa-btn"
                           onClick={() => handleQuickGrant(u.email, 7, "7 Hari")}
                           disabled={actionLoading === `grant-${u.email}-7`}
-                          style={{ fontSize: "10.5px", padding: "4px 8px", background: "rgba(56, 189, 248, 0.12)", color: "#38bdf8" }}
+                          style={{ fontSize: "10.5px", padding: "4px 8px", background: "rgba(219,234,254,0.8)", border: "1px solid rgba(147,197,253,0.6)", color: "#1e40af" }}
                           title="Perpanjang 7 Hari"
                         >
                           +7 Hari
@@ -719,7 +719,7 @@ export default function PremAccessPanel() {
                           className="pa-btn"
                           onClick={() => handleQuickGrant(u.email, 30, "30 Hari")}
                           disabled={actionLoading === `grant-${u.email}-30`}
-                          style={{ fontSize: "10.5px", padding: "4px 8px", background: "rgba(56, 189, 248, 0.15)", color: "#38bdf8" }}
+                          style={{ fontSize: "10.5px", padding: "4px 8px", background: "rgba(219,234,254,0.8)", border: "1px solid rgba(147,197,253,0.6)", color: "#1e40af" }}
                           title="Perpanjang 30 Hari"
                         >
                           +30 Hari
@@ -729,7 +729,7 @@ export default function PremAccessPanel() {
                           className="pa-btn"
                           onClick={() => handleQuickGrant(u.email, 365, "1 Tahun")}
                           disabled={actionLoading === `grant-${u.email}-365`}
-                          style={{ fontSize: "10.5px", padding: "4px 8px", background: "rgba(234, 179, 8, 0.15)", color: "#facc15" }}
+                          style={{ fontSize: "10.5px", padding: "4px 8px", background: "rgba(234,179,8,0.1)", border: "1px solid rgba(234,179,8,0.35)", color: "#b45309" }}
                           title="Perpanjang 1 Tahun"
                         >
                           +1 Tahun
@@ -758,16 +758,16 @@ export default function PremAccessPanel() {
       <div className="pa-card">
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "16px" }}>
           <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-            <FileText size={18} color="#38bdf8" />
-            <span style={{ fontSize: "15px", fontWeight: "800" }}>Log Riwayat Perintah ({logs.length})</span>
+            <FileText size={18} color="#2563eb" />
+            <span style={{ fontSize: "15px", fontWeight: "800", color: "#0f172a" }}>Log Riwayat Perintah ({logs.length})</span>
           </div>
-          <span style={{ fontSize: "11px", color: "rgba(255,255,255,0.4)" }}>
+          <span style={{ fontSize: "11px", color: "#64748b", fontWeight: 600 }}>
             Audit trail eksekusi perintah admin
           </span>
         </div>
 
         {logs.length === 0 ? (
-          <div style={{ textAlign: "center", color: "rgba(255,255,255,0.4)", fontSize: "12px", padding: "24px" }}>
+          <div style={{ textAlign: "center", color: "#64748b", fontSize: "12px", padding: "24px", fontWeight: 600 }}>
             Belum ada catatan aktivitas perintah.
           </div>
         ) : (
@@ -777,8 +777,8 @@ export default function PremAccessPanel() {
                 key={log.id}
                 style={{
                   padding: "11px 14px",
-                  background: "rgba(2, 8, 24, 0.7)",
-                  border: "1px solid rgba(255,255,255,0.06)",
+                  background: "rgba(255,255,255,0.8)",
+                  border: "1px solid rgba(147,197,253,0.45)",
                   borderRadius: "10px",
                   display: "flex",
                   alignItems: "center",
@@ -791,26 +791,26 @@ export default function PremAccessPanel() {
                   <span
                     className="pa-badge"
                     style={{
-                      background: log.status === "success" ? "rgba(34, 197, 94, 0.15)" : log.status === "error" ? "rgba(239, 68, 68, 0.15)" : "rgba(56, 189, 248, 0.15)",
-                      border: `1px solid ${log.status === "success" ? "rgba(34, 197, 94, 0.35)" : log.status === "error" ? "rgba(239, 68, 68, 0.35)" : "rgba(56, 189, 248, 0.35)"}`,
-                      color: log.status === "success" ? "#4ade80" : log.status === "error" ? "#fca5a5" : "#38bdf8",
+                      background: log.status === "success" ? "rgba(34, 197, 94, 0.12)" : log.status === "error" ? "rgba(239, 68, 68, 0.1)" : "rgba(59, 130, 246, 0.1)",
+                      border: `1px solid ${log.status === "success" ? "rgba(34, 197, 94, 0.35)" : log.status === "error" ? "rgba(239, 68, 68, 0.3)" : "rgba(59, 130, 246, 0.3)"}`,
+                      color: log.status === "success" ? "#15803d" : log.status === "error" ? "#b91c1c" : "#1e40af",
                     }}
                   >
                     {log.status.toUpperCase()}
                   </span>
 
-                  <span style={{ fontFamily: "monospace", fontSize: "12.5px", fontWeight: "700", color: "#f0f8ff" }}>
+                  <span style={{ fontFamily: "monospace", fontSize: "12.5px", fontWeight: "700", color: "#0f172a" }}>
                     {log.rawText}
                   </span>
 
                   {log.targetEmail && (
-                    <span style={{ fontSize: "11px", color: "rgba(255,255,255,0.5)" }}>
+                    <span style={{ fontSize: "11px", color: "#475569", fontWeight: 600 }}>
                       → {log.targetEmail}
                     </span>
                   )}
                 </div>
 
-                <div style={{ fontSize: "11px", color: "rgba(255,255,255,0.4)" }}>
+                <div style={{ fontSize: "11px", color: "#64748b", fontWeight: 600 }}>
                   {new Date(log.timestamp).toLocaleString("id-ID")}
                 </div>
               </div>
