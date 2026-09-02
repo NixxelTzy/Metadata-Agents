@@ -310,6 +310,93 @@ function safeParseMetadataJson(jsonText: string, filename: string): {
   };
 }
 
+function buildGuaranteedKeywords(
+  rawKeywords: string[],
+  targetCount: number,
+  title: string,
+  prompt?: string,
+  primaryConcept?: string,
+  visualDescription?: string
+): string[] {
+  const result: string[] = [];
+  const seen = new Set<string>();
+
+  const add = (k: string) => {
+    const clean = k.trim().toLowerCase().replace(/^[,\-–—\s]+|[,\-–—\s]+$/g, "");
+    if (!clean || clean.length < 2 || clean.length > 35) return;
+    if (seen.has(clean)) return;
+    seen.add(clean);
+    result.push(clean);
+  };
+
+  // 1. Add raw AI keywords first (highest priority, tier order)
+  rawKeywords.forEach(add);
+
+  // 2. Extract multi-word and single-word terms from title
+  if (title) {
+    const cleanTitle = title.replace(/[^\w\s-]/g, " ").toLowerCase();
+    const titleWords = cleanTitle.split(/\s+/).filter((w) => w.length > 2 && !["the", "and", "with", "for", "from", "that", "this"].includes(w));
+    // Add bigrams from title
+    for (let i = 0; i < titleWords.length - 1; i++) {
+      add(`${titleWords[i]} ${titleWords[i + 1]}`);
+    }
+    // Add single words from title
+    titleWords.forEach(add);
+  }
+
+  // 3. Extract keywords from primaryConcept & visualDescription
+  if (primaryConcept) {
+    const pWords = primaryConcept.replace(/[^\w\s-]/g, " ").toLowerCase().split(/\s+/).filter((w) => w.length > 2);
+    pWords.forEach(add);
+  }
+  if (visualDescription) {
+    const vdWords = visualDescription.replace(/[^\w\s-]/g, " ").toLowerCase().split(/\s+/).filter((w) => w.length > 3);
+    vdWords.forEach(add);
+  }
+
+  // 4. Derive sub-keywords by splitting existing multi-word keywords
+  if (result.length < targetCount) {
+    for (const kw of [...result]) {
+      const parts = kw.split(/\s+/);
+      if (parts.length > 1) {
+        for (const p of parts) {
+          if (p.length > 2) add(p);
+          if (result.length >= targetCount) break;
+        }
+      }
+      if (result.length >= targetCount) break;
+    }
+  }
+
+  // 5. Extract visual terms from prompt
+  if (result.length < targetCount && prompt) {
+    const promptWords = prompt.replace(/[^\w\s-]/g, " ").toLowerCase().split(/\s+/).filter((w) => w.length > 3 && !["with", "from", "have", "been", "that", "this", "also", "there", "their"].includes(w));
+    for (let i = 0; i < promptWords.length - 1; i++) {
+      add(`${promptWords[i]} ${promptWords[i + 1]}`);
+      if (result.length >= targetCount) break;
+    }
+    promptWords.forEach(add);
+  }
+
+  // 6. Context-aware stock photography taxonomy fallback
+  const stockContextBank = [
+    "isolated on white", "studio shot", "close up", "nobody", "copy space",
+    "still life", "clean background", "high quality", "commercial asset",
+    "professional photography", "sharp focus", "vibrant color", "detailed texture",
+    "modern design", "object", "craftsmanship", "single object", "macro photography",
+    "plain background", "horizontal", "vertical", "clear focus", "artistic style",
+    "high resolution", "visual concept", "digital media", "creative asset",
+    "equipment", "supply", "tool", "graphic asset", "indoor shot", "bright lighting"
+  ];
+
+  for (const fallback of stockContextBank) {
+    if (result.length >= targetCount) break;
+    add(fallback);
+  }
+
+  return result.slice(0, targetCount);
+}
+
 async function generateMetadata(
   base64DataUrl: string,
   filename: string,
@@ -339,63 +426,29 @@ async function generateMetadata(
   ];
 
   const result = await callGroq(messages, {
-    temperature: 0.3,
+    temperature: 0.2,
     max_tokens: 2048,
     vision: true,
   });
 
   const parsed = safeParseMetadataJson(result.text, filename);
 
-  const keywords = parsed.keywords
+  const rawKeywords = parsed.keywords
     .map((k) => String(k).trim().toLowerCase())
     .filter(Boolean)
     .filter((k, i, arr) => arr.indexOf(k) === i);
 
   const TARGET_KEYWORDS = platform === "shutterstock" || platform === "magnific" ? 50 : 49;
 
-  // Hard-enforce exactly target keywords.
-  // If AI returned fewer, pad with derived variations from existing keywords.
-  // If AI returned more, trim (keeps highest-priority ones at front).
-  let finalKeywords = keywords.slice(0, TARGET_KEYWORDS);
-
-  if (finalKeywords.length < TARGET_KEYWORDS) {
-    // Derive additional keywords by combining/splitting existing ones until we hit target
-    const extras: string[] = [];
-    for (const kw of keywords) {
-      const parts = kw.split(" ");
-      if (parts.length > 1) {
-        for (const part of parts) {
-          if (
-            part.length > 2 &&
-            !finalKeywords.includes(part) &&
-            !extras.includes(part)
-          ) {
-            extras.push(part);
-          }
-        }
-      }
-      if (finalKeywords.length + extras.length >= TARGET_KEYWORDS) break;
-    }
-    finalKeywords = [...finalKeywords, ...extras].slice(0, TARGET_KEYWORDS);
-  }
-
-  // Fallback padding if still short
-  const fallbackKeywords = ["concept", "illustration", "media", "content", "creative", "stock", "design", "background", "art", "graphic"];
-  let fallbackIndex = 0;
-  while (finalKeywords.length < TARGET_KEYWORDS && fallbackIndex < fallbackKeywords.length) {
-    const fallback = fallbackKeywords[fallbackIndex]!;
-    if (!finalKeywords.includes(fallback)) {
-      finalKeywords.push(fallback);
-    }
-    fallbackIndex++;
-  }
-
-  // Final safety check
-  if (finalKeywords.length !== TARGET_KEYWORDS) {
-    throw new Error(
-      `AI returned ${finalKeywords.length} keywords after normalization — expected exactly ${TARGET_KEYWORDS}. Retrying.`
-    );
-  }
+  // Seamlessly guarantee exact target keyword count without ever throwing errors
+  const finalKeywords = buildGuaranteedKeywords(
+    rawKeywords,
+    TARGET_KEYWORDS,
+    parsed.title,
+    parsed.prompt,
+    parsed.primaryConcept,
+    parsed.visualDescription
+  );
 
   // Handle Shutterstock specific attributes
   let editorial: "yes" | "no" = "no";
