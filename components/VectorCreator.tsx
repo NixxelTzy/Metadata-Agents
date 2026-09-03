@@ -131,8 +131,8 @@ export default function VectorCreator({ onTokensUpdated }: VectorCreatorProps = 
     if (isTokenLimitReached()) {
       showToast({
         type: "warning",
-        title: "Batas Token 100k Tercapai",
-        message: "Kuota token harian 100k Anda telah habis. Dapatkan akses unlimited dengan Paket Premium!",
+        title: "Batas Token 200k Tercapai",
+        message: "Kuota token harian 200k Anda telah habis. Dapatkan akses unlimited dengan Paket Premium!",
       });
       openPremiumModal();
       return;
@@ -553,7 +553,7 @@ export default function VectorCreator({ onTokensUpdated }: VectorCreatorProps = 
 
           {(() => {
             const usage = getUsage();
-            const pct = Math.min(Math.round((usage.totalTokens / 100_000) * 100), 100);
+            const pct = Math.min(Math.round((usage.totalTokens / 200_000) * 100), 100);
             const pctColor = pct >= 85 ? "#dc2626" : pct >= 60 ? "#d97706" : "#16a34a";
             const platforms: Platform[] = ["metadata", "chat", "vector"];
             return (
@@ -563,7 +563,7 @@ export default function VectorCreator({ onTokensUpdated }: VectorCreatorProps = 
                     <span style={{ fontSize: 13, fontWeight: 700 }}>Total Penggunaan Hari Ini</span>
                     <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
                       <span style={{ fontSize: 20, fontWeight: 900, color: pctColor }}>{pct}%</span>
-                      <span style={{ fontSize: 12, color: "var(--text-muted)" }}>dari 100k limit</span>
+                      <span style={{ fontSize: 12, color: "var(--text-muted)" }}>dari 200k limit</span>
                     </div>
                   </div>
                   <div style={{ background: "var(--border)", borderRadius: 8, height: 10, overflow: "hidden", marginBottom: 8 }}>

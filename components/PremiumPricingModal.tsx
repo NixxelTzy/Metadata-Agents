@@ -32,7 +32,7 @@ const PRICING_PLANS: PricingPlan[] = [
     color: "#38bdf8",
     glowColor: "rgba(56, 189, 248, 0.25)",
     benefits: [
-      "Token AI Unlimited (Tanpa batas 100k)",
+      "Token AI Unlimited (Tanpa batas harian 200k)",
       "Akses penuh semua 8 AI tools & features",
       "Proses generasi metadata & upscale cepat",
       "Export format CSV & Adobe Stock siap pakai",
