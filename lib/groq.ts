@@ -75,7 +75,8 @@ async function callGroqKey(
     stream: false,
   };
 
-  if (jsonMode) {
+  let effectiveJsonMode = jsonMode;
+  if (effectiveJsonMode) {
     requestBody.response_format = { type: "json_object" };
   }
 
@@ -91,13 +92,31 @@ async function callGroqKey(
 
     if (!response.ok) {
       let errorMsg = `Groq API error (${response.status})`;
+      let errMessage = "";
       try {
         const errBody = await response.json() as { error?: { message?: string } };
-        if (errBody?.error?.message) errorMsg += `: ${errBody.error.message}`;
+        errMessage = errBody?.error?.message ?? "";
+        if (errMessage) errorMsg += `: ${errMessage}`;
       } catch { /* ignore */ }
 
       if (response.status === 401) throw new Error("Groq API key tidak valid (401). Cek GROQ_API_KEY.");
       if (response.status === 413) throw new Error("Request terlalu besar (413). Kurangi ukuran gambar.");
+
+      // --- AUTO-FALLBACK: JSON-mode causes 400 "Failed to generate JSON" → retry without json_object ---
+      if (
+        response.status === 400 &&
+        effectiveJsonMode &&
+        (errMessage.toLowerCase().includes("failed to generate json") ||
+          errMessage.toLowerCase().includes("json") ||
+          errMessage.toLowerCase().includes("adjust your prompt"))
+      ) {
+        console.warn(`[Groq] JSON-mode 400 detected: "${errMessage}". Retrying WITHOUT response_format for raw text extraction...`);
+        effectiveJsonMode = false;
+        delete requestBody.response_format;
+        // don't count this as an attempt retry — just switch mode and continue
+        continue;
+      }
+
       if (response.status === 429) {
         if (attempt < maxAttempts) {
           const backoffMs = Math.pow(2, attempt) * 1000;
