@@ -3,6 +3,10 @@
     {
       "path": "/api/firewall/ai-tick",
       "schedule": "0 2 * * *"
+    },
+    {
+      "path": "/api/cron/giveaway",
+      "schedule": "0 3 * * 0"
     }
   ]
 }

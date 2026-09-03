@@ -224,61 +224,81 @@ export interface GiveawayEmailPayload {
   winners: GiveawayWinnerReport[];
   executedAt: string;
   totalCandidates: number;
+  isAutoScheduled?: boolean;
 }
 
 /** Send giveaway summary report email to nixxeltzy@gmail.com */
 export async function sendGiveawayReportEmail(payload: GiveawayEmailPayload): Promise<boolean> {
+  const gmailConfig = getGmailConfig();
+  if (!gmailConfig.user || !gmailConfig.appPassword) {
+    console.warn("[Mailer] ⚠️ GMAIL_USER / GMAIL_APP_PASSWORD tidak diset — email giveaway tidak terkirim.");
+    return false;
+  }
+
   const transporter = createTransporter();
   if (!transporter) return false;
 
+  const executedDate = new Date(payload.executedAt).toLocaleString("id-ID", {
+    weekday: "long", day: "numeric", month: "long", year: "numeric",
+    hour: "2-digit", minute: "2-digit", timeZone: "Asia/Jakarta",
+  });
+
   const rows = payload.winners.map((w, idx) => `
-    <tr style="border-bottom: 1px solid rgba(255,255,255,0.08); background: ${idx % 2 === 0 ? 'rgba(255,255,255,0.02)' : 'transparent'}">
-      <td style="padding: 10px 12px; font-weight: 700; color: #ec4899;">#${idx + 1}</td>
-      <td style="padding: 10px 12px; color: #f8fafc; font-weight: 600;">${w.username}</td>
-      <td style="padding: 10px 12px; color: #38bdf8; font-family: monospace;">${w.email}</td>
-      <td style="padding: 10px 12px; text-align: center;">
-        <span style="background: rgba(236,72,153,0.2); color: #f472b6; border: 1px solid rgba(236,72,153,0.4); padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 800;">
-          ${w.luckPercentage}% Hoki
-        </span>
+    <tr style="border-bottom:1px solid rgba(255,255,255,0.08);background:${idx % 2 === 0 ? "rgba(255,255,255,0.02)" : "transparent"}">
+      <td style="padding:10px 12px;font-weight:700;color:#ec4899;">#${idx + 1}</td>
+      <td style="padding:10px 12px;color:#f8fafc;font-weight:600;">${w.username}</td>
+      <td style="padding:10px 12px;color:#38bdf8;font-family:monospace;font-size:12px;">${w.email}</td>
+      <td style="padding:10px 12px;text-align:center;">
+        <span style="background:rgba(236,72,153,0.2);color:#f472b6;border:1px solid rgba(236,72,153,0.4);padding:2px 8px;border-radius:999px;font-size:11px;font-weight:800;">${w.luckPercentage}% Hoki</span>
       </td>
-      <td style="padding: 10px 12px; color: #4ade80; font-size: 12px;">7 Hari (s/d ${new Date(w.grantedUntil).toLocaleDateString('id-ID')})</td>
+      <td style="padding:10px 12px;color:#4ade80;font-size:12px;">7 Hari (s/d ${new Date(w.grantedUntil).toLocaleDateString("id-ID")})</td>
     </tr>
   `).join("");
+
+  const badgeLabel = payload.isAutoScheduled ? "Auto Hari Minggu" : "Manual Lucky Draw";
+  const badgeColor = payload.isAutoScheduled ? "#7c3aed" : "#ec4899";
 
   const html = `
     <div style="font-family:'Segoe UI',Arial,sans-serif;max-width:640px;margin:0 auto;background:#0b0f19;color:#f8fafc;border-radius:16px;overflow:hidden;border:1px solid #1e293b;box-shadow:0 25px 50px rgba(0,0,0,0.5)">
       <div style="background:linear-gradient(135deg,#ec4899 0%,#8b5cf6 50%,#3b82f6 100%);padding:28px 32px">
-        <h1 style="margin:0;font-size:24px;color:#ffffff;font-weight:900;letter-spacing:-0.02em">🎁 Giveaway Berhasil Dieksekusi</h1>
-        <p style="margin:6px 0 0;color:rgba(255,255,255,0.9);font-size:13px">Laporan Resmi Pemenang Giveaway Token Unlimited 1 Minggu · NixelStudio</p>
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px">
+          <h1 style="margin:0;font-size:24px;color:#fff;font-weight:900;letter-spacing:-0.02em">🎁 Giveaway Berhasil!</h1>
+          <span style="background:rgba(255,255,255,0.2);color:#fff;padding:3px 10px;border-radius:999px;font-size:11px;font-weight:800;border:1px solid rgba(255,255,255,0.3)">${badgeLabel}</span>
+        </div>
+        <p style="margin:0;color:rgba(255,255,255,0.9);font-size:13px">Laporan Resmi · NixelStudio Admin Control Center</p>
+        <p style="margin:6px 0 0;color:rgba(255,255,255,0.75);font-size:12px">Dieksekusi pada: ${executedDate} WIB</p>
       </div>
 
       <div style="padding:28px 32px">
-        <div style="display:flex;gap:12px;margin-bottom:24px">
-          <div style="flex:1;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);padding:14px;border-radius:10px;text-align:center">
-            <div style="font-size:11px;color:#94a3b8;text-transform:uppercase;font-weight:700">Total Pemenang</div>
-            <div style="font-size:22px;color:#ec4899;font-weight:900;margin-top:4px">${payload.winners.length} Orang</div>
+        <div style="display:flex;gap:12px;margin-bottom:24px;flex-wrap:wrap">
+          <div style="flex:1;min-width:130px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);padding:14px;border-radius:10px;text-align:center">
+            <div style="font-size:11px;color:#94a3b8;text-transform:uppercase;font-weight:700;letter-spacing:0.05em">Total Pemenang</div>
+            <div style="font-size:28px;color:#ec4899;font-weight:900;margin-top:6px">${payload.winners.length}</div>
+            <div style="font-size:11px;color:#64748b;margin-top:2px">Orang Beruntung</div>
           </div>
-          <div style="flex:1;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);padding:14px;border-radius:10px;text-align:center">
-            <div style="font-size:11px;color:#94a3b8;text-transform:uppercase;font-weight:700">Hadiah</div>
-            <div style="font-size:16px;color:#4ade80;font-weight:900;margin-top:8px">Unlimited 7 Hari</div>
+          <div style="flex:1;min-width:130px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);padding:14px;border-radius:10px;text-align:center">
+            <div style="font-size:11px;color:#94a3b8;text-transform:uppercase;font-weight:700;letter-spacing:0.05em">Hadiah Diberikan</div>
+            <div style="font-size:18px;color:#4ade80;font-weight:900;margin-top:6px">Unlimited</div>
+            <div style="font-size:11px;color:#64748b;margin-top:2px">Token AI 7 Hari</div>
           </div>
-          <div style="flex:1;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);padding:14px;border-radius:10px;text-align:center">
-            <div style="font-size:11px;color:#94a3b8;text-transform:uppercase;font-weight:700">Total Kandidat</div>
-            <div style="font-size:22px;color:#38bdf8;font-weight:900;margin-top:4px">${payload.totalCandidates} User</div>
+          <div style="flex:1;min-width:130px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);padding:14px;border-radius:10px;text-align:center">
+            <div style="font-size:11px;color:#94a3b8;text-transform:uppercase;font-weight:700;letter-spacing:0.05em">Total Kandidat</div>
+            <div style="font-size:28px;color:#38bdf8;font-weight:900;margin-top:6px">${payload.totalCandidates}</div>
+            <div style="font-size:11px;color:#64748b;margin-top:2px">Pengguna Terdaftar</div>
           </div>
         </div>
 
-        <h3 style="margin:0 0 12px;font-size:15px;color:#f1f5f9;font-weight:700">📋 Daftar Akun Penerima Hadiah:</h3>
+        <h3 style="margin:0 0 14px;font-size:15px;color:#f1f5f9;font-weight:700">Daftar Akun Penerima Giveaway:</h3>
 
         <div style="overflow-x:auto;border-radius:10px;border:1px solid rgba(255,255,255,0.08)">
-          <table style="width:100%;border-collapse:collapse;font-size:13px;text-align:left">
+          <table style="width:100%;border-collapse:collapse;font-size:13px">
             <thead>
               <tr style="background:rgba(255,255,255,0.05);color:#94a3b8;border-bottom:1px solid rgba(255,255,255,0.1)">
-                <th style="padding:10px 12px">No</th>
-                <th style="padding:10px 12px">Username</th>
-                <th style="padding:10px 12px">Email Akun</th>
+                <th style="padding:10px 12px;text-align:left">No</th>
+                <th style="padding:10px 12px;text-align:left">Username</th>
+                <th style="padding:10px 12px;text-align:left">Email Akun</th>
                 <th style="padding:10px 12px;text-align:center">Rasio Hoki</th>
-                <th style="padding:10px 12px">Masa Aktif</th>
+                <th style="padding:10px 12px;text-align:left">Masa Aktif</th>
               </tr>
             </thead>
             <tbody>
@@ -287,28 +307,31 @@ export async function sendGiveawayReportEmail(payload: GiveawayEmailPayload): Pr
           </table>
         </div>
 
-        <div style="margin-top:20px;padding:14px 18px;background:rgba(74,222,128,0.08);border:1px solid rgba(74,222,128,0.25);border-radius:10px;font-size:12px;color:#86efac;line-height:1.6">
-          ✅ <strong>Semua akun di atas telah otomatis diaktifkan dengan status Premium Unlimited selama 7 hari.</strong><br/>
-          📬 Notifikasi in-app telah dikirimkan secara langsung ke kotak masuk masing-masing pemenang (tanpa popup tengah layar).
+        <div style="margin-top:20px;padding:14px 18px;background:rgba(74,222,128,0.08);border:1px solid rgba(74,222,128,0.25);border-radius:10px;font-size:12px;color:#86efac;line-height:1.7">
+          Semua akun di atas telah otomatis diaktifkan dengan status <strong>Premium Unlimited selama 7 hari</strong>.<br/>
+          Notifikasi in-app telah dikirimkan langsung ke kotak masuk masing-masing pemenang (tanpa popup di tengah layar).
         </div>
       </div>
 
       <div style="padding:16px 32px;background:#030712;font-size:12px;color:#475569;border-top:1px solid #1e293b;text-align:center">
-        Laporan otomatis ini dikirim ke ${ADMIN_EMAIL} · NixelStudio Admin Control Center
+        Laporan otomatis ini dikirim ke <strong style="color:#94a3b8">${ADMIN_EMAIL}</strong> · NixelStudio Admin Control Center · ${new Date().getFullYear()}
       </div>
     </div>
   `;
 
   try {
+    console.log(`[Mailer] Mengirim email giveaway ke ${ADMIN_EMAIL} ...`);
     await transporter.sendMail({
-      from: `"NixelStudio Giveaway" <${getGmailConfig().user}>`,
+      from: `"NixelStudio Giveaway System" <${gmailConfig.user}>`,
       to: ADMIN_EMAIL,
-      subject: `🎁 Giveaway Berhasil: ${payload.winners.length} Pemenang Token Unlimited 7 Hari`,
+      subject: `🎁 ${payload.isAutoScheduled ? "[Auto Minggu] " : ""}Giveaway Selesai: ${payload.winners.length} Pemenang Token Unlimited 7 Hari`,
       html,
     });
+    console.log(`[Mailer] ✅ Email giveaway berhasil dikirim ke ${ADMIN_EMAIL}`);
     return true;
   } catch (err) {
-    console.error("[Mailer] Gagal kirim giveaway report email:", err);
+    console.error("[Mailer] ❌ Gagal kirim giveaway report email:", err);
     return false;
   }
 }
+
