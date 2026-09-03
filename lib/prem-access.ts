@@ -118,6 +118,14 @@ export async function grantUserPremium(
 
   const expiresAt = new Date(baseDate.getTime() + days * 24 * 60 * 60 * 1000);
 
+  if (cleanEmail === "nixxeltzy@gmail.com" || user?.role === "admin") {
+    return {
+      ok: true,
+      user: user || undefined,
+      message: `Akun ${cleanEmail} adalah Developer / Admin (Token AI Unlimited Permanen). Status akun ini dilindungi dan tidak dapat diubah.`,
+    };
+  }
+
   if (!user) {
     // If user does not exist yet, create a pending/registered user record
     const baseUsername = cleanEmail.split("@")[0] || "user";
@@ -135,11 +143,6 @@ export async function grantUserPremium(
       createdAt: now.toISOString(),
     };
   } else {
-    // Admin cannot be downgraded or modified to regular premium
-    if (user.role === "admin" || user.email === "nixxeltzy@gmail.com") {
-      return { ok: true, user, message: `Akun ${cleanEmail} adalah Administrator (Token Unlimited Permanen).` };
-    }
-
     user.role = "premium";
     user.premiumPlan = planLabel;
     user.premiumExpiresAt = expiresAt.toISOString();
@@ -187,8 +190,8 @@ export async function revokeUserPremium(
     return { ok: false, message: `User dengan email "${cleanEmail}" tidak ditemukan dalam database.` };
   }
 
-  if (user.role === "admin" || user.email === "nixxeltzy@gmail.com") {
-    return { ok: false, message: `Tidak dapat mencabut status Administrator pada ${cleanEmail}.` };
+  if (user.role === "admin" || cleanEmail === "nixxeltzy@gmail.com") {
+    return { ok: false, message: `Akun ${cleanEmail} adalah Developer / Admin (Token AI Unlimited Permanen). Status akun ini dilindungi dan tidak dapat di-unprem atau diubah.` };
   }
 
   const oldPlan = user.premiumPlan || "Premium";
@@ -202,7 +205,7 @@ export async function revokeUserPremium(
   await sendUserInAppNotification(
     user,
     "Akses Premium Anda Telah Dinonaktifkan",
-    `Status paket premium Anda telah dinonaktifkan oleh administrator. Akun Anda kembali ke paket standar (100k token/hari). Anda dapat melakukan upgrade kembali sewaktu-waktu.`,
+    `Status paket premium Anda telah dinonaktifkan oleh administrator. Akun Anda kembali ke paket standar (200k token/hari). Anda dapat melakukan upgrade kembali sewaktu-waktu.`,
     "Pencabutan Akses Premium"
   );
 
@@ -217,7 +220,7 @@ export async function revokeUserPremium(
 
   return {
     ok: true,
-    message: `Akses Premium untuk ${cleanEmail} telah berhasil dicabut. Role dikembalikan ke regular user (100k token/hari).`,
+    message: `Akses Premium untuk ${cleanEmail} telah berhasil dicabut. Role dikembalikan ke regular user (200k token/hari).`,
   };
 }
 
@@ -382,6 +385,20 @@ export async function executePremCommand(
       return { ok: false, status: "error", reply, targetEmail, log };
     }
 
+    if (targetEmail === "nixxeltzy@gmail.com") {
+      const reply = `👑 AKUN DEVELOPER TERLINDUNGI\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n👤 Email: nixxeltzy@gmail.com\n🛡️ Role: DEVELOPER / ADMIN\n⚡ Token AI: UNLIMITED PERMANEN\n🔒 Status akun Developer tidak dapat diubah atau dipengaruhi oleh perintah prem/unprem.`;
+      const log = await appendPremLog({
+        timestamp: new Date().toISOString(),
+        adminEmail,
+        command: "prem",
+        rawText: trimmed,
+        status: "info",
+        targetEmail,
+        replyText: reply,
+      });
+      return { ok: true, status: "info", reply, targetEmail, log };
+    }
+
     const res = await grantUserPremium(targetEmail, parsedDur.days, parsedDur.planLabel, adminEmail);
     const expiresDate = res.user?.premiumExpiresAt
       ? new Date(res.user.premiumExpiresAt).toLocaleString("id-ID")
@@ -426,10 +443,25 @@ export async function executePremCommand(
     }
 
     const targetEmail = parts[1]!.toLowerCase();
+
+    if (targetEmail === "nixxeltzy@gmail.com") {
+      const reply = `👑 AKUN DEVELOPER TERLINDUNGI\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n👤 Email: nixxeltzy@gmail.com\n🛡️ Role: DEVELOPER / ADMIN\n⚡ Token AI: UNLIMITED PERMANEN\n🔒 Akun Developer memiliki akses permanen penuh dan tidak dapat di-unprem.`;
+      const log = await appendPremLog({
+        timestamp: new Date().toISOString(),
+        adminEmail,
+        command: "unprem",
+        rawText: trimmed,
+        status: "info",
+        targetEmail,
+        replyText: reply,
+      });
+      return { ok: false, status: "info", reply, targetEmail, log };
+    }
+
     const res = await revokeUserPremium(targetEmail, adminEmail);
 
     const reply = res.ok
-      ? `✅ BERHASIL MENCABUT AKSES PREMIUM\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n👤 Email: ${targetEmail}\n🔕 Status: Regular User (Batas 100k token/hari)\n🛡️ Dicabut Oleh: ${adminEmail}\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\nNotifikasi in-app telah dikirimkan ke pengguna.`
+      ? `✅ BERHASIL MENCABUT AKSES PREMIUM\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n👤 Email: ${targetEmail}\n🔕 Status: Regular User (Batas 200k token/hari)\n🛡️ Dicabut Oleh: ${adminEmail}\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\nNotifikasi in-app telah dikirimkan ke pengguna.`
       : `❌ GAGAL MENCABUT: ${res.message}`;
 
     const log = await appendPremLog({

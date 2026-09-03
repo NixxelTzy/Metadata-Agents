@@ -26,6 +26,7 @@ export interface GroqOptions {
   temperature?: number;
   max_tokens?: number;
   vision?: boolean;
+  jsonMode?: boolean;
 }
 
 export interface GroqUsage {
@@ -49,6 +50,7 @@ async function callGroqKey(
   messages: GroqMessage[],
   temperature: number,
   max_tokens: number,
+  jsonMode = false,
   maxAttempts = 3
 ): Promise<GroqResult> {
   const isVisionModel = model.includes("vision") || model.includes("scout") || model.includes("qwen");
@@ -65,6 +67,18 @@ async function callGroqKey(
         };
       });
 
+  const requestBody: Record<string, any> = {
+    model,
+    messages: payloadMessages,
+    temperature,
+    max_tokens,
+    stream: false,
+  };
+
+  if (jsonMode) {
+    requestBody.response_format = { type: "json_object" };
+  }
+
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     const response = await fetch(GROQ_API_URL, {
       method: "POST",
@@ -72,7 +86,7 @@ async function callGroqKey(
         "Content-Type": "application/json",
         "Authorization": `Bearer ${apiKey}`,
       },
-      body: JSON.stringify({ model, messages: payloadMessages, temperature, max_tokens, stream: false }),
+      body: JSON.stringify(requestBody),
     });
 
     if (!response.ok) {
@@ -127,7 +141,7 @@ export async function callGroq(
     throw new Error("Groq API key tidak dikonfigurasi. Set GROQ_API_KEY di environment variables.");
   }
 
-  const { temperature = 0.3, max_tokens = 8192, vision = false } = opts;
+  const { temperature = 0.3, max_tokens = 8192, vision = false, jsonMode = false } = opts;
   const hasImage = vision || messages.some(
     (m) => Array.isArray(m.content) && m.content.some((c) => c.type === "image_url")
   );
@@ -141,7 +155,7 @@ export async function callGroq(
   for (const model of modelsToTry) {
     for (let i = 0; i < apiKeys.length; i++) {
       try {
-        const result = await callGroqKey(apiKeys[i]!, model, messages, temperature, max_tokens);
+        const result = await callGroqKey(apiKeys[i]!, model, messages, temperature, max_tokens, jsonMode);
         return result;
       } catch (err: any) {
         if (err.message === "429") {

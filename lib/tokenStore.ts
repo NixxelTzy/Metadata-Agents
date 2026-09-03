@@ -2,14 +2,14 @@
  * lib/tokenStore.ts
  * Token usage tracker — disimpan di localStorage, reset tiap hari.
  * Batas token:
- * - User biasa: 100,000 (100k) token/hari.
+ * - User biasa: 200,000 (200k) token/hari.
  * - Admin (nixxeltzy@gmail.com / role admin) & Premium: Unlimited token.
  *
  * Mendukung tracking per-platform: metadata, chat, vector, motion.
  */
 
 const STORAGE_KEY = "groq_token_usage";
-export const USER_DAILY_LIMIT = 100_000; // 100k token untuk user biasa
+export const USER_DAILY_LIMIT = 200_000; // 200k token untuk user biasa
 export const ADMIN_EMAIL = "nixxeltzy@gmail.com";
 
 export type Platform = "metadata" | "chat" | "vector" | "motion";

@@ -293,8 +293,8 @@ export default function AIChat({ onTokensUpdated }: Props) {
     if (isTokenLimitReached()) {
       showToast({
         type: "warning",
-        title: "Batas Token 100k Tercapai",
-        message: "Kuota token harian 100k Anda telah habis. Dapatkan akses unlimited dengan Paket Premium!",
+        title: "Batas Token 200k Tercapai",
+        message: "Kuota token harian 200k Anda telah habis. Dapatkan akses unlimited dengan Paket Premium!",
       });
       openPremiumModal();
       return;

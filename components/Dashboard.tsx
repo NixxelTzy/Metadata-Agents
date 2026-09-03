@@ -7,7 +7,7 @@ import {
   TrendingUp, Clock, Shield, Star, ChevronRight,
   ImageIcon, FileText, Layers, Power, Radio,
   ShieldCheck, Mail, Lock, Megaphone, Database,
-  ShieldAlert, UserCheck, Crown
+  ShieldAlert, UserCheck, Crown, Gift
 } from "lucide-react";
 
 interface FeatureCard {
@@ -171,6 +171,16 @@ const ADMIN_FEATURES: FeatureCard[] = [
     badge: "Premium Engine",
     color: "#facc15",
     glow: "rgba(250, 204, 21, 0.25)",
+    adminOnly: true,
+  },
+  {
+    id: "giveaway",
+    icon: <Gift size={24} color="#ec4899" />,
+    title: "Giveaway Platform",
+    desc: "Platform giveaway token unlimited 1 minggu otomatis dengan tombol ON/OFF, rasio hoki dinamis, notifikasi in-app, dan email laporan ke admin.",
+    badge: "Auto Hoki",
+    color: "#ec4899",
+    glow: "rgba(236, 72, 153, 0.25)",
     adminOnly: true,
   },
 ];

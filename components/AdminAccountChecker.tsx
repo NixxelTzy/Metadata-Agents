@@ -1033,25 +1033,45 @@ export default function AdminAccountChecker() {
 
                       {/* Role */}
                       <td style={{ padding: "14px 16px" }}>
-                        <select
-                          value={u.role}
-                          onChange={(e) => handleUpdateRole(u.email, e.target.value as "user" | "premium" | "admin")}
-                          disabled={actionLoading === `role-${u.email}` || u.email === "nixxeltzy@gmail.com"}
-                          style={{
+                        {u.email?.toLowerCase() === "nixxeltzy@gmail.com" ? (
+                          <div style={{
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: "5px",
                             padding: "5px 10px",
-                            background: u.role === "admin" ? "rgba(236,72,153,0.15)" : u.role === "premium" ? "rgba(124,58,237,0.15)" : "var(--bg-secondary)",
-                            color: u.role === "admin" ? "#ec4899" : u.role === "premium" ? "#8b5cf6" : "var(--text)",
-                            border: `1px solid ${u.role === "admin" ? "#ec489944" : u.role === "premium" ? "#8b5cf644" : "var(--border)"}`,
+                            background: "linear-gradient(135deg, rgba(99,102,241,0.2), rgba(168,85,247,0.2))",
+                            color: "#6366f1",
+                            border: "1px solid rgba(99,102,241,0.4)",
                             borderRadius: "6px",
-                            fontWeight: "700",
-                            fontSize: "12px",
-                            cursor: u.email === "nixxeltzy@gmail.com" ? "not-allowed" : "pointer",
-                          }}
-                        >
-                          <option value="user">👤 Free</option>
-                          <option value="premium">⭐ Premium</option>
-                          <option value="admin">🛡️ Admin</option>
-                        </select>
+                            fontWeight: "800",
+                            fontSize: "11px",
+                            letterSpacing: "0.02em",
+                            boxShadow: "0 0 10px rgba(99,102,241,0.15)",
+                            whiteSpace: "nowrap"
+                          }}>
+                            👑 DEVELOPER
+                          </div>
+                        ) : (
+                          <select
+                            value={u.role}
+                            onChange={(e) => handleUpdateRole(u.email, e.target.value as "user" | "premium" | "admin")}
+                            disabled={actionLoading === `role-${u.email}`}
+                            style={{
+                              padding: "5px 10px",
+                              background: u.role === "admin" ? "rgba(236,72,153,0.15)" : u.role === "premium" ? "rgba(124,58,237,0.15)" : "var(--bg-secondary)",
+                              color: u.role === "admin" ? "#ec4899" : u.role === "premium" ? "#8b5cf6" : "var(--text)",
+                              border: `1px solid ${u.role === "admin" ? "#ec489944" : u.role === "premium" ? "#8b5cf644" : "var(--border)"}`,
+                              borderRadius: "6px",
+                              fontWeight: "700",
+                              fontSize: "12px",
+                              cursor: "pointer",
+                            }}
+                          >
+                            <option value="user">👤 Free</option>
+                            <option value="premium">⭐ Premium</option>
+                            <option value="admin">🛡️ Admin</option>
+                          </select>
+                        )}
                       </td>
 
                       {/* Created At */}

@@ -20,6 +20,7 @@ import FeatureClosedNotice from "@/components/FeatureClosedNotice";
 import UserInboxBanner, { NotificationBellButton } from "@/components/UserInboxBanner";
 import ServerShutdownPanel from "@/components/ServerShutdownPanel";
 import PremAccessPanel from "@/components/PremAccessPanel";
+import GiveawayPanel from "@/components/GiveawayPanel";
 import PremiumPricingModal from "@/components/PremiumPricingModal";
 import NativeNavBar from "@/components/NativeNavBar";
 import { useRouter } from "next/navigation";
@@ -32,14 +33,14 @@ import {
   Tag, ZoomIn, Eraser, Search, Sparkles, Bot, Clapperboard,
   MessageSquare, ShieldCheck, Mail, Lock, Megaphone, Database,
   Radio, Power, Zap, LogOut, Loader2, ArrowLeft, Layers,
-  ChevronRight, Crown,
+  ChevronRight, Crown, Gift,
 } from "lucide-react";
 
 type Tab =
   | "dashboard" | "metadata" | "chat" | "research" | "vector"
   | "upscale" | "watermark" | "accounts" | "feedback"
   | "admin-messages" | "storage" | "motion" | "messageweb"
-  | "closing" | "shutdown" | "monitor" | "prem_access";
+  | "closing" | "shutdown" | "monitor" | "prem_access" | "giveaway";
 
 const ADMIN_EMAIL = "nixxeltzy@gmail.com";
 
@@ -70,6 +71,7 @@ const TAB_META: TabMeta[] = [
   { id: "shutdown",       label: "Server Control",             icon: <Power size={SZ} />, isAdmin: true, isDanger: true },
   { id: "monitor",        label: "Server Monitor",             icon: <Radio size={SZ} />, isAdmin: true },
   { id: "prem_access",    label: "Prem Access",                icon: <Crown size={SZ} />, isAdmin: true },
+  { id: "giveaway",       label: "Giveaway Platform",          icon: <Gift size={SZ} />, isAdmin: true },
 ];
 
 interface UserInfo {
@@ -507,11 +509,11 @@ export default function Home() {
               {isUnlimited && (
                 <span style={{
                   fontSize: 9, fontWeight: 800, padding: "2px 7px", borderRadius: 999,
-                  background: isAdmin ? "rgba(239,68,68,0.15)" : "rgba(56,189,248,0.15)",
-                  border: `1px solid ${isAdmin ? "rgba(239,68,68,0.3)" : "rgba(56,189,248,0.3)"}`,
-                  color: isAdmin ? "#fca5a5" : "#38bdf8", textTransform: "uppercase"
+                  background: user?.email === "nixxeltzy@gmail.com" ? "rgba(99,102,241,0.15)" : isAdmin ? "rgba(239,68,68,0.15)" : "rgba(56,189,248,0.15)",
+                  border: `1px solid ${user?.email === "nixxeltzy@gmail.com" ? "rgba(99,102,241,0.3)" : isAdmin ? "rgba(239,68,68,0.3)" : "rgba(56,189,248,0.3)"}`,
+                  color: user?.email === "nixxeltzy@gmail.com" ? "#6366f1" : isAdmin ? "#fca5a5" : "#38bdf8", textTransform: "uppercase"
                 }}>
-                  {isAdmin ? "Admin" : "Premium"}
+                  {user?.email === "nixxeltzy@gmail.com" ? "👑 Developer" : isAdmin ? "Admin" : "Premium"}
                 </span>
               )}
             </div>
@@ -583,6 +585,7 @@ export default function Home() {
           : activeTab === "storage" && isAdmin ? <StoragePanel />
           : activeTab === "shutdown" && isAdmin ? <ServerShutdownPanel />
           : activeTab === "prem_access" && isAdmin ? <PremAccessPanel />
+          : activeTab === "giveaway" && isAdmin ? <GiveawayPanel />
           : activeTab === "feedback" ? <FeedbackPanel />
           : activeTab === "metadata" ? <ImageUploader onTokensUpdated={refreshTokens} />
           : activeTab === "upscale" ? <ImageUpscaler />
