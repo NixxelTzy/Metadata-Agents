@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { verifyToken } from "@/lib/auth";
 import {
   getGiveawayConfig, updateGiveawayConfig, getGiveawayCandidates,
-  executeGiveawayDraw, getActiveGiveawayWinners, getGiveawayHistory
+  executeGiveawayDraw, getActiveGiveawayWinners, getGiveawayHistory,
+  checkAndAutoExecuteIfDue, evaluateSundayGiveawayEligibility,
 } from "@/lib/giveaway";
 import { revokeUserPremium } from "@/lib/prem-access";
 import { checkAllUsersPremiumExpiry } from "@/lib/db";
@@ -26,14 +27,23 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    // Check auto-expiry first
+    // Check auto-expiry
     await checkAllUsersPremiumExpiry().catch(() => {});
 
-    const [config, candidates, activeWinners, history] = await Promise.all([
+    // ── Auto-execute if scheduled draw time has arrived ──
+    let autoResult: Awaited<ReturnType<typeof checkAndAutoExecuteIfDue>> | null = null;
+    try {
+      autoResult = await checkAndAutoExecuteIfDue();
+    } catch (err) {
+      console.error("Error in auto-execute check:", err);
+    }
+
+    const [config, candidates, activeWinners, history, eligibilityStatus] = await Promise.all([
       getGiveawayConfig(),
       getGiveawayCandidates(),
       getActiveGiveawayWinners(),
       getGiveawayHistory(),
+      evaluateSundayGiveawayEligibility(),
     ]);
 
     return NextResponse.json({
@@ -42,6 +52,10 @@ export async function GET(request: NextRequest) {
       candidates,
       activeWinners,
       history,
+      eligibilityStatus,
+      // Report auto-execution to client so it can show a notification
+      autoExecuted: autoResult?.executed ?? false,
+      autoResult: autoResult?.executed ? autoResult.result : undefined,
     });
   } catch (err) {
     console.error("GET /api/admin/giveaway error:", err);
@@ -59,18 +73,20 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { action } = body;
 
-    // 1. ACTION: TOGGLE ON / OFF
+    // 1. TOGGLE ON / OFF
     if (action === "toggle") {
-      const { isEnabled } = body;
-      const updatedConfig = await updateGiveawayConfig({ isEnabled: Boolean(isEnabled) });
+      const isEnabled = Boolean(body.isEnabled);
+      const updatedConfig = await updateGiveawayConfig({ isEnabled });
       return NextResponse.json({
         ok: true,
-        message: updatedConfig.isEnabled ? "Sistem Giveaway Berhasil Diaktifkan (ON)" : "Sistem Giveaway Telah Dinonaktifkan (OFF)",
+        message: isEnabled
+          ? `Sistem Giveaway Aktif (ON) — Pengundian otomatis dijadwalkan setiap Hari Minggu pukul 10:00 WIB.`
+          : "Sistem Giveaway Dinonaktifkan (OFF) — Jadwal otomatis dihentikan.",
         config: updatedConfig,
       });
     }
 
-    // 2. ACTION: UPDATE WINNER COUNT
+    // 2. UPDATE WINNER COUNT
     if (action === "update_count") {
       const count = parseInt(body.winnerCount, 10);
       if (isNaN(count) || count < 1 || count > 50) {
@@ -84,16 +100,15 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // 3. ACTION: EXECUTE LUCKY DRAW
+    // 3. MANUAL LUCKY DRAW
     if (action === "draw") {
       const customCount = body.winnerCount ? parseInt(body.winnerCount, 10) : undefined;
-      const result = await executeGiveawayDraw(auth.email, customCount);
+      const result = await executeGiveawayDraw(auth.email, customCount, false);
 
       if (!result.ok) {
         return NextResponse.json({ error: result.message }, { status: 400 });
       }
 
-      // Concurrently fetch updated list
       const [candidates, activeWinners, history] = await Promise.all([
         getGiveawayCandidates(),
         getActiveGiveawayWinners(),
@@ -105,13 +120,15 @@ export async function POST(request: NextRequest) {
         message: result.message,
         winners: result.winners,
         config: result.config,
+        emailSent: result.emailSent,
+        emailError: result.emailError,
         candidates,
         activeWinners,
         history,
       });
     }
 
-    // 4. ACTION: REVOKE WINNER
+    // 4. REVOKE WINNER
     if (action === "revoke_winner") {
       const { email } = body;
       if (!email) {
@@ -124,6 +141,40 @@ export async function POST(request: NextRequest) {
         ok: revokeRes.ok,
         message: revokeRes.message,
         activeWinners,
+      });
+    }
+
+    // 5. TEST EMAIL NOTIFIKASI KE nixxeltzy@gmail.com
+    if (action === "test_email") {
+      const { sendGiveawayReportEmail } = await import("@/lib/mailer");
+      const testWinners = [
+        {
+          id: "test-sample-id",
+          username: "SampleWinner (Test)",
+          email: "pemenang.sample@gmail.com",
+          luckPercentage: 88,
+          grantedUntil: new Date(Date.now() + 7 * 86400000).toISOString(),
+        },
+      ];
+
+      const sent = await sendGiveawayReportEmail({
+        winnerCount: 1,
+        winners: testWinners,
+        executedAt: new Date().toISOString(),
+        totalCandidates: 25,
+        isAutoScheduled: false,
+      });
+
+      if (!sent) {
+        return NextResponse.json({
+          ok: false,
+          error: "Email gagal dikirim. Pastikan GMAIL_USER dan GMAIL_APP_PASSWORD telah terpasang dengan benar.",
+        }, { status: 500 });
+      }
+
+      return NextResponse.json({
+        ok: true,
+        message: "Email test laporan giveaway berhasil dikirim ke nixxeltzy@gmail.com! Silakan periksa Inbox atau folder Spam Anda.",
       });
     }
 

@@ -7,6 +7,11 @@ export async function GET() {
   const keys = getGroqApiKeys();
   const hasKey = keys.length > 0;
 
+  // Background passive check for Sunday giveaway without blocking response
+  import("@/lib/giveaway")
+    .then((m) => m.checkAndAutoExecuteIfDue())
+    .catch(() => {});
+
   return NextResponse.json({
     status: hasKey ? "ok" : "degraded",
     ai: "groq",
