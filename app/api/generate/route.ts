@@ -43,61 +43,74 @@ Tujuan Anda adalah menghasilkan metadata yang **SANGAT AKURAT, HYPER-RELEVANT DE
 ---
 
 # CORE PRINCIPLE: VISUAL ACCURACY & BUYER SEARCH INTENT
-1. **VISUAL ACCURACY IS ABSOLUTE**: Semua judul dan kata kunci HARUS 100% merefleksikan apa yang benar-benar terlihat di gambar (subjek, material, warna, pencahayaan, sudut, latar belakang). Dilarang mengarang hal yang tidak terlihat.
-2. **BUYER SEARCH INTENT FIRST**: "Apa kata kunci spesifik dan frasa yang diketik oleh Art Director, Graphic Designer, Marketer, atau Buyer komersial saat mencari aset ini?"
-3. **NO FLUFF / NO SPAM**: Dilarang memasukkan kata spam generik seperti "photo", "image", "picture", "wallpaper", "hd", "4k", "8k", "best", "cool".
+1. **VISUAL ACCURACY IS ABSOLUTE**: Semua judul dan kata kunci HARUS 100% merefleksikan apa yang benar-benar terlihat di gambar. Dilarang mengarang hal yang tidak terlihat.
+2. **BUYER SEARCH INTENT FIRST**: Pikirkan kata kunci yang diketik seorang Art Director, Designer, atau Buyer saat mencari aset ini di mesin pencari.
+3. **NO FLUFF / NO SPAM**: Dilarang memasukkan kata spam: "photo", "image", "picture", "wallpaper", "hd", "4k", "8k", "best", "cool".
+
+---
+
+# ⛔ ATURAN SUPER KRITIS — FILENAME BIAS ADALAH KESALAHAN FATAL ⛔
+**NAMA FILE ADALAH SAMPAH METADATA. JANGAN PERNAH BIARKAN NAMA FILE MEMPENGARUHI KATA KUNCI ATAU JUDUL.**
+
+Contoh situasi berbahaya:
+- Nama file: "Digital_payment_stock_photograph_guitar_2K.jpeg"
+- Gambar berisi: Gitar akustik kayu
+- BENAR: keywords[0] = "guitar", keywords[1] = "acoustic guitar", keywords[2] = "musical instrument"
+- SALAH: keywords[0] = "digital payment", keywords[1] = "cashless", keywords[2] = "payment system"
+
+**ATURAN MUTLAK: Analisis HANYA piksel visual gambar. Nama file diabaikan 100% untuk konten kata kunci.**
+Bayangkan Anda tidak tahu nama filenya sama sekali — deskripsikan hanya apa yang Anda lihat secara visual.
 
 ---
 
 # STEP 1 — FORENSIK VISUAL MENDALAM (6 DIMENSI WAJIB)
 Analisis seluruh elemen visual sebelum membuat metadata:
-1. **SUBJECT & COMPONENT PARTS**: Subjek utama secara spesifik + seluruh bagian fisiknya (contoh: pada kuas lukis $\rightarrow$ bulu kuas/bristles, cat biru, gagang kayu, cincin logam/ferrule).
-2. **MATERIALS, TEXTURES & COLORS**: Kayu, kaca optik, logam chrome, plastik, kanvas, kain, karet, cat minyak, glossy, matte, warna primer dan aksen nyata (blue, brown, white, silver).
-3. **SETUP, ENVIRONMENT & BACKGROUND**: Isolated on white, clean studio background, outdoor, modern interior, workshop, dark background, copy space, surface texture.
-4. **COMPOSITION & ANGLE**: Close-up, macro shot, diagonal angle, overhead view, eye level, flat lay, side view, single object, isolated.
-5. **LIGHTING & MOOD**: Studio lighting, soft diffuse light, natural sunlight, rim light, high key, bright, clean reflection, calm, professional.
-6. **COMMERCIAL USE & INDUSTRY**: Desain grafis, periklanan, edukasi, seni & kriya, hobi, teknologi, lifestyle, bisnis.
+1. **SUBJECT & COMPONENT PARTS**: Subjek utama secara spesifik + seluruh bagian fisiknya.
+2. **MATERIALS, TEXTURES & COLORS**: Kayu, kaca, logam, plastik, kanvas, glossy, matte, warna nyata.
+3. **SETUP, ENVIRONMENT & BACKGROUND**: Isolated on white, outdoor, modern interior, dark background, copy space.
+4. **COMPOSITION & ANGLE**: Close-up, macro, overhead, flat lay, side view, single object.
+5. **LIGHTING & MOOD**: Studio lighting, natural sunlight, rim light, high key, bright, professional.
+6. **COMMERCIAL USE & INDUSTRY**: Grafis, periklanan, edukasi, seni, hobi, teknologi, lifestyle, bisnis.
 
 ---
 
 # STEP 2 — TITLE FORMULA (BERBOBOT SEO & PENJUALAN TINGGI)
-Buat judul 1 kalimat dalam bahasa Inggris alami (8–12 kata).
-**Rumus Standar Komersial**:
-\`[Material / Style / Adjective] + [Specific Primary Subject] + [Action / Specific Detail / Color] + [Environment / Background Setup]\`
+Buat judul 1 kalimat bahasa Inggris alami (8–12 kata).
+Rumus: \`[Material/Style/Adjective] + [Specific Primary Subject] + [Action/Detail/Color] + [Environment/Background]\`
 
-*Contoh Nyata*:
-- Kuas lukis: \`Artist Paintbrush with Blue Paint on Bristles Isolated on White Background\` (11 kata)
-- Kaca pembesar: \`Vintage Magnifying Glass with Wooden Handle and Chrome Frame on White Background\` (12 kata)
-- Helm sepeda: \`Modern Aerodynamic White Cycling Helmet Isolated on Plain White Background\` (11 kata)
-- Lobby game: \`Futuristic Battle Royale Game Lobby Screen with Customizable Character and Pets\` (11 kata)
+Contoh:
+- Gitar: \`Acoustic Wooden Guitar with Strings and Fretboard Isolated on White Background\`
+- Kuas lukis: \`Artist Paintbrush with Blue Paint on Bristles Isolated on White Background\`
+- Helm sepeda: \`Modern Aerodynamic White Cycling Helmet Isolated on Plain White Background\`
 
 ---
 
 # STEP 3 — ATURAN KATA KUNCI: WAJIB MINIMAL 52–60 KATA KUNCI UNIK
-Algoritma Adobe Stock & Shutterstock memberikan bobot pencarian tertinggi (hingga 80%) pada kata kunci terdepan (Tier 1).
-**WAJIB BERIKAN MINIMAL 52 HINGGA 60 KATA KUNCI DALAM RESPONSE JSON ANDA** (terurut ketat dari Tier 1 ke Tier 4):
 
-### 🔹 TIER 1: PRIMARY SUBJECT & LITERAL NOUNS (Nomor 1–12) — [BOBOT PALING TINGGI]
-- Nama benda/subjek secara spesifik (singular & plural/variasi nama).
-- Nama seluruh bagian fisik & material langsung benda tersebut.
-*(Contoh kuas: paintbrush, paint brush, bristle, blue paint, wooden handle, artist brush, painting tool, art supplies, acrylic paint, ferrule, oil paint, fine art brush)*
+## ⭐ TIER 1: LITERAL VISUAL NOUNS — POSISI 1–15 [BOBOT TERTINGGI, PALING KRITIS]
+**KATA KUNCI POSISI 1 SAMPAI 15 MUTLAK HARUS berisi nama benda fisik yang terlihat langsung di foto.**
+- Nama benda utama dalam bahasa Inggris yang MUDAH DICARI (high search volume, simple, direct).
+- Jangan gunakan konsep abstrak atau kata dari nama file di sini.
+- Contoh jika foto adalah gitar:
+  ["guitar", "acoustic guitar", "musical instrument", "strings", "frets", "guitar neck", "wood guitar",
+   "music instrument", "acoustic", "folk guitar", "classical guitar", "guitar body", "soundhole", "guitar strings", "wooden guitar"]
+- Contoh jika foto adalah kuas:
+  ["paintbrush", "paint brush", "bristle", "blue paint", "wooden handle", "artist brush", "painting tool",
+   "art supplies", "acrylic paint", "ferrule", "oil paint", "fine art brush", "brush tip", "painter tool", "craft brush"]
 
-### 🔹 TIER 2: PRESENTASI VISUAL, SETUP & BACKGROUND (Nomor 13–24)
-- Lingkungan visual nyata, komposisi, sudut kamera, dan latar belakang.
-*(Contoh jika latar putih: isolated on white, white background, studio shot, close up, nobody, still life, cut out, copy space, horizontal, clean backdrop)*
+## TIER 2: PRESENTASI VISUAL, SETUP & BACKGROUND — POSISI 16–28
+- Lingkungan visual nyata, komposisi, sudut kamera, latar belakang yang terlihat.
 
-### 🔹 TIER 3: COMMERCIAL USE CASES, CRAFT & PROFESSION (Nomor 25–40)
-- Profesi, industri, aktivitas, hobi, dan tujuan komersial di mana aset ini digunakan.
-*(Contoh: fine arts, creative work, art studio, craft hobby, education, artistic design, drawing, watercolor, canvas painting, craftsmanship, art lesson, diy project, artist equipment, creativity, painter tool)*
+## TIER 3: COMMERCIAL USE CASES & PROFESSION — POSISI 29–44
+- Profesi, industri, aktivitas, hobi, tujuan komersial aset ini.
 
-### 🔹 TIER 4: SUPPORTING COMMERCIAL TERMS & STYLES (Nomor 41–55+)
-- Konsep pendukung, kualitas visual, instrumen, dan istilah pelengkap yang dicari buyer.
-*(Contoh: crafting, handicraft, design element, art material, single object, sharp focus, vibrant color, artistic style, professional tool, workshop equipment, art school, art class, creation)*
+## TIER 4: SUPPORTING COMMERCIAL TERMS & STYLES — POSISI 45–60+
+- Konsep pendukung, kualitas visual, istilah pelengkap yang dicari buyer.
 
 ---
 
-# STEP 4 — PROMPT GENERATIF & AI REPRODUCTION (MAGNIFIC/MIDJOURNEY)
-Wajib buatkan field "prompt" berisi deskripsi prompt AI fotorealistik dalam bahasa Inggris yang sangat mendalam dan presisi (menyebutkan subjek, warna, pencahayaan studio, sudut kamera, tekstur nyata, lensa kamera, 8k quality, isolated background) yang mampu mereproduksi aset secara identik.`;
+# STEP 4 — PROMPT GENERATIF & AI REPRODUCTION
+Field "prompt": Prompt AI fotorealistik bahasa Inggris yang detail dan presisi (subjek, warna, pencahayaan studio, sudut kamera, tekstur, lensa, 8k quality, background) untuk mereproduksi aset secara identik.`;
 
 const ADOBE_SYSTEM_PROMPT = `${MASTER_PROMPT_CORE}
 
@@ -424,8 +437,21 @@ async function generateMetadata(
 
   const promptText = platform === "shutterstock" ? SHUTTERSTOCK_SYSTEM_PROMPT : platform === "magnific" ? MAGNIFIC_SYSTEM_PROMPT : ADOBE_SYSTEM_PROMPT;
   const textPart = visualHints
-    ? `Generate stock metadata for image file:\nFilename: ${filename}\nVisual context/hints: ${visualHints}\nCRITICAL: Respond ONLY with raw valid JSON.`
-    : `Generate stock metadata for image file:\nFilename: ${filename}\nCRITICAL: Respond ONLY with raw valid JSON.`;
+    ? `Analyze the image VISUALLY and generate accurate microstock metadata.
+FILENAME (for reference only, do NOT use for keywords): ${filename}
+Visual context/hints from uploader: ${visualHints}
+
+CRITICAL RULES:
+1. Keywords MUST come from what you SEE in the image, NOT from the filename text.
+2. First 15 keywords MUST be the literal physical objects visible in the photo.
+3. Output ONLY raw valid JSON with no markdown fences or extra text.`
+    : `Analyze the image VISUALLY and generate accurate microstock metadata.
+FILENAME (for reference only, do NOT use for keywords): ${filename}
+
+CRITICAL RULES:
+1. Keywords MUST come from what you SEE in the image, NOT from the filename text.
+2. First 15 keywords MUST be the literal physical objects visible in the photo (e.g. if you see a guitar → "guitar", "acoustic guitar", "strings", "musical instrument").
+3. Output ONLY raw valid JSON with no markdown fences or extra text.`;
 
   const messages: GroqMessage[] = [
     { role: "system", content: promptText },
@@ -440,7 +466,7 @@ async function generateMetadata(
 
   const result = await callGroq(messages, {
     temperature: 0.15,
-    max_tokens: 2048,
+    max_tokens: 3072,
     vision: true,
     jsonMode: true,
   });
