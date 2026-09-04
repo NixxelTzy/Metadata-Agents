@@ -48,6 +48,10 @@ export default function ImageUploader({ onTokensUpdated }: Props = {}) {
   const [magnificPrompts, setMagnificPrompts] = useState<Record<string, string>>({});
   const [magnificModels, setMagnificModels] = useState<Record<string, string>>({});
   const [globalMagnificModel, setGlobalMagnificModel] = useState("Midjourney 6");
+  const [copiedPromptIdx, setCopiedPromptIdx] = useState<number | null>(null);
+  // Auto Speed Mode: enabled automatically when Magnific has >20 photos. Runs 5 requests in parallel per batch.
+  // Each request is still individual (1 image → 1 API call) so accuracy is NOT compromised.
+  const [autoSpeedMode, setAutoSpeedMode] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const handleGlobalModelChange = (model: string) => {
@@ -73,15 +77,16 @@ export default function ImageUploader({ onTokensUpdated }: Props = {}) {
         return;
       }
 
-      const remaining = MAX_IMAGES - images.length;
+      const maxLimit = platform === "magnific" ? 180 : 100;
+      const remaining = maxLimit - images.length;
       if (remaining <= 0) {
-        setError(`Maksimal ${MAX_IMAGES} file`);
+        setError(`Maksimal ${maxLimit} file untuk ${platform === "magnific" ? "Magnific" : "platform ini"}`);
         return;
       }
 
       const toAdd = fileArray.slice(0, remaining);
       if (fileArray.length > remaining) {
-        setError(`Hanya ${remaining} file lagi yang bisa ditambahkan (maks ${MAX_IMAGES})`);
+        setError(`Hanya ${remaining} file lagi yang bisa ditambahkan (maks ${maxLimit})`);
       }
 
       const newImages: ImagePreview[] = [];
@@ -114,10 +119,16 @@ export default function ImageUploader({ onTokensUpdated }: Props = {}) {
         }
       }
 
-      setImages((prev) => [...prev, ...newImages]);
+      setImages((prev) => {
+        const next = [...prev, ...newImages];
+        if (platform === "magnific" && next.length > 20) {
+          setAutoSpeedMode(true);
+        }
+        return next;
+      });
       setResults([]);
     },
-    [images.length]
+    [images.length, platform]
   );
 
   const handleDrop = useCallback(
@@ -163,95 +174,105 @@ export default function ImageUploader({ onTokensUpdated }: Props = {}) {
     setError("");
     setResults([]);
 
-    const collected: MetadataResult[] = [];
+    const collected: MetadataResult[] = new Array(images.length).fill(null);
     const INTER_REQUEST_DELAY_MS = 1500;
     const RATE_LIMIT_PAUSE_MS = 10000;
     const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
 
+    // Helper: process a single image at index i
+    const processOne = async (i: number): Promise<void> => {
+      const img = images[i]!;
+      const visualHintsToSend = img.customHints
+        ? `${img.visualHints} | User hints: ${img.customHints}`
+        : img.visualHints;
+
+      try {
+        const response = await fetch("/api/generate", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            images: [{ filename: img.file.name, dataUrl: img.preview, visualHints: visualHintsToSend }],
+            stabilized: true,
+            platform,
+            complianceGuard,
+          }),
+        });
+
+        const data = await response.json();
+
+        if (data.totalUsage) {
+          addUsage(data.totalUsage.promptTokens, data.totalUsage.completionTokens, "metadata");
+          onTokensUpdated?.();
+        }
+
+        if (!response.ok) {
+          collected[i] = {
+            filename: img.file.name, title: "", keywords: [],
+            error: data.error || `Gagal dengan status ${response.status}`,
+            stabilized: true,
+          };
+        } else {
+          const newResults = data.results as MetadataResult[];
+          const r = newResults[0];
+          collected[i] = r ?? { filename: img.file.name, title: "", keywords: [], error: "Respons kosong", stabilized: true };
+          if (r?.prompt) setMagnificPrompts((prev) => ({ ...prev, [img.id]: r.prompt! }));
+          if (r?.model) setMagnificModels((prev) => ({ ...prev, [img.id]: r.model! }));
+          else setMagnificModels((prev) => ({ ...prev, [img.id]: prev[img.id] || globalMagnificModel }));
+        }
+      } catch (loopError) {
+        collected[i] = {
+          filename: img.file.name, title: "", keywords: [],
+          error: loopError instanceof Error ? loopError.message : "Koneksi error",
+          stabilized: true,
+        };
+      }
+    };
+
     try {
-      if (stabilized) {
-        for (let i = 0; i < images.length; i++) {
-          const img = images[i]!;
-          setProgress(`Mode Stabil: Memproses file ${i + 1}/${images.length}...`);
+      // ── Auto Speed Mode (Magnific, >20 photos) ──
+      // Runs 5 requests in parallel per batch. Each request is still 1 image → 1 API call, so accuracy is NOT affected.
+      const useMagnificSpeed = platform === "magnific" && (autoSpeedMode || images.length > 20);
 
-          const visualHintsToSend = img.customHints
-            ? `${img.visualHints} | User hints: ${img.customHints}`
-            : img.visualHints;
-
-          try {
-            const response = await fetch("/api/generate", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                images: [
-                  {
-                    filename: img.file.name,
-                    dataUrl: img.preview,
-                    visualHints: visualHintsToSend,
-                  },
-                ],
-                stabilized: true,
-                platform,
-                complianceGuard,
-              }),
-            });
-
-            const data = await response.json();
-
-            if (data.totalUsage) {
-              addUsage(data.totalUsage.promptTokens, data.totalUsage.completionTokens, "metadata");
-              onTokensUpdated?.();
-            }
-
-            if (!response.ok) {
-              const isRateLimit = response.status === 429;
-              collected.push({
-                filename: img.file.name,
-                title: "",
-                keywords: [],
-                error: data.error || `Gagal dengan status ${response.status}`,
-                stabilized: true,
-              });
-
-              if (isRateLimit && i < images.length - 1) {
-                setProgress(`⚠️ Rate limit terdeteksi. Menunggu 10 detik sebelum melanjutkan...`);
-                await sleep(RATE_LIMIT_PAUSE_MS);
-              }
-            } else {
-              const newResults = data.results as MetadataResult[];
-              collected.push(...newResults);
-              const r = newResults[0];
-              if (r) {
-                if (r.prompt) {
-                  setMagnificPrompts((prev) => ({ ...prev, [img.id]: r.prompt! }));
-                }
-                if (r.model) {
-                  setMagnificModels((prev) => ({ ...prev, [img.id]: r.model! }));
-                } else {
-                  setMagnificModels((prev) => ({ ...prev, [img.id]: prev[img.id] || globalMagnificModel }));
-                }
-              }
-            }
-          } catch (loopError) {
-            collected.push({
-              filename: img.file.name,
-              title: "",
-              keywords: [],
-              error: loopError instanceof Error ? loopError.message : "Koneksi error",
-              stabilized: true,
-            });
+      if (useMagnificSpeed) {
+        const BATCH_SIZE = 5;
+        const totalBatches = Math.ceil(images.length / BATCH_SIZE);
+        for (let b = 0; b < totalBatches; b++) {
+          const start = b * BATCH_SIZE;
+          const end = Math.min(start + BATCH_SIZE, images.length);
+          const batchIndices = Array.from({ length: end - start }, (_, k) => start + k);
+          setProgress(`⚡ Auto Speed Mode: Batch ${b + 1}/${totalBatches} — Memproses file ${start + 1}–${end} dari ${images.length} (Akurasi Penuh)...`);
+          await Promise.all(batchIndices.map((idx) => processOne(idx)));
+          setResults([...collected.map((r) => r ?? { filename: "", title: "", keywords: [], error: "Belum diproses", stabilized: true })]);
+          
+          const hadRateLimit = batchIndices.some((idx) => response_was_ratelimit(collected[idx]));
+          if (hadRateLimit && b < totalBatches - 1) {
+            setProgress(`⚠️ Rate limit terdeteksi. Menunggu jeda 10 detik sebelum batch berikutnya...`);
+            await sleep(RATE_LIMIT_PAUSE_MS);
+          } else if (b < totalBatches - 1) {
+            await sleep(1000);
           }
+        }
+        const success = collected.filter((r) => r && !r.error).length;
+        setProgress(`✅ Auto Speed Selesai! ${success}/${images.length} file berhasil`);
 
-          setResults([...collected]);
-
-          if (i < images.length - 1) {
+      } else if (stabilized) {
+        // ── Stabilized Sequential Mode ──
+        for (let i = 0; i < images.length; i++) {
+          setProgress(`Mode Stabil: Memproses file ${i + 1}/${images.length}...`);
+          await processOne(i);
+          setResults([...collected.map((r) => r ?? { filename: "", title: "", keywords: [], stabilized: true })]);
+          if (response_was_ratelimit(collected[i])) {
+            setProgress(`⚠️ Rate limit terdeteksi. Menunggu 10 detik sebelum melanjutkan...`);
+            await sleep(RATE_LIMIT_PAUSE_MS);
+          } else if (i < images.length - 1) {
             await sleep(INTER_REQUEST_DELAY_MS);
           }
         }
-
-        const success = collected.filter((r) => !r.error).length;
+        const success = collected.filter((r) => r && !r.error).length;
         setProgress(`✅ Selesai! ${success}/${images.length} file berhasil`);
+
       } else {
+        // ── Fast Batch Mode (non-stabilized) ──
         setProgress(`Memproses ${images.length} file (mode cepat)...`);
 
         const payload = images.map((img) => ({
@@ -275,9 +296,7 @@ export default function ImageUploader({ onTokensUpdated }: Props = {}) {
           onTokensUpdated?.();
         }
 
-        if (!response.ok) {
-          throw new Error(data.error || "Gagal menghubungi server");
-        }
+        if (!response.ok) throw new Error(data.error || "Gagal menghubungi server");
 
         const resList = data.results as MetadataResult[];
         setResults(resList);
@@ -294,7 +313,6 @@ export default function ImageUploader({ onTokensUpdated }: Props = {}) {
         });
         setMagnificPrompts((prev) => ({ ...prev, ...newPrompts }));
         setMagnificModels((prev) => ({ ...prev, ...newModels }));
-
         setProgress(`✅ Selesai! ${data.results.length} file diproses`);
       }
     } catch (err) {
@@ -304,6 +322,12 @@ export default function ImageUploader({ onTokensUpdated }: Props = {}) {
       setLoading(false);
     }
   };
+
+  // Helper to detect rate-limit error result
+  const response_was_ratelimit = (r: MetadataResult | null) =>
+    r?.error?.includes("429") || r?.error?.includes("rate limit") || r?.error?.includes("Rate limit");
+
+
 
   const handleUpdateResult = (index: number, updatedFields: Partial<MetadataResult>) => {
     setResults((prev) =>
@@ -331,6 +355,28 @@ export default function ImageUploader({ onTokensUpdated }: Props = {}) {
     navigator.clipboard.writeText(text);
     setCopiedIdx(idx);
     setTimeout(() => setCopiedIdx(null), 2000);
+  };
+
+  const copyPrompt = (idx: number) => {
+    const r = results[idx];
+    const imgId = images[idx]?.id ?? "";
+    const promptVal = magnificPrompts[imgId] || r?.prompt || "";
+    if (!promptVal) {
+      showToast({
+        type: "info",
+        title: "Prompt Belum Tersedia",
+        message: "Prompt AI belum digenerate atau masih kosong.",
+      });
+      return;
+    }
+    navigator.clipboard.writeText(promptVal);
+    setCopiedPromptIdx(idx);
+    showToast({
+      type: "success",
+      title: "Prompt AI Tersalin!",
+      message: "Prompt berhasil disalin ke clipboard.",
+    });
+    setTimeout(() => setCopiedPromptIdx(null), 2000);
   };
 
   const exportCsv = () => {
@@ -526,7 +572,13 @@ export default function ImageUploader({ onTokensUpdated }: Props = {}) {
           {/* Magnific */}
           <button
             type="button"
-            onClick={() => { setPlatform("magnific"); setResults([]); }}
+            onClick={() => {
+              setPlatform("magnific");
+              setResults([]);
+              if (images.length > 20) {
+                setAutoSpeedMode(true);
+              }
+            }}
             style={{
               padding: "16px 18px",
               borderRadius: 16,
@@ -549,7 +601,7 @@ export default function ImageUploader({ onTokensUpdated }: Props = {}) {
               </div>
               <div>
                 <div style={{ fontSize: 14, fontWeight: 800, color: "#0f172a" }}>Magnific</div>
-                <div style={{ fontSize: 11.5, color: "#64748b", marginTop: 2, fontWeight: 600 }}>50 Keywords + Auto AI Prompt</div>
+                <div style={{ fontSize: 11.5, color: "#64748b", marginTop: 2, fontWeight: 600 }}>50 Keywords + Auto Prompt (Max 180 Foto)</div>
               </div>
             </div>
             {platform === "magnific" && <CheckCircle2 size={20} color="#2563eb" />}
@@ -583,7 +635,7 @@ export default function ImageUploader({ onTokensUpdated }: Props = {}) {
                 </div>
               </div>
             </div>
-            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
               <span style={{ fontSize: 12, fontWeight: 800, color: "#1e40af" }}>Model AI Seragam:</span>
               <select
                 value={globalMagnificModel}
@@ -607,6 +659,52 @@ export default function ImageUploader({ onTokensUpdated }: Props = {}) {
                 <option value="DALL-E 3">DALL-E 3</option>
                 <option value="Adobe Firefly">Adobe Firefly</option>
               </select>
+            </div>
+          </div>
+        )}
+
+        {/* Magnific Auto Speed Mode Panel */}
+        {platform === "magnific" && (
+          <div style={{
+            marginTop: 10,
+            padding: "12px 18px",
+            background: autoSpeedMode ? "rgba(220, 252, 231, 0.75)" : "rgba(241, 245, 249, 0.7)",
+            border: autoSpeedMode ? "1px solid rgba(134, 239, 172, 0.8)" : "1px solid rgba(203, 213, 225, 0.7)",
+            borderRadius: 12,
+            backdropFilter: "blur(10px)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            flexWrap: "wrap",
+            gap: 10,
+          }}>
+            <label style={{ display: "flex", alignItems: "flex-start", gap: 10, cursor: "pointer", flex: 1 }}>
+              <input
+                type="checkbox"
+                checked={autoSpeedMode}
+                onChange={(e) => setAutoSpeedMode(e.target.checked)}
+                disabled={loading}
+                style={{ marginTop: 3, accentColor: "#16a34a", width: 15, height: 15 }}
+              />
+              <div>
+                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                  <span style={{ fontSize: 12.5, fontWeight: 800, color: "#0f172a" }}>
+                    Auto Speed Mode (Magnific)
+                  </span>
+                  {images.length > 20 && (
+                    <span style={{ fontSize: 10, fontWeight: 800, color: "#15803d", background: "rgba(220,252,231,0.9)", padding: "1px 7px", borderRadius: 999, border: "1px solid rgba(134,239,172,0.8)" }}>
+                      Direkomendasikan ({images.length} foto)
+                    </span>
+                  )}
+                </div>
+                <div style={{ fontSize: 11, color: "#475569", marginTop: 2, fontWeight: 500, lineHeight: 1.5 }}>
+                  Proses 5 foto secara paralel per batch — tiap foto tetap dianalisis secara individual (1 foto = 1 request), 
+                  jadi <strong>akurasi metadata tidak berkurang</strong>. Efektif mempercepat 180+ foto.
+                </div>
+              </div>
+            </label>
+            <div style={{ fontSize: 11, color: autoSpeedMode ? "#15803d" : "#64748b", fontWeight: 700, whiteSpace: "nowrap" }}>
+              {autoSpeedMode ? "Aktif — 5 paralel/batch" : "Nonaktif — Sekuensial"}
             </div>
           </div>
         )}
@@ -654,7 +752,7 @@ export default function ImageUploader({ onTokensUpdated }: Props = {}) {
           atau klik untuk memilih dari perangkat Anda
         </div>
         <div style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "4px 14px", background: "rgba(219, 234, 254, 0.7)", border: "1px solid rgba(147, 197, 253, 0.5)", borderRadius: 999, fontSize: 11.5, color: "#1e40af", fontWeight: 700 }}>
-          <span>Maksimal {MAX_IMAGES} file sekaligus</span>
+          <span>Maksimal {platform === "magnific" ? 180 : 100} file sekaligus</span>
           <span>•</span>
           <span>JPG, PNG, WEBP, MP4, MOV</span>
         </div>
@@ -670,7 +768,7 @@ export default function ImageUploader({ onTokensUpdated }: Props = {}) {
                 File Siap Proses
               </span>
               <span style={{ padding: "2px 10px", background: "rgba(219, 234, 254, 0.8)", color: "#1e40af", border: "1px solid rgba(147, 197, 253, 0.6)", borderRadius: 999, fontSize: 11.5, fontWeight: 800 }}>
-                {images.length}/{MAX_IMAGES}
+                {images.length}/{platform === "magnific" ? 180 : 100}
               </span>
             </div>
             <button
@@ -1150,7 +1248,31 @@ export default function ImageUploader({ onTokensUpdated }: Props = {}) {
                           </span>
                         </div>
                         <div>
-                          <span style={{ fontSize: 10.5, color: "#1e40af", display: "block", marginBottom: 3, fontWeight: 700 }}>Prompt AI (Auto-Visual Analysis)</span>
+                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
+                            <span style={{ fontSize: 10.5, color: "#1e40af", fontWeight: 700 }}>Prompt AI (Auto-Visual Analysis)</span>
+                            <button
+                              type="button"
+                              onClick={() => copyPrompt(i)}
+                              title="Salin prompt AI"
+                              style={{
+                                display: "inline-flex",
+                                alignItems: "center",
+                                gap: 4,
+                                padding: "2px 8px",
+                                borderRadius: 6,
+                                border: copiedPromptIdx === i ? "1px solid rgba(134, 239, 172, 0.8)" : "1px solid rgba(147, 197, 253, 0.7)",
+                                background: copiedPromptIdx === i ? "rgba(220, 252, 231, 0.9)" : "rgba(219, 234, 254, 0.8)",
+                                color: copiedPromptIdx === i ? "#15803d" : "#1e40af",
+                                fontSize: 10.5,
+                                fontWeight: 700,
+                                cursor: "pointer",
+                                transition: "all 0.15s ease"
+                              }}
+                            >
+                              {copiedPromptIdx === i ? <Check size={11} /> : <Copy size={11} />}
+                              <span>{copiedPromptIdx === i ? "Tersalin!" : "Salin Prompt"}</span>
+                            </button>
+                          </div>
                           <textarea
                             rows={3}
                             placeholder="Prompt generative AI otomatis terisi setelah analisis foto..."
