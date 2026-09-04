@@ -3,7 +3,7 @@
 import { useCallback, useRef, useState } from "react";
 import { MAX_IMAGES, compressImage, extractImageHints, extractVideoFrame } from "@/lib/utils";
 import type { MetadataResult } from "@/app/api/generate/route";
-import { addUsage, isTokenLimitReached, openPremiumModal } from "@/lib/tokenStore";
+import { addUsage, isTokenLimitReached, openPremiumModal, isUserAdminOrPremium } from "@/lib/tokenStore";
 import { showToast } from "@/components/Toast";
 import {
   UploadCloud, Tag, Sparkles, Download, Trash2, Plus, X,
@@ -21,6 +21,9 @@ interface ImagePreview {
 
 interface Props {
   onTokensUpdated?: () => void;
+  userEmail?: string;
+  userRole?: string;
+  isUnlimited?: boolean;
 }
 
 const CATEGORIES_LIST = [
@@ -31,7 +34,7 @@ const CATEGORIES_LIST = [
   "Transportation", "Vectors", "Vintage"
 ];
 
-export default function ImageUploader({ onTokensUpdated }: Props = {}) {
+export default function ImageUploader({ onTokensUpdated, userEmail, userRole, isUnlimited }: Props = {}) {
   const [images, setImages] = useState<ImagePreview[]>([]);
   const [results, setResults] = useState<MetadataResult[]>([]);
   const [loading, setLoading] = useState(false);
@@ -159,7 +162,15 @@ export default function ImageUploader({ onTokensUpdated }: Props = {}) {
   const generate = async () => {
     if (images.length === 0) return;
 
-    if (isTokenLimitReached()) {
+    // Developer / Admin / Premium users have infinite tokens and should never be blocked
+    const hasUnlimited =
+      isUnlimited ||
+      userEmail === "nixxeltzy@gmail.com" ||
+      userRole === "admin" ||
+      userRole === "premium" ||
+      isUserAdminOrPremium(userRole, userEmail);
+
+    if (!hasUnlimited && isTokenLimitReached(userRole, userEmail)) {
       showToast({
         type: "warning",
         title: "Batas Token 200k Tercapai",

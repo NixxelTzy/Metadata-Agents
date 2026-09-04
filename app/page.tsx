@@ -22,6 +22,7 @@ import { useRouter } from "next/navigation";
 import {
   getUsage, getUsagePercent, getDailyLimit,
   formatTokens, openPremiumModal, isUserAdminOrPremium,
+  setCurrentUserCache,
   type Platform,
 } from "@/lib/tokenStore";
 import {
@@ -110,6 +111,7 @@ export default function Home() {
       .then((d: { user?: UserInfo }) => {
         if (d.user) {
           setUser(d.user);
+          setCurrentUserCache(d.user);
           setTokenPct(getUsagePercent(d.user.role, d.user.email));
         }
       })
@@ -161,6 +163,7 @@ export default function Home() {
       document.cookie = "auth_token=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/; SameSite=Lax";
       document.cookie = "auth_token=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/api; SameSite=Lax";
       try { localStorage.clear(); sessionStorage.clear(); } catch {}
+      setCurrentUserCache(null);
       await fetch("/api/auth/logout", { method: "POST", credentials: "include" }).catch(() => {});
     } catch { /**/ }
     window.location.href = "/login";
@@ -589,7 +592,14 @@ export default function Home() {
           : activeTab === "prem_access" && isAdmin ? <PremAccessPanel />
           : activeTab === "giveaway" && isAdmin ? <GiveawayPanel />
           : activeTab === "feedback" ? <FeedbackPanel />
-          : activeTab === "metadata" ? <ImageUploader onTokensUpdated={refreshTokens} />
+          : activeTab === "metadata" ? (
+            <ImageUploader
+              onTokensUpdated={refreshTokens}
+              userEmail={user?.email}
+              userRole={user?.role}
+              isUnlimited={isUnlimited}
+            />
+          )
           : <ImageUpscaler />
           }
         </main>

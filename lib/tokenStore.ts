@@ -53,8 +53,39 @@ function emptyUsage(): DailyUsage {
   };
 }
 
+const CURRENT_USER_KEY = "stock_current_user_cache";
+
+export function setCurrentUserCache(user: { email?: string; role?: string } | null): void {
+  if (typeof window === "undefined") return;
+  try {
+    if (!user) {
+      localStorage.removeItem(CURRENT_USER_KEY);
+    } else {
+      localStorage.setItem(CURRENT_USER_KEY, JSON.stringify({ email: user.email, role: user.role }));
+    }
+  } catch { /* ignore */ }
+}
+
+export function getCurrentUserCache(): { email?: string; role?: string } | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = localStorage.getItem(CURRENT_USER_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
+
 export function isUserAdminOrPremium(role?: string, email?: string): boolean {
-  if (email === ADMIN_EMAIL) return true;
+  // If not provided as arguments, auto-check client-side cache
+  if (!role && !email) {
+    const cached = getCurrentUserCache();
+    if (cached) {
+      role = cached.role;
+      email = cached.email;
+    }
+  }
+  if (email === ADMIN_EMAIL || email?.toLowerCase() === ADMIN_EMAIL.toLowerCase()) return true;
   if (role === "admin" || role === "premium") return true;
   return false;
 }
