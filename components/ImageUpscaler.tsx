@@ -1,7 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ZoomIn } from "lucide-react";
+import { ZoomIn, Download, Archive, Eye, EyeOff } from "lucide-react";
+import JSZip from "jszip";
 
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
@@ -897,6 +898,8 @@ const RESOLUTION_PRESETS: ResolutionPreset[] = [
   { label: "8192px",      width: 8192,  height: 8192,  badge: "8K",    desc: "Longer side ≥ 8192px · Max quality" },
 ];
 
+const MAX_UPSCALE_FILES = 180;
+
 export default function ImageUpscaler() {
   const [images, setImages] = useState<MediaFile[]>([]);
   const [selectedPreset, setSelectedPreset] = useState<ResolutionPreset>(RESOLUTION_PRESETS[1]!);
@@ -906,6 +909,8 @@ export default function ImageUpscaler() {
   const [dragOver, setDragOver] = useState(false);
   const [error, setError] = useState("");
   const [modalIndex, setModalIndex] = useState<number | null>(null);
+  const [zipping, setZipping] = useState(false);
+  const [expandedSliderId, setExpandedSliderId] = useState<string | null>(null);
 
   const inputRef = useRef<HTMLInputElement>(null);
   const profile = ENGINE_PROFILES[engine];
@@ -923,8 +928,19 @@ export default function ImageUpscaler() {
       return;
     }
 
+    const remaining = MAX_UPSCALE_FILES - images.length;
+    if (remaining <= 0) {
+      setError(`Maksimal ${MAX_UPSCALE_FILES} file sekaligus.`);
+      return;
+    }
+
+    const toAdd = valid.slice(0, remaining);
+    if (valid.length > remaining) {
+      setError(`Hanya ${remaining} file lagi yang bisa ditambahkan (maksimal ${MAX_UPSCALE_FILES} file).`);
+    }
+
     const newMedia: MediaFile[] = [];
-    for (const file of valid) {
+    for (const file of toAdd) {
       try {
         if (isImageFile(file)) {
           const dataUrl = await new Promise<string>((res, rej) => {
@@ -969,7 +985,7 @@ export default function ImageUpscaler() {
       }
     }
     setImages((prev) => [...prev, ...newMedia]);
-  }, []);
+  }, [images.length]);
 
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -978,7 +994,7 @@ export default function ImageUpscaler() {
   }, [addFiles]);
 
   const removeImage = (id: string) => setImages((p) => p.filter((i) => i.id !== id));
-  const clearAll = () => { setImages([]); setError(""); setProgress(""); setModalIndex(null); };
+  const clearAll = () => { setImages([]); setError(""); setProgress(""); setModalIndex(null); setExpandedSliderId(null); };
 
   // ── Upscale runner ──────────────────────────────────────────────────────────
 
@@ -1119,6 +1135,81 @@ export default function ImageUpscaler() {
       a.href = media.outputVideoUrl;
       a.download = `${media.name.replace(/\.[^.]+$/, "")}_upscaled_${selectedPreset.label.replace("×", "x")}.webm`;
       a.click();
+    }
+  };
+
+  const handleDownloadZip = async () => {
+    const doneImages = images.filter((i) => i.status === "success" && i.type === 'image' && i.upscaledDataUrl) as (ImageFile & { type: 'image' })[];
+    const doneVideos = images.filter((i) => i.status === "success" && i.type === 'video' && i.outputVideoUrl) as VideoFile[];
+    const totalDone = doneImages.length + doneVideos.length;
+
+    if (totalDone === 0) {
+      setError("Belum ada file yang selesai di-upscale untuk diunduh.");
+      return;
+    }
+
+    setZipping(true);
+    setError("");
+    setProgress("📦 Menyiapkan berkas ZIP...");
+
+    try {
+      const zip = new JSZip();
+      const folderName = `upscaled_${selectedPreset.label.replace("×", "x").replace(/\s+/g, "_")}`;
+      const folder = zip.folder(folderName) || zip;
+
+      // Masukkan semua foto upscaled ke dalam zip
+      for (let i = 0; i < doneImages.length; i++) {
+        const img = doneImages[i]!;
+        setProgress(`📦 Menyiapkan foto (${i + 1}/${doneImages.length}) ke ZIP...`);
+        const baseName = img.name.replace(/\.[^.]+$/, "");
+        const fileName = `${baseName}_upscaled_${selectedPreset.label.replace("×", "x")}.jpg`;
+
+        const commaIdx = img.upscaledDataUrl!.indexOf(",");
+        if (commaIdx !== -1) {
+          const base64Data = img.upscaledDataUrl!.substring(commaIdx + 1);
+          folder.file(fileName, base64Data, { base64: true });
+        }
+      }
+
+      // Masukkan semua video upscaled ke dalam zip
+      for (let i = 0; i < doneVideos.length; i++) {
+        const vid = doneVideos[i]!;
+        setProgress(`📦 Menyiapkan video (${i + 1}/${doneVideos.length}) ke ZIP...`);
+        const baseName = vid.name.replace(/\.[^.]+$/, "");
+        const fileName = `${baseName}_upscaled_${selectedPreset.label.replace("×", "x")}.webm`;
+
+        try {
+          const res = await fetch(vid.outputVideoUrl!);
+          const blob = await res.blob();
+          folder.file(fileName, blob);
+        } catch (e) {
+          console.error("Gagal menambahkan video ke zip:", e);
+        }
+      }
+
+      setProgress("📦 Mengompresi file ke ZIP (ini memerlukan beberapa detik)...");
+      const zipBlob = await zip.generateAsync(
+        { type: "blob", compression: "DEFLATE", compressionOptions: { level: 6 } },
+        (meta) => {
+          setProgress(`📦 Mengompresi ZIP: ${Math.round(meta.percent)}%...`);
+        }
+      );
+
+      const downloadUrl = URL.createObjectURL(zipBlob);
+      const a = document.createElement("a");
+      a.href = downloadUrl;
+      a.download = `Upscale_${selectedPreset.label.replace("×", "x")}_(${totalDone}_file).zip`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(downloadUrl);
+
+      setProgress(`✅ Berhasil! File ZIP berisi ${totalDone} file telah diunduh.`);
+    } catch (err) {
+      console.error("Zip generation error:", err);
+      setError(`Gagal membuat file ZIP: ${err instanceof Error ? err.message : "Error tidak diketahui"}`);
+    } finally {
+      setZipping(false);
     }
   };
 
@@ -1367,7 +1458,7 @@ export default function ImageUpscaler() {
         <p className="dropzone__title">Seret &amp; lepas foto atau video di sini</p>
         <p className="dropzone__subtitle">atau klik untuk memilih file</p>
         <p className="dropzone__hint">
-          JPG · PNG · WEBP · MP4 · WebM · MOV · AVI · MKV · GIF · Banyak file
+          JPG · PNG · WEBP · MP4 · WebM · MOV · AVI · MKV · Hingga 180 file sekaligus
         </p>
       </section>
 
@@ -1390,6 +1481,8 @@ export default function ImageUpscaler() {
               justifyContent: "space-between",
               alignItems: "center",
               marginBottom: "14px",
+              flexWrap: "wrap",
+              gap: "10px",
             }}
           >
             <h2
@@ -1403,43 +1496,84 @@ export default function ImageUpscaler() {
               }}
             >
               File{" "}
-              <span className="badge">{images.length}</span>
+              <span className="badge">{images.length}/{MAX_UPSCALE_FILES}</span>
               {hasSuccess && (
                 <span
                   style={{
-                    fontSize: "11px",
-                    fontWeight: "400",
-                    color: "var(--text-muted)",
+                    fontSize: "11.5px",
+                    fontWeight: "600",
+                    color: "#10b981",
                   }}
                 >
                   · {successImages.length} selesai di-upscale
                 </span>
               )}
             </h2>
-            <div style={{ display: "flex", gap: "10px" }}>
+            <div style={{ display: "flex", gap: "8px", alignItems: "center", flexWrap: "wrap" }}>
               {hasSuccess && (
-                <button
-                  type="button"
-                  onClick={handleDownloadAll}
-                  style={{
-                    padding: "7px 14px",
-                    background: "#ec4899",
-                    color: "white",
-                    border: "none",
-                    borderRadius: "6px",
-                    fontWeight: "700",
-                    fontSize: "12px",
-                    cursor: "pointer",
-                  }}
-                >
-                  📦 Download Semua
-                </button>
+                <>
+                  <button
+                    type="button"
+                    onClick={handleDownloadZip}
+                    disabled={zipping || loading}
+                    style={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: "6px",
+                      padding: "8px 16px",
+                      background: zipping ? "rgba(16, 185, 129, 0.6)" : "linear-gradient(135deg, #10b981, #059669)",
+                      color: "white",
+                      border: "none",
+                      borderRadius: "8px",
+                      fontWeight: "800",
+                      fontSize: "12.5px",
+                      cursor: zipping ? "not-allowed" : "pointer",
+                      boxShadow: "0 4px 14px rgba(16, 185, 129, 0.3)",
+                      transition: "all 0.15s ease",
+                    }}
+                  >
+                    {zipping ? (
+                      <>
+                        <span className="spinner" style={{ width: "13px", height: "13px", borderWidth: "2px", borderColor: "white transparent transparent transparent" }} />
+                        <span>Mengompresi ZIP...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Archive size={15} />
+                        <span>Download ZIP ({successImages.length} File)</span>
+                      </>
+                    )}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handleDownloadAll}
+                    disabled={zipping || loading}
+                    style={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: "5px",
+                      padding: "8px 12px",
+                      background: "var(--surface)",
+                      border: "1px solid var(--border)",
+                      color: "var(--text-muted)",
+                      borderRadius: "8px",
+                      fontWeight: "600",
+                      fontSize: "12px",
+                      cursor: "pointer",
+                    }}
+                    title="Unduh file satu per satu secara terpisah"
+                  >
+                    <Download size={13} />
+                    <span>Unduh Terpisah</span>
+                  </button>
+                </>
               )}
               <button
                 type="button"
                 className="btn btn--ghost"
                 onClick={clearAll}
-                disabled={loading}
+                disabled={loading || zipping}
               >
                 Hapus Semua
               </button>
@@ -1640,35 +1774,66 @@ export default function ImageUpscaler() {
                       <>
                         <button
                           type="button"
-                          onClick={() => openModal(img)}
+                          onClick={() => setExpandedSliderId(expandedSliderId === img.id ? null : img.id)}
                           style={{
-                            padding: "5px 11px",
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: "5px",
+                            padding: "6px 11px",
                             fontSize: "11px",
                             fontWeight: "700",
-                            background: "rgba(236,72,153,0.12)",
-                            border: "1px solid rgba(236,72,153,0.4)",
+                            background: expandedSliderId === img.id ? "rgba(236,72,153,0.2)" : "rgba(236,72,153,0.08)",
+                            border: `1px solid ${expandedSliderId === img.id ? "#ec4899" : "rgba(236,72,153,0.3)"}`,
                             color: "#ec4899",
-                            borderRadius: "5px",
+                            borderRadius: "6px",
+                            cursor: "pointer",
+                            transition: "all 0.15s ease",
+                          }}
+                          title="Tampilkan perbandingan slider khusus file ini"
+                        >
+                          {expandedSliderId === img.id ? <EyeOff size={13} /> : <Eye size={13} />}
+                          <span>{expandedSliderId === img.id ? "Tutup Slider" : "Bandingkan Before/After"}</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => openModal(img)}
+                          style={{
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: "4px",
+                            padding: "6px 9px",
+                            fontSize: "11px",
+                            fontWeight: "600",
+                            background: "var(--bg-secondary)",
+                            border: "1px solid var(--border)",
+                            color: "var(--text-muted)",
+                            borderRadius: "6px",
                             cursor: "pointer",
                           }}
+                          title="Buka perbandingan di layar penuh"
                         >
-                          🔍 Lihat Hasil
+                          <ZoomIn size={12} />
+                          <span>Fullscreen</span>
                         </button>
                         <button
                           type="button"
                           onClick={() => handleDownloadSingle(img)}
                           style={{
-                            padding: "5px 11px",
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: "4px",
+                            padding: "6px 11px",
                             fontSize: "11px",
-                            fontWeight: "600",
+                            fontWeight: "700",
                             background: "var(--bg-secondary)",
                             border: "1px solid var(--border)",
                             color: "var(--text)",
-                            borderRadius: "5px",
+                            borderRadius: "6px",
                             cursor: "pointer",
                           }}
                         >
-                          ⬇ Unduh
+                          <Download size={12} />
+                          <span>Unduh</span>
                         </button>
                       </>
                     )}
@@ -1692,25 +1857,51 @@ export default function ImageUpscaler() {
                   </div>
                 </div>
 
-                {img.status === "success" && (
+                {img.status === "success" && expandedSliderId === img.id && (
                   (img.type === 'image' && img.upscaledDataUrl) ||
                   (img.type === 'video' && img.previewOriginalDataUrl && img.previewUpscaledDataUrl)
                 ) && (
                   <div
-                    style={{ borderTop: "1px solid var(--border)", padding: "12px 16px" }}
+                    style={{
+                      borderTop: "1px solid var(--border)",
+                      padding: "14px 16px",
+                      background: "rgba(0,0,0,0.18)",
+                    }}
                   >
                     <div
                       style={{
-                        fontSize: "10px",
-                        color: "var(--text-muted)",
-                        fontWeight: "700",
-                        textTransform: "uppercase",
-                        letterSpacing: "0.06em",
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
                         marginBottom: "8px",
                       }}
                     >
-                      ← Geser slider untuk membandingkan · Sebelum vs{" "}
-                      {resLabel} Upscaled →
+                      <span
+                        style={{
+                          fontSize: "10.5px",
+                          color: "var(--text-muted)",
+                          fontWeight: "700",
+                          textTransform: "uppercase",
+                          letterSpacing: "0.06em",
+                        }}
+                      >
+                        ← Geser slider untuk membandingkan · Sebelum vs {resLabel} Upscaled →
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setExpandedSliderId(null)}
+                        style={{
+                          background: "none",
+                          border: "none",
+                          color: "#ec4899",
+                          fontSize: "11px",
+                          fontWeight: "700",
+                          cursor: "pointer",
+                          padding: "2px 6px",
+                        }}
+                      >
+                        ✕ Tutup
+                      </button>
                     </div>
                     <SliderCompare
                       original={img.type === 'image' ? img.preview : img.previewOriginalDataUrl!}
