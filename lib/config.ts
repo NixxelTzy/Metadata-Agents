@@ -17,11 +17,27 @@ export function getGroqApiKeys(): string[] {
     addKey(process.env[`GROQ_API_KEY_${i}`]);
   }
   addKey(process.env.GROQ_API_KEY);
+  addKey(process.env.GROQ_API_KEY_RISET);
+  addKey(process.env.GROQ_API_KEY_MOTION);
 
   if (keys.length === 0) {
     console.warn("[WARN] Tidak ada GROQ_API_KEY yang ditemukan. Set di environment variables.");
   }
   return keys;
+}
+
+/** @deprecated Fitur riset sudah dihapus. Stub ini hanya untuk kompatibilitas build. */
+export function getGroqRisetApiKey(): string {
+  const keys = getGroqApiKeys();
+  if (keys.length > 0) return keys[0]!;
+  throw new Error("Tidak ada Groq API key tersedia.");
+}
+
+/** @deprecated Fitur Motion Studio sudah dihapus. Stub ini hanya untuk kompatibilitas build. */
+export function getGroqMotionApiKey(): string {
+  const keys = getGroqApiKeys();
+  if (keys.length > 0) return keys[0]!;
+  throw new Error("Tidak ada Groq API key tersedia.");
 }
 
 /** Konfigurasi Upstash Redis (instance utama) */
