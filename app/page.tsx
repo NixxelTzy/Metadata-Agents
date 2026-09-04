@@ -342,77 +342,77 @@ export default function Home() {
 
         /* ══ PROFILE DROPDOWN ══ */
         .profile-drop {
-          position: fixed; top: 63px; right: 12px; width: 280px;
-          background: rgba(255, 255, 255, 0.94);
+          position: fixed; top: 63px; right: 12px; width: 330px;
+          background: rgba(255, 255, 255, 0.96);
           backdrop-filter: blur(28px) saturate(200%);
           -webkit-backdrop-filter: blur(28px) saturate(200%);
-          border: 1px solid rgba(147, 197, 253, 0.5);
-          border-radius: 16px;
-          box-shadow: 0 20px 48px rgba(59, 130, 246, 0.16), 0 1px 3px rgba(0,0,0,0.05);
+          border: 1px solid rgba(147, 197, 253, 0.6);
+          border-radius: 18px;
+          box-shadow: 0 20px 48px rgba(59, 130, 246, 0.18), 0 2px 10px rgba(0,0,0,0.06);
           animation: dropIn 0.2s cubic-bezier(0.16,1,0.3,1);
           z-index: 2000; overflow: hidden;
         }
         .pd-header {
-          padding: 16px 16px 14px;
+          padding: 16px 18px 14px;
           display: flex; align-items: center; gap: 12px;
-          border-bottom: 1px solid rgba(147, 197, 253, 0.3);
+          border-bottom: 1px solid rgba(147, 197, 253, 0.35);
         }
         .pd-avatar {
-          width: 40px; height: 40px; border-radius: 11px;
-          background: linear-gradient(135deg, #3b82f6, #2563eb);
+          width: 44px; height: 44px; border-radius: 13px;
+          background: linear-gradient(135deg, #3b82f6, #1d4ed8);
           display: flex; align-items: center; justify-content: center;
-          font-size: 15px; font-weight: 800; color: #ffffff;
-          box-shadow: 0 4px 14px rgba(59,130,246,0.35); flex-shrink: 0;
+          font-size: 17px; font-weight: 800; color: #ffffff;
+          box-shadow: 0 4px 14px rgba(37,99,235,0.35); flex-shrink: 0;
         }
-        .pd-name  { font-size: 13px; font-weight: 700; color: #0f172a; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .pd-email { font-size: 10.5px; color: #64748b; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 1px; }
+        .pd-name  { font-size: 14px; font-weight: 800; color: #0f172a; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .pd-email { font-size: 11.5px; color: #64748b; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px; }
 
         .pd-tokens {
-          padding: 12px 16px;
-          border-bottom: 1px solid rgba(147, 197, 253, 0.3);
+          padding: 14px 18px;
+          border-bottom: 1px solid rgba(147, 197, 253, 0.35);
         }
         .pd-tokens-label {
           display: flex; align-items: center; justify-content: space-between;
-          margin-bottom: 8px; font-size: 10px;
-          font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em;
-          color: #64748b;
+          margin-bottom: 8px; font-size: 11px;
+          font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em;
+          color: #334155;
         }
 
         .pd-premium-btn {
           width: 100%;
           padding: 10px 14px;
-          background: linear-gradient(135deg, rgba(219,234,254,0.7), rgba(254,243,199,0.7));
-          border: 1px solid rgba(245, 158, 11, 0.4);
+          background: linear-gradient(135deg, rgba(219,234,254,0.8), rgba(254,243,199,0.8));
+          border: 1px solid rgba(245, 158, 11, 0.5);
           border-radius: 10px;
           color: #92400e;
           font-size: 12px;
-          font-weight: 700;
+          font-weight: 800;
           cursor: pointer;
           display: flex;
           align-items: center;
           justify-content: center;
           gap: 6px;
           transition: all 0.17s;
-          margin-top: 10px;
+          margin-top: 12px;
           font-family: inherit;
         }
         .pd-premium-btn:hover {
-          background: linear-gradient(135deg, rgba(191,219,254,0.85), rgba(253,230,138,0.85));
-          border-color: rgba(245, 158, 11, 0.6);
+          background: linear-gradient(135deg, rgba(191,219,254,0.95), rgba(253,230,138,0.95));
+          border-color: rgba(245, 158, 11, 0.7);
           color: #78350f;
           transform: translateY(-1px);
-          box-shadow: 0 4px 14px rgba(245, 158, 11, 0.2);
+          box-shadow: 0 4px 14px rgba(245, 158, 11, 0.25);
         }
 
         .pd-logout {
-          width: 100%; padding: 12px 16px;
+          width: 100%; padding: 13px 18px;
           background: transparent; border: none;
-          color: #dc2626; font-size: 12.5px; font-weight: 700;
+          color: #dc2626; font-size: 13px; font-weight: 700;
           cursor: pointer; display: flex; align-items: center;
-          justify-content: center; gap: 7px;
+          justify-content: center; gap: 8px;
           transition: all 0.15s; font-family: inherit;
         }
-        .pd-logout:hover { background: rgba(254,226,226,0.6); color: #b91c1c; }
+        .pd-logout:hover { background: rgba(254,226,226,0.65); color: #b91c1c; }
 
         /* ══ MAIN CONTENT ══ */
         .app-main {
@@ -504,14 +504,17 @@ export default function Home() {
               <div className="pd-avatar">{userInitial}</div>
               <div style={{ minWidth: 0, flex: 1 }}>
                 <div className="pd-name">{user?.username ?? "Pengguna"}</div>
-                <div className="pd-email">{user?.email ?? ""}</div>
+                <div className="pd-email" title={user?.email ?? ""}>{user?.email ?? ""}</div>
               </div>
               {isUnlimited && (
                 <span style={{
-                  fontSize: 9, fontWeight: 800, padding: "2px 7px", borderRadius: 999,
-                  background: user?.email === "nixxeltzy@gmail.com" ? "rgba(99,102,241,0.15)" : isAdmin ? "rgba(239,68,68,0.15)" : "rgba(56,189,248,0.15)",
-                  border: `1px solid ${user?.email === "nixxeltzy@gmail.com" ? "rgba(99,102,241,0.3)" : isAdmin ? "rgba(239,68,68,0.3)" : "rgba(56,189,248,0.3)"}`,
-                  color: user?.email === "nixxeltzy@gmail.com" ? "#6366f1" : isAdmin ? "#fca5a5" : "#38bdf8", textTransform: "uppercase"
+                  fontSize: 10, fontWeight: 800, padding: "3px 9px", borderRadius: 999,
+                  background: user?.email === "nixxeltzy@gmail.com" ? "rgba(99,102,241,0.12)" : isAdmin ? "rgba(239,68,68,0.12)" : "rgba(37,99,235,0.12)",
+                  border: `1px solid ${user?.email === "nixxeltzy@gmail.com" ? "rgba(99,102,241,0.3)" : isAdmin ? "rgba(239,68,68,0.3)" : "rgba(37,99,235,0.3)"}`,
+                  color: user?.email === "nixxeltzy@gmail.com" ? "#4f46e5" : isAdmin ? "#dc2626" : "#2563eb",
+                  textTransform: "uppercase",
+                  letterSpacing: "0.04em",
+                  flexShrink: 0
                 }}>
                   {user?.email === "nixxeltzy@gmail.com" ? "👑 Developer" : isAdmin ? "Admin" : "Premium"}
                 </span>
@@ -520,24 +523,40 @@ export default function Home() {
 
             <div className="pd-tokens" onClick={() => openPremiumModal()} style={{ cursor: "pointer" }} title="Klik untuk lihat paket token unlimited">
               <div className="pd-tokens-label">
-                <span style={{ display:"flex",alignItems:"center",gap:4,color:"rgba(255,255,255,0.4)" }}>
-                  <Zap size={10} color="#38bdf8" /> Token Hari Ini
+                <span style={{ display: "flex", alignItems: "center", gap: 5, color: "#1e293b", fontWeight: 800 }}>
+                  <Zap size={13} color="#2563eb" fill="#2563eb" />
+                  <span>TOKEN HARI INI</span>
                 </span>
-                <span style={{ fontWeight:800, color: pctColor }}>
-                  {isUnlimited ? "Unlimited" : `${tokenPct}%`}
+                <span style={{
+                  fontWeight: 800,
+                  fontSize: 11,
+                  color: isUnlimited ? "#1d4ed8" : pctColor,
+                  background: isUnlimited ? "rgba(219, 234, 254, 0.85)" : "rgba(241, 245, 249, 0.9)",
+                  border: `1px solid ${isUnlimited ? "rgba(147, 197, 253, 0.8)" : "rgba(203, 213, 225, 0.7)"}`,
+                  padding: "2px 8px",
+                  borderRadius: 999,
+                  letterSpacing: "0.02em"
+                }}>
+                  {isUnlimited ? "⚡ UNLIMITED" : `${tokenPct}%`}
                 </span>
               </div>
-              <div style={{ height: 5, background: "rgba(255,255,255,0.05)", borderRadius: 999, overflow: "hidden", display: "flex", marginBottom: 6 }}>
+
+              {/* Progress bar track: highly visible clean slate background */}
+              <div style={{ height: 6, background: "rgba(203, 213, 225, 0.6)", borderRadius: 999, overflow: "hidden", display: "flex", margin: "8px 0" }}>
                 {(["metadata","chat","vector","motion"] as Platform[]).map(p => {
                   const pu = tokenUsage.byPlatform?.[p];
                   const w = tokenUsage.totalTokens > 0 && pu ? (pu.totalTokens / tokenUsage.totalTokens) * (isUnlimited ? 25 : tokenPct) : 0;
-                  const c: Record<Platform,string> = { metadata:"#38bdf8", chat:"#0ea5e9", vector:"#7dd3fc", motion:"#0284c7" };
+                  const c: Record<Platform,string> = { metadata:"#2563eb", chat:"#0284c7", vector:"#38bdf8", motion:"#6366f1" };
                   return <div key={p} style={{ width:`${w}%`,height:"100%",background:c[p],transition:"width 0.6s ease" }} />;
                 })}
               </div>
-              <div style={{ display:"flex",justifyContent:"space-between",fontSize:10,color:"rgba(255,255,255,0.35)",fontFamily:"monospace" }}>
-                <span>{formatTokens(tokenUsage.totalTokens)}</span>
-                <span>/ {formatTokens(getDailyLimit(user?.role, user?.email))}</span>
+
+              {/* Numbers row: crisp, high contrast dark slate font */}
+              <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, color: "#64748b", fontWeight: 600, fontFamily: "inherit" }}>
+                <span>{formatTokens(tokenUsage.totalTokens)} terpakai</span>
+                <span style={{ color: isUnlimited ? "#2563eb" : "#475569", fontWeight: 700 }}>
+                  {isUnlimited ? "Akses Unlimited" : `/ ${formatTokens(getDailyLimit(user?.role, user?.email))}`}
+                </span>
               </div>
 
               {/* Button Akses Premium di Profile Dropdown */}
@@ -551,7 +570,7 @@ export default function Home() {
                     openPremiumModal();
                   }}
                 >
-                  <Crown size={14} color="#38bdf8" />
+                  <Crown size={14} color="#d97706" />
                   <span>Akses Premium? Token Unlimited</span>
                 </button>
               )}
@@ -564,8 +583,8 @@ export default function Home() {
               onClick={e => { e.stopPropagation(); void handleLogout(); }}
             >
               {loggingOut
-                ? <><Loader2 size={13} style={{ animation:"spin 1s linear infinite" }} /> Keluar...</>
-                : <><LogOut size={13} /> Keluar dari Akun</>
+                ? <><Loader2 size={14} style={{ animation:"spin 1s linear infinite" }} /> Keluar...</>
+                : <><LogOut size={14} /> Keluar dari Akun</>
               }
             </button>
           </div>
