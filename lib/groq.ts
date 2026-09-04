@@ -151,6 +151,8 @@ async function callGroqKey(
   throw new Error("429");
 }
 
+let nextKeyIndex = 0;
+
 export async function callGroq(
   messages: GroqMessage[],
   opts: GroqOptions = {}
@@ -171,17 +173,23 @@ export async function callGroq(
 
   let lastError: Error | null = null;
 
+  // Round-robin: start at nextKeyIndex and cycle so parallel requests use different keys
+  const startIndex = nextKeyIndex;
+  nextKeyIndex = (nextKeyIndex + 1) % apiKeys.length;
+
   for (const model of modelsToTry) {
-    for (let i = 0; i < apiKeys.length; i++) {
+    for (let k = 0; k < apiKeys.length; k++) {
+      const keyIndex = (startIndex + k) % apiKeys.length;
+      const key = apiKeys[keyIndex]!;
       try {
-        const result = await callGroqKey(apiKeys[i]!, model, messages, temperature, max_tokens, jsonMode);
+        const result = await callGroqKey(key, model, messages, temperature, max_tokens, jsonMode);
         return result;
       } catch (err: any) {
         if (err.message === "429") {
-          lastError = new Error("Rate limit Groq tercapai (429) pada semua key. Tunggu 30 detik dan coba lagi.");
-          if (i < apiKeys.length - 1) {
-            console.log(`[Groq] Key ${i + 1} exhausted. Rotating to key ${i + 2}...`);
-            await sleep(1500);
+          lastError = new Error("Rate limit Groq tercapai (429) pada semua key. Tunggu sejenak dan coba lagi.");
+          if (k < apiKeys.length - 1) {
+            console.log(`[Groq] Key ${keyIndex + 1} hit 429. Rotating immediately to next key...`);
+            await sleep(300);
             continue;
           }
         } else if (err.message?.includes("404") || err.message?.includes("does not exist")) {
