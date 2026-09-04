@@ -49,9 +49,8 @@ export default function ImageUploader({ onTokensUpdated }: Props = {}) {
   const [magnificModels, setMagnificModels] = useState<Record<string, string>>({});
   const [globalMagnificModel, setGlobalMagnificModel] = useState("Midjourney 6");
   const [copiedPromptIdx, setCopiedPromptIdx] = useState<number | null>(null);
-  // Auto Speed Mode: enabled automatically when Magnific has >20 photos. Runs 5 requests in parallel per batch.
-  // Each request is still individual (1 image → 1 API call) so accuracy is NOT compromised.
-  const [autoSpeedMode, setAutoSpeedMode] = useState(false);
+  // Speed Boost AI Mode: 3 continuous workers, individual vision forensic analysis, zero lag
+  const [autoSpeedMode, setAutoSpeedMode] = useState(true);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const handleGlobalModelChange = (model: string) => {
@@ -175,11 +174,9 @@ export default function ImageUploader({ onTokensUpdated }: Props = {}) {
     setResults([]);
 
     const collected: MetadataResult[] = new Array(images.length).fill(null);
-    const INTER_REQUEST_DELAY_MS = 1500;
-    const RATE_LIMIT_PAUSE_MS = 10000;
     const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
 
-    // Helper: process a single image at index i
+    // Helper: process a single image at index i safely
     const processOne = async (i: number): Promise<void> => {
       const img = images[i]!;
       const visualHintsToSend = img.customHints
@@ -198,21 +195,37 @@ export default function ImageUploader({ onTokensUpdated }: Props = {}) {
           }),
         });
 
-        const data = await response.json();
+        // Safe JSON parsing: prevents SyntaxError: Unexpected token 'A' if server returns HTML/text error
+        const rawText = await response.text();
+        let data: any;
+        try {
+          data = JSON.parse(rawText);
+        } catch {
+          const cleanSnippet = rawText.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim().slice(0, 160);
+          data = {
+            error: response.status === 504
+              ? "Server timeout (504). Server Groq sedang padat."
+              : response.status === 413
+              ? "Ukuran foto terlalu besar (413)."
+              : `Server error (${response.status}): ${cleanSnippet || "Respons tidak valid"}`,
+          };
+        }
 
         if (data.totalUsage) {
           addUsage(data.totalUsage.promptTokens, data.totalUsage.completionTokens, "metadata");
           onTokensUpdated?.();
         }
 
-        if (!response.ok) {
+        if (!response.ok || data.error) {
           collected[i] = {
-            filename: img.file.name, title: "", keywords: [],
+            filename: img.file.name,
+            title: "",
+            keywords: [],
             error: data.error || `Gagal dengan status ${response.status}`,
             stabilized: true,
           };
         } else {
-          const newResults = data.results as MetadataResult[];
+          const newResults = (data.results as MetadataResult[]) || [];
           const r = newResults[0];
           collected[i] = r ?? { filename: img.file.name, title: "", keywords: [], error: "Respons kosong", stabilized: true };
           if (r?.prompt) setMagnificPrompts((prev) => ({ ...prev, [img.id]: r.prompt! }));
@@ -221,103 +234,74 @@ export default function ImageUploader({ onTokensUpdated }: Props = {}) {
         }
       } catch (loopError) {
         collected[i] = {
-          filename: img.file.name, title: "", keywords: [],
-          error: loopError instanceof Error ? loopError.message : "Koneksi error",
+          filename: img.file.name,
+          title: "",
+          keywords: [],
+          error: loopError instanceof Error ? loopError.message : "Koneksi terputus",
           stabilized: true,
         };
       }
     };
 
     try {
-      // ── Auto Speed Mode (Magnific, >20 photos) ──
-      // Runs 5 requests in parallel per batch. Each request is still 1 image → 1 API call, so accuracy is NOT affected.
-      const useMagnificSpeed = platform === "magnific" && (autoSpeedMode || images.length > 20);
+      // ── High-Speed Multi-Worker Mode (Active by default, or when autoSpeedMode is true) ──
+      // Runs a continuous worker queue of 3 concurrent workers across all platforms.
+      // Live updates: as soon as ANY photo completes, it appears on screen instantly.
+      // Every photo is still analyzed individually for 100% visual microstock accuracy.
+      const useSpeedBoost = autoSpeedMode || images.length > 5;
 
-      if (useMagnificSpeed) {
-        const BATCH_SIZE = 5;
-        const totalBatches = Math.ceil(images.length / BATCH_SIZE);
-        for (let b = 0; b < totalBatches; b++) {
-          const start = b * BATCH_SIZE;
-          const end = Math.min(start + BATCH_SIZE, images.length);
-          const batchIndices = Array.from({ length: end - start }, (_, k) => start + k);
-          setProgress(`⚡ Auto Speed Mode: Batch ${b + 1}/${totalBatches} — Memproses file ${start + 1}–${end} dari ${images.length} (Akurasi Penuh)...`);
-          await Promise.all(batchIndices.map((idx) => processOne(idx)));
-          setResults([...collected.map((r) => r ?? { filename: "", title: "", keywords: [], error: "Belum diproses", stabilized: true })]);
-          
-          const hadRateLimit = batchIndices.some((idx) => response_was_ratelimit(collected[idx]));
-          if (hadRateLimit && b < totalBatches - 1) {
-            setProgress(`⚠️ Rate limit terdeteksi. Menunggu jeda 10 detik sebelum batch berikutnya...`);
-            await sleep(RATE_LIMIT_PAUSE_MS);
-          } else if (b < totalBatches - 1) {
-            await sleep(1000);
+      if (useSpeedBoost) {
+        let currentIndex = 0;
+        let completedCount = 0;
+        const CONCURRENCY = Math.min(3, images.length);
+
+        const worker = async () => {
+          while (currentIndex < images.length) {
+            const idx = currentIndex++;
+            await processOne(idx);
+            completedCount++;
+
+            // Real-time live UI update
+            setResults([...collected.map((r) => r ?? { filename: "", title: "", keywords: [], stabilized: true })]);
+            setProgress(`⚡ Speed Boost AI: Memproses ${completedCount}/${images.length} file (${Math.round((completedCount / images.length) * 100)}%)...`);
+
+            if (response_was_ratelimit(collected[idx])) {
+              await sleep(2500); // Brief pause on 429
+            } else {
+              await sleep(250); // Gentle 250ms spacing to maintain high throughput
+            }
           }
-        }
-        const success = collected.filter((r) => r && !r.error).length;
-        setProgress(`✅ Auto Speed Selesai! ${success}/${images.length} file berhasil`);
+        };
 
-      } else if (stabilized) {
-        // ── Stabilized Sequential Mode ──
+        // Launch staggered workers
+        const workers: Promise<void>[] = [];
+        for (let w = 0; w < CONCURRENCY; w++) {
+          workers.push(worker());
+          if (w < CONCURRENCY - 1) await sleep(250);
+        }
+
+        await Promise.all(workers);
+        const success = collected.filter((r) => r && !r.error).length;
+        setProgress(`✅ Selesai! ${success}/${images.length} file berhasil diproses.`);
+
+      } else {
+        // ── Single Sequential Mode (If user turns off Speed Boost) ──
         for (let i = 0; i < images.length; i++) {
-          setProgress(`Mode Stabil: Memproses file ${i + 1}/${images.length}...`);
+          setProgress(`Memproses file ${i + 1}/${images.length}...`);
           await processOne(i);
           setResults([...collected.map((r) => r ?? { filename: "", title: "", keywords: [], stabilized: true })]);
           if (response_was_ratelimit(collected[i])) {
-            setProgress(`⚠️ Rate limit terdeteksi. Menunggu 10 detik sebelum melanjutkan...`);
-            await sleep(RATE_LIMIT_PAUSE_MS);
+            await sleep(3500);
           } else if (i < images.length - 1) {
-            await sleep(INTER_REQUEST_DELAY_MS);
+            await sleep(600);
           }
         }
         const success = collected.filter((r) => r && !r.error).length;
-        setProgress(`✅ Selesai! ${success}/${images.length} file berhasil`);
-
-      } else {
-        // ── Fast Batch Mode (non-stabilized) ──
-        setProgress(`Memproses ${images.length} file (mode cepat)...`);
-
-        const payload = images.map((img) => ({
-          filename: img.file.name,
-          dataUrl: img.preview,
-          visualHints: img.customHints
-            ? `${img.visualHints} | User hints: ${img.customHints}`
-            : img.visualHints,
-        }));
-
-        const response = await fetch("/api/generate", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ images: payload, stabilized: false, platform, complianceGuard }),
-        });
-
-        const data = await response.json();
-
-        if (data.totalUsage) {
-          addUsage(data.totalUsage.promptTokens, data.totalUsage.completionTokens, "metadata");
-          onTokensUpdated?.();
-        }
-
-        if (!response.ok) throw new Error(data.error || "Gagal menghubungi server");
-
-        const resList = data.results as MetadataResult[];
-        setResults(resList);
-
-        const newPrompts: Record<string, string> = {};
-        const newModels: Record<string, string> = {};
-        images.forEach((img, idx) => {
-          const r = resList[idx];
-          if (r) {
-            if (r.prompt) newPrompts[img.id] = r.prompt;
-            if (r.model) newModels[img.id] = r.model;
-            else newModels[img.id] = globalMagnificModel;
-          }
-        });
-        setMagnificPrompts((prev) => ({ ...prev, ...newPrompts }));
-        setMagnificModels((prev) => ({ ...prev, ...newModels }));
-        setProgress(`✅ Selesai! ${data.results.length} file diproses`);
+        setProgress(`✅ Selesai! ${success}/${images.length} file berhasil diproses.`);
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Terjadi kesalahan");
-      setProgress("");
+      console.error("Generate error:", err);
+      setError(err instanceof Error ? err.message : "Terjadi kesalahan saat memproses");
     } finally {
       setLoading(false);
     }
@@ -663,51 +647,46 @@ export default function ImageUploader({ onTokensUpdated }: Props = {}) {
           </div>
         )}
 
-        {/* Magnific Auto Speed Mode Panel */}
-        {platform === "magnific" && (
-          <div style={{
-            marginTop: 10,
-            padding: "12px 18px",
-            background: autoSpeedMode ? "rgba(220, 252, 231, 0.75)" : "rgba(241, 245, 249, 0.7)",
-            border: autoSpeedMode ? "1px solid rgba(134, 239, 172, 0.8)" : "1px solid rgba(203, 213, 225, 0.7)",
-            borderRadius: 12,
-            backdropFilter: "blur(10px)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            flexWrap: "wrap",
-            gap: 10,
-          }}>
-            <label style={{ display: "flex", alignItems: "flex-start", gap: 10, cursor: "pointer", flex: 1 }}>
-              <input
-                type="checkbox"
-                checked={autoSpeedMode}
-                onChange={(e) => setAutoSpeedMode(e.target.checked)}
-                disabled={loading}
-                style={{ marginTop: 3, accentColor: "#16a34a", width: 15, height: 15 }}
-              />
-              <div>
-                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                  <span style={{ fontSize: 12.5, fontWeight: 800, color: "#0f172a" }}>
-                    Auto Speed Mode (Magnific)
-                  </span>
-                  {images.length > 20 && (
-                    <span style={{ fontSize: 10, fontWeight: 800, color: "#15803d", background: "rgba(220,252,231,0.9)", padding: "1px 7px", borderRadius: 999, border: "1px solid rgba(134,239,172,0.8)" }}>
-                      Direkomendasikan ({images.length} foto)
-                    </span>
-                  )}
-                </div>
-                <div style={{ fontSize: 11, color: "#475569", marginTop: 2, fontWeight: 500, lineHeight: 1.5 }}>
-                  Proses 5 foto secara paralel per batch — tiap foto tetap dianalisis secara individual (1 foto = 1 request), 
-                  jadi <strong>akurasi metadata tidak berkurang</strong>. Efektif mempercepat 180+ foto.
-                </div>
+        {/* Speed Boost Multi-Worker AI Panel (Semua Platform) */}
+        <div style={{
+          marginTop: 12,
+          padding: "12px 18px",
+          background: autoSpeedMode ? "rgba(220, 252, 231, 0.8)" : "rgba(241, 245, 249, 0.8)",
+          border: autoSpeedMode ? "1px solid rgba(134, 239, 172, 0.85)" : "1px solid rgba(203, 213, 225, 0.7)",
+          borderRadius: 14,
+          backdropFilter: "blur(10px)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          flexWrap: "wrap",
+          gap: 10,
+        }}>
+          <label style={{ display: "flex", alignItems: "flex-start", gap: 10, cursor: "pointer", flex: 1 }}>
+            <input
+              type="checkbox"
+              checked={autoSpeedMode}
+              onChange={(e) => setAutoSpeedMode(e.target.checked)}
+              disabled={loading}
+              style={{ marginTop: 3, accentColor: "#16a34a", width: 16, height: 16 }}
+            />
+            <div>
+              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                <span style={{ fontSize: 13, fontWeight: 800, color: "#0f172a" }}>
+                  ⚡ Speed Boost Multi-Worker AI (Aktif Otomatis)
+                </span>
+                <span style={{ fontSize: 10, fontWeight: 800, color: "#15803d", background: "rgba(220,252,231,0.95)", padding: "1px 7px", borderRadius: 999, border: "1px solid rgba(134,239,172,0.8)" }}>
+                  3x Lebih Cepat
+                </span>
               </div>
-            </label>
-            <div style={{ fontSize: 11, color: autoSpeedMode ? "#15803d" : "#64748b", fontWeight: 700, whiteSpace: "nowrap" }}>
-              {autoSpeedMode ? "Aktif — 5 paralel/batch" : "Nonaktif — Sekuensial"}
+              <div style={{ fontSize: 11, color: "#475569", marginTop: 2, fontWeight: 500, lineHeight: 1.5 }}>
+                Memproses foto secara paralel dengan continuous dynamic queue. Setiap foto tetap dianalisis visual secara individual sehingga <strong>akurasi 100% presisi dan tajam</strong> tanpa menunggu lama.
+              </div>
             </div>
+          </label>
+          <div style={{ fontSize: 11.5, color: autoSpeedMode ? "#15803d" : "#64748b", fontWeight: 800, whiteSpace: "nowrap" }}>
+            {autoSpeedMode ? "⚡ 3 Worker Aktif" : "Sekuensial (1-by-1)"}
           </div>
-        )}
+        </div>
       </div>
 
       {/* ── Dropzone Area ── */}

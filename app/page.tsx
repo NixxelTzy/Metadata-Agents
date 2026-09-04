@@ -4,16 +4,11 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import Dashboard from "@/components/Dashboard";
 import ImageUploader from "@/components/ImageUploader";
 import ImageUpscaler from "@/components/ImageUpscaler";
-import WatermarkRemover from "@/components/WatermarkRemover";
 import ServerMonitor from "@/components/ServerMonitor";
 import AdminAccountChecker from "@/components/AdminAccountChecker";
-import AIChat from "@/components/AIChat";
-import ResearchPanel from "@/components/ResearchPanel";
-import VectorCreator from "@/components/VectorCreator";
 import FeedbackPanel from "@/components/FeedbackPanel";
 import AdminMessagesPanel from "@/components/AdminMessagesPanel";
 import StoragePanel from "@/components/StoragePanel";
-import MotionStudio from "@/components/MotionStudio";
 import MessageWebPanel from "@/components/MessageWebPanel";
 import ClosingFeaturesPanel, { ClosingEntry } from "@/components/ClosingFeaturesPanel";
 import FeatureClosedNotice from "@/components/FeatureClosedNotice";
@@ -30,16 +25,14 @@ import {
   type Platform,
 } from "@/lib/tokenStore";
 import {
-  Tag, ZoomIn, Eraser, Search, Sparkles, Bot, Clapperboard,
-  MessageSquare, ShieldCheck, Mail, Lock, Megaphone, Database,
+  Tag, ZoomIn, MessageSquare, ShieldCheck, Mail, Lock, Megaphone, Database,
   Radio, Power, Zap, LogOut, Loader2, ArrowLeft, Layers,
   ChevronRight, Crown, Gift,
 } from "lucide-react";
 
 type Tab =
-  | "dashboard" | "metadata" | "chat" | "research" | "vector"
-  | "upscale" | "watermark" | "accounts" | "feedback"
-  | "admin-messages" | "storage" | "motion" | "messageweb"
+  | "dashboard" | "metadata" | "upscale" | "feedback"
+  | "accounts" | "admin-messages" | "storage" | "messageweb"
   | "closing" | "shutdown" | "monitor" | "prem_access" | "giveaway";
 
 const ADMIN_EMAIL = "nixxeltzy@gmail.com";
@@ -57,11 +50,6 @@ const SZ = 15;
 const TAB_META: TabMeta[] = [
   { id: "metadata",       label: "Metadata Generator",         icon: <Tag size={SZ} /> },
   { id: "upscale",        label: "AI Upscaler",                icon: <ZoomIn size={SZ} /> },
-  { id: "watermark",      label: "Hapus Watermark",            icon: <Eraser size={SZ} /> },
-  { id: "research",       label: "Keyword Research",           icon: <Search size={SZ} /> },
-  { id: "vector",         label: "Vector Creator",             icon: <Sparkles size={SZ} /> },
-  { id: "chat",           label: "AI Assistant",               icon: <Bot size={SZ} /> },
-  { id: "motion",         label: "Motion Studio",              icon: <Clapperboard size={SZ} /> },
   { id: "feedback",       label: "Laporan & Saran",            icon: <MessageSquare size={SZ} /> },
   { id: "accounts",       label: "Account Checker",            icon: <ShieldCheck size={SZ} />, isAdmin: true },
   { id: "messageweb",     label: "Message Broadcast",          icon: <Mail size={SZ} />, isAdmin: true },
@@ -436,7 +424,7 @@ export default function Home() {
           .hdr-back-label { display: none; }
         }
 
-        .vector-content-wrap { width: 100%; }
+
       `}</style>
 
       <div className="app-root">
@@ -542,13 +530,8 @@ export default function Home() {
               </div>
 
               {/* Progress bar track: highly visible clean slate background */}
-              <div style={{ height: 6, background: "rgba(203, 213, 225, 0.6)", borderRadius: 999, overflow: "hidden", display: "flex", margin: "8px 0" }}>
-                {(["metadata","chat","vector","motion"] as Platform[]).map(p => {
-                  const pu = tokenUsage.byPlatform?.[p];
-                  const w = tokenUsage.totalTokens > 0 && pu ? (pu.totalTokens / tokenUsage.totalTokens) * (isUnlimited ? 25 : tokenPct) : 0;
-                  const c: Record<Platform,string> = { metadata:"#2563eb", chat:"#0284c7", vector:"#38bdf8", motion:"#6366f1" };
-                  return <div key={p} style={{ width:`${w}%`,height:"100%",background:c[p],transition:"width 0.6s ease" }} />;
-                })}
+              <div style={{ height: 6, background: "rgba(203, 213, 225, 0.6)", borderRadius: 999, overflow: "hidden", margin: "8px 0" }}>
+                <div style={{ width: `${isUnlimited ? 25 : tokenPct}%`, height: "100%", background: "#2563eb", transition: "width 0.6s ease" }} />
               </div>
 
               {/* Numbers row: crisp, high contrast dark slate font */}
@@ -607,15 +590,8 @@ export default function Home() {
           : activeTab === "giveaway" && isAdmin ? <GiveawayPanel />
           : activeTab === "feedback" ? <FeedbackPanel />
           : activeTab === "metadata" ? <ImageUploader onTokensUpdated={refreshTokens} />
-          : activeTab === "upscale" ? <ImageUpscaler />
-          : activeTab === "watermark" ? <WatermarkRemover />
-          : activeTab === "motion" ? <MotionStudio onTokensUpdated={refreshTokens} />
-          : activeTab === "research" ? <ResearchPanel />
-          : activeTab === "vector" ? (
-            <div className="vector-content-wrap"><VectorCreator onTokensUpdated={refreshTokens} /></div>
-          ) : (
-            <AIChat onTokensUpdated={refreshTokens} />
-          )}
+          : <ImageUpscaler />
+          }
         </main>
 
         {/* Native Android / Mobile Navigation Bar & Notification Listener Drawer */}

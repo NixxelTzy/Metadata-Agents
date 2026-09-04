@@ -466,7 +466,7 @@ CRITICAL RULES:
 
   const result = await callGroq(messages, {
     temperature: 0.15,
-    max_tokens: 3072,
+    max_tokens: 2048,
     vision: true,
     jsonMode: true,
   });
@@ -555,7 +555,7 @@ async function generateMetadataWithRetry(
       const msg = err instanceof Error ? err.message : "";
       // If rate limited and more attempts left, wait before retrying
       if ((msg.includes("429") || msg.includes("rate limit") || msg.includes("Rate limit")) && attempt < MAX_ATTEMPTS) {
-        const waitMs = attempt * 8000; // 8s, 16s
+        const waitMs = attempt * 2000; // 2s, 4s
         console.warn(`[generate] Groq 429 on attempt ${attempt}. Waiting ${waitMs}ms...`);
         await sleep(waitMs);
         continue;

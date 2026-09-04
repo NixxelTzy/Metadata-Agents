@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Tag, ZoomIn, Eraser, Search, Sparkles, Bot, Clapperboard, Lock } from "lucide-react";
+import { Tag, ZoomIn, MessageSquare, Lock } from "lucide-react";
 
 export interface FeatureItem {
   id: string;
@@ -14,11 +14,7 @@ export interface FeatureItem {
 export const MANAGED_FEATURES: FeatureItem[] = [
   { id: "metadata",  name: "Metadata Generator", desc: "Upload photo/vector to gen metadata", icon: <Tag size={16} color="#38bdf8" />, color: "#38bdf8" },
   { id: "upscale",   name: "Upscaler (Foto & Video)", desc: "Super resolution foto dan video", icon: <ZoomIn size={16} color="#38bdf8" />, color: "#38bdf8" },
-  { id: "watermark", name: "Hapus Watermark", desc: "Pembersih watermark media", icon: <Eraser size={16} color="#38bdf8" />, color: "#38bdf8" },
-  { id: "research",  name: "Riset Keyword", desc: "Insight produk dan riset pasar", icon: <Search size={16} color="#38bdf8" />, color: "#38bdf8" },
-  { id: "vector",    name: "Vector Ideas", desc: "AI Vector concept generator", icon: <Sparkles size={16} color="#38bdf8" />, color: "#38bdf8" },
-  { id: "chat",      name: "AI Assistant Chat", desc: "Groq AI Chatbot", icon: <Bot size={16} color="#38bdf8" />, color: "#38bdf8" },
-  { id: "motion",    name: "Motion Studio", desc: "JS Canvas Animation Renderer", icon: <Clapperboard size={16} color="#38bdf8" />, color: "#38bdf8" },
+  { id: "feedback",  name: "Laporan & Saran",    desc: "Form laporan dan umpan balik pengguna", icon: <MessageSquare size={16} color="#38bdf8" />, color: "#38bdf8" },
 ];
 
 export interface ClosingEntry {

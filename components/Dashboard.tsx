@@ -43,46 +43,6 @@ const CREATOR_FEATURES: FeatureCard[] = [
     glow: ICON_GLOW,
   },
   {
-    id: "watermark",
-    icon: <Eraser size={24} color={ICON_COLOR} />,
-    title: "Hapus Watermark",
-    desc: "Hapus watermark, logo, atau teks tidak diinginkan dari gambar menggunakan AI inpainting yang presisi.",
-    color: ICON_COLOR,
-    glow: ICON_GLOW,
-  },
-  {
-    id: "research",
-    icon: <Search size={24} color={ICON_COLOR} />,
-    title: "Keyword Research",
-    desc: "Riset keyword terbaik untuk konten stok Anda. Temukan tren, volume, dan kompetisi keyword secara real-time.",
-    color: ICON_COLOR,
-    glow: ICON_GLOW,
-  },
-  {
-    id: "vector",
-    icon: <Sparkles size={24} color={ICON_COLOR} />,
-    title: "Vector Creator",
-    desc: "Buat ide konten vektor AI dengan prompt kreatif. Cocok untuk desainer yang butuh inspirasi dan brief yang detail.",
-    color: ICON_COLOR,
-    glow: ICON_GLOW,
-  },
-  {
-    id: "chat",
-    icon: <Bot size={24} color={ICON_COLOR} />,
-    title: "AI Chat",
-    desc: "Asisten AI berbasis Groq yang cepat untuk menjawab pertanyaan, brainstorming ide, dan membantu pekerjaan sehari-hari.",
-    color: ICON_COLOR,
-    glow: ICON_GLOW,
-  },
-  {
-    id: "motion",
-    icon: <Clapperboard size={24} color={ICON_COLOR} />,
-    title: "Motion Studio",
-    desc: "Buat animasi canvas dan efek gerak kreatif dengan bantuan AI. Export langsung sebagai GIF atau video.",
-    color: ICON_COLOR,
-    glow: ICON_GLOW,
-  },
-  {
     id: "feedback",
     icon: <MessageSquare size={24} color={ICON_COLOR} />,
     title: "Laporan & Saran",
@@ -280,16 +240,11 @@ export default function Dashboard({ onNavigate, username, isAdmin = false }: Pro
           background: rgba(254, 202, 202, 0.85);
         }
 
-        .feat-arrow {
-          position: absolute;
-          right: 18px; bottom: 18px;
-          opacity: 0;
-          transform: translate(-4px, 4px);
-          transition: opacity 0.2s, transform 0.2s;
+        .feat-cta-arrow {
+          transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
         }
-        .feat-card:hover .feat-arrow {
-          opacity: 1;
-          transform: translate(0, 0);
+        .feat-card:hover .feat-cta-arrow {
+          transform: translateX(4px);
         }
 
         .stat-card {
@@ -520,7 +475,7 @@ export default function Dashboard({ onNavigate, username, isAdmin = false }: Pro
           <div className="section-label" style={{ marginBottom: 0 }}>Fitur &amp; Tools Kreator</div>
           <div style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 11, color: "#2563eb", fontWeight: 600 }}>
             <Sparkles size={12} />
-            <span>8 Tools Siap Pakai</span>
+            <span>3 Tools Utama Siap Pakai</span>
           </div>
         </div>
 
@@ -558,18 +513,14 @@ export default function Dashboard({ onNavigate, username, isAdmin = false }: Pro
                 </div>
               </div>
 
-              <div style={{
-                display: "flex", alignItems: "center", gap: 5,
-                fontSize: 11, fontWeight: 700, color: "#2563eb",
+              <div className="feat-cta" style={{
+                display: "flex", alignItems: "center", gap: 6,
+                fontSize: 12, fontWeight: 700, color: "#2563eb",
                 marginTop: "auto",
                 position: "relative",
               }}>
-                Buka Tool
-                <ChevronRight size={13} />
-              </div>
-
-              <div className="feat-arrow">
-                <ArrowRight size={16} color="#2563eb" />
+                <span>Buka Tool</span>
+                <ArrowRight size={14} className="feat-cta-arrow" />
               </div>
             </button>
           ))}
@@ -647,18 +598,14 @@ export default function Dashboard({ onNavigate, username, isAdmin = false }: Pro
                   </div>
                 </div>
 
-                <div style={{
-                  display: "flex", alignItems: "center", gap: 5,
-                  fontSize: 11, fontWeight: 700, color: f.id === "shutdown" ? "#dc2626" : "#2563eb",
+                <div className="feat-cta" style={{
+                  display: "flex", alignItems: "center", gap: 6,
+                  fontSize: 12, fontWeight: 700, color: f.id === "shutdown" ? "#dc2626" : "#2563eb",
                   marginTop: "auto",
                   position: "relative",
                 }}>
-                  Buka Panel Admin
-                  <ChevronRight size={13} />
-                </div>
-
-                <div className="feat-arrow">
-                  <ArrowRight size={16} color={f.id === "shutdown" ? "#dc2626" : "#2563eb"} />
+                  <span>Buka Panel Admin</span>
+                  <ArrowRight size={14} className="feat-cta-arrow" />
                 </div>
               </button>
             ))}
