@@ -8,7 +8,8 @@ import { showToast } from "@/components/Toast";
 import {
   UploadCloud, Tag, Sparkles, Download, Trash2, Plus, X,
   CheckCircle2, AlertCircle, Layers, Settings2, ShieldCheck,
-  Film, Image as ImageIcon, Copy, Check, Info, FileSpreadsheet
+  Film, Image as ImageIcon, Copy, Check, Info, FileSpreadsheet,
+  RotateCw
 } from "lucide-react";
 
 interface ImagePreview {
@@ -54,6 +55,7 @@ export default function ImageUploader({ onTokensUpdated, userEmail, userRole, is
   const [copiedPromptIdx, setCopiedPromptIdx] = useState<number | null>(null);
   // Speed Boost AI Mode: 3 continuous workers, individual vision forensic analysis, zero lag
   const [autoSpeedMode, setAutoSpeedMode] = useState(true);
+  const [retryingIndices, setRetryingIndices] = useState<Set<number>>(new Set());
   const inputRef = useRef<HTMLInputElement>(null);
 
   const handleGlobalModelChange = (model: string) => {
@@ -159,6 +161,153 @@ export default function ImageUploader({ onTokensUpdated, userEmail, userRole, is
     setProgress("");
   };
 
+
+  const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
+
+  // Helper to detect rate-limit error result
+  const response_was_ratelimit = (r: MetadataResult | null) =>
+    r?.error?.includes("429") || r?.error?.includes("rate limit") || r?.error?.includes("Rate limit");
+
+  // Helper: process a single image at index i safely
+  const processSingleImage = async (i: number): Promise<MetadataResult> => {
+    const img = images[i];
+    if (!img) return { filename: "", title: "", keywords: [], error: "Foto tidak ditemukan", stabilized: true };
+
+    const visualHintsToSend = img.customHints
+      ? `${img.visualHints} | User hints: ${img.customHints}`
+      : img.visualHints;
+
+    try {
+      const response = await fetch("/api/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          images: [{ filename: img.file.name, dataUrl: img.preview, visualHints: visualHintsToSend }],
+          stabilized: true,
+          platform,
+          complianceGuard,
+        }),
+      });
+
+      // Safe JSON parsing: prevents SyntaxError: Unexpected token 'A' if server returns HTML/text error
+      const rawText = await response.text();
+      let data: any;
+      try {
+        data = JSON.parse(rawText);
+      } catch {
+        const cleanSnippet = rawText.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim().slice(0, 160);
+        data = {
+          error: response.status === 504
+            ? "Server timeout (504). Server Groq sedang padat."
+            : response.status === 413
+            ? "Ukuran foto terlalu besar (413)."
+            : `Server error (${response.status}): ${cleanSnippet || "Respons tidak valid"}`,
+        };
+      }
+
+      if (data.totalUsage) {
+        addUsage(data.totalUsage.promptTokens, data.totalUsage.completionTokens, "metadata");
+        onTokensUpdated?.();
+      }
+
+      if (!response.ok || data.error) {
+        return {
+          filename: img.file.name,
+          title: "",
+          keywords: [],
+          error: data.error || `Gagal dengan status ${response.status}`,
+          stabilized: true,
+        };
+      } else {
+        const newResults = (data.results as MetadataResult[]) || [];
+        const r = newResults[0];
+        if (r?.prompt) setMagnificPrompts((prev) => ({ ...prev, [img.id]: r.prompt! }));
+        if (r?.model) setMagnificModels((prev) => ({ ...prev, [img.id]: r.model! }));
+        else setMagnificModels((prev) => ({ ...prev, [img.id]: prev[img.id] || globalMagnificModel }));
+        return r ?? { filename: img.file.name, title: "", keywords: [], error: "Respons kosong", stabilized: true };
+      }
+    } catch (loopError) {
+      return {
+        filename: img.file.name,
+        title: "",
+        keywords: [],
+        error: loopError instanceof Error ? loopError.message : "Koneksi terputus",
+        stabilized: true,
+      };
+    }
+  };
+
+  // Coba ulang 1 foto yang gagal
+  const retryOne = async (index: number) => {
+    if (loading || retryingIndices.has(index)) return;
+    const img = images[index];
+    if (!img) return;
+
+    setRetryingIndices((prev) => new Set(prev).add(index));
+
+    try {
+      const res = await processSingleImage(index);
+      setResults((prev) => {
+        const next = [...prev];
+        next[index] = res;
+        return next;
+      });
+
+      if (res.error) {
+        showToast({
+          type: "error",
+          title: "Coba Ulang Gagal",
+          message: res.error,
+        });
+      } else {
+        showToast({
+          type: "success",
+          title: "Berhasil!",
+          message: `Metadata untuk ${img.file.name} berhasil dibuat.`,
+        });
+      }
+    } catch (err: any) {
+      setResults((prev) => {
+        const next = [...prev];
+        next[index] = {
+          filename: img.file.name,
+          title: "",
+          keywords: [],
+          error: err?.message || "Gagal mencoba ulang",
+          stabilized: true,
+        };
+        return next;
+      });
+    } finally {
+      setRetryingIndices((prev) => {
+        const next = new Set(prev);
+        next.delete(index);
+        return next;
+      });
+    }
+  };
+
+  // Coba ulang SEMUA foto yang berstatus error
+  const retryAllFailed = async () => {
+    if (loading || retryingIndices.size > 0) return;
+    const failedIndices = results
+      .map((r, i) => (r && r.error ? i : -1))
+      .filter((i) => i !== -1);
+
+    if (failedIndices.length === 0) return;
+
+    showToast({
+      type: "info",
+      title: "Mencoba Ulang Foto Gagal",
+      message: `Memproses ulang ${failedIndices.length} foto yang gagal...`,
+    });
+
+    for (const idx of failedIndices) {
+      await retryOne(idx);
+      await sleep(300);
+    }
+  };
+
   const generate = async () => {
     if (images.length === 0) return;
 
@@ -185,73 +334,10 @@ export default function ImageUploader({ onTokensUpdated, userEmail, userRole, is
     setResults([]);
 
     const collected: MetadataResult[] = new Array(images.length).fill(null);
-    const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
 
-    // Helper: process a single image at index i safely
     const processOne = async (i: number): Promise<void> => {
-      const img = images[i]!;
-      const visualHintsToSend = img.customHints
-        ? `${img.visualHints} | User hints: ${img.customHints}`
-        : img.visualHints;
-
-      try {
-        const response = await fetch("/api/generate", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            images: [{ filename: img.file.name, dataUrl: img.preview, visualHints: visualHintsToSend }],
-            stabilized: true,
-            platform,
-            complianceGuard,
-          }),
-        });
-
-        // Safe JSON parsing: prevents SyntaxError: Unexpected token 'A' if server returns HTML/text error
-        const rawText = await response.text();
-        let data: any;
-        try {
-          data = JSON.parse(rawText);
-        } catch {
-          const cleanSnippet = rawText.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim().slice(0, 160);
-          data = {
-            error: response.status === 504
-              ? "Server timeout (504). Server Groq sedang padat."
-              : response.status === 413
-              ? "Ukuran foto terlalu besar (413)."
-              : `Server error (${response.status}): ${cleanSnippet || "Respons tidak valid"}`,
-          };
-        }
-
-        if (data.totalUsage) {
-          addUsage(data.totalUsage.promptTokens, data.totalUsage.completionTokens, "metadata");
-          onTokensUpdated?.();
-        }
-
-        if (!response.ok || data.error) {
-          collected[i] = {
-            filename: img.file.name,
-            title: "",
-            keywords: [],
-            error: data.error || `Gagal dengan status ${response.status}`,
-            stabilized: true,
-          };
-        } else {
-          const newResults = (data.results as MetadataResult[]) || [];
-          const r = newResults[0];
-          collected[i] = r ?? { filename: img.file.name, title: "", keywords: [], error: "Respons kosong", stabilized: true };
-          if (r?.prompt) setMagnificPrompts((prev) => ({ ...prev, [img.id]: r.prompt! }));
-          if (r?.model) setMagnificModels((prev) => ({ ...prev, [img.id]: r.model! }));
-          else setMagnificModels((prev) => ({ ...prev, [img.id]: prev[img.id] || globalMagnificModel }));
-        }
-      } catch (loopError) {
-        collected[i] = {
-          filename: img.file.name,
-          title: "",
-          keywords: [],
-          error: loopError instanceof Error ? loopError.message : "Koneksi terputus",
-          stabilized: true,
-        };
-      }
+      const res = await processSingleImage(i);
+      collected[i] = res;
     };
 
     try {
@@ -317,10 +403,6 @@ export default function ImageUploader({ onTokensUpdated, userEmail, userRole, is
       setLoading(false);
     }
   };
-
-  // Helper to detect rate-limit error result
-  const response_was_ratelimit = (r: MetadataResult | null) =>
-    r?.error?.includes("429") || r?.error?.includes("rate limit") || r?.error?.includes("Rate limit");
 
 
 
@@ -978,10 +1060,71 @@ export default function ImageUploader({ onTokensUpdated, userEmail, userRole, is
             </div>
           </div>
 
+          {/* Banner Peringatan Jika Ada Foto yang Gagal */}
+          {results.some((r) => r?.error) && (
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                flexWrap: "wrap",
+                gap: 12,
+                padding: "14px 20px",
+                background: "rgba(254, 242, 242, 0.95)",
+                border: "1px solid rgba(248, 113, 113, 0.7)",
+                borderRadius: 14,
+                marginBottom: 20,
+                boxShadow: "0 4px 14px rgba(239, 68, 68, 0.08)"
+              }}
+            >
+              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <AlertCircle size={20} color="#dc2626" />
+                <div>
+                  <div style={{ fontSize: 13.5, fontWeight: 800, color: "#991b1b" }}>
+                    Terdapat {results.filter((r) => r?.error).length} foto yang gagal diproses
+                  </div>
+                  <div style={{ fontSize: 11.5, color: "#b91c1c", fontWeight: 500, marginTop: 2 }}>
+                    Server timeout atau Groq sedang padat. Klik tombol di kanan untuk memproses ulang foto yang gagal saja tanpa mengulang foto yang sudah berhasil.
+                  </div>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={retryAllFailed}
+                disabled={loading || retryingIndices.size > 0}
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 8,
+                  padding: "10px 20px",
+                  borderRadius: 12,
+                  border: "none",
+                  background: (loading || retryingIndices.size > 0) ? "rgba(239, 68, 68, 0.4)" : "linear-gradient(135deg, #ef4444, #dc2626)",
+                  color: "white",
+                  fontSize: 13,
+                  fontWeight: 800,
+                  cursor: (loading || retryingIndices.size > 0) ? "not-allowed" : "pointer",
+                  boxShadow: (loading || retryingIndices.size > 0) ? "none" : "0 4px 14px rgba(220, 38, 38, 0.3)",
+                  transition: "all 0.15s ease",
+                  whiteSpace: "nowrap"
+                }}
+              >
+                <RotateCw size={15} style={{ animation: retryingIndices.size > 0 ? "spin 0.8s linear infinite" : "none" }} />
+                <span>
+                  {retryingIndices.size > 0
+                    ? `Mencoba Ulang (${retryingIndices.size})...`
+                    : `Coba Ulang Semua yang Gagal (${results.filter((r) => r?.error).length})`}
+                </span>
+              </button>
+            </div>
+          )}
+
           {/* Result Cards */}
           <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
             {results.map((result, i) => {
               if (result.error) {
+                const isRetrying = retryingIndices.has(i);
                 return (
                   <div
                     key={`${result.filename}-${i}`}
@@ -989,17 +1132,50 @@ export default function ImageUploader({ onTokensUpdated, userEmail, userRole, is
                       display: "flex",
                       gap: 16,
                       padding: "16px 20px",
-                      background: "rgba(254, 226, 226, 0.75)",
-                      border: "1px solid rgba(252, 165, 165, 0.8)",
+                      background: "rgba(254, 226, 226, 0.8)",
+                      border: "1px solid rgba(252, 165, 165, 0.85)",
                       borderRadius: 16,
-                      alignItems: "center"
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      flexWrap: "wrap",
+                      boxShadow: "0 2px 10px rgba(239, 68, 68, 0.07)"
                     }}
                   >
-                    <img src={images[i]?.preview} alt={result.filename} style={{ width: 60, height: 60, objectFit: "cover", borderRadius: 8, border: "1px solid rgba(252,165,165,0.6)" }} />
-                    <div>
-                      <div style={{ fontSize: 12, color: "#64748b", wordBreak: "break-all", fontWeight: 600 }}>{result.filename}</div>
-                      <div style={{ color: "#dc2626", fontSize: 13.5, fontWeight: 800, marginTop: 4 }}>❌ {result.error}</div>
+                    <div style={{ display: "flex", alignItems: "center", gap: 14, minWidth: 220, flex: 1 }}>
+                      <img src={images[i]?.preview} alt={result.filename} style={{ width: 60, height: 60, objectFit: "cover", borderRadius: 10, border: "1px solid rgba(252,165,165,0.7)" }} />
+                      <div>
+                        <div style={{ fontSize: 12, color: "#64748b", wordBreak: "break-all", fontWeight: 700 }}>{result.filename}</div>
+                        <div style={{ color: "#dc2626", fontSize: 13.5, fontWeight: 800, marginTop: 4 }}>
+                          ❌ {result.error}
+                        </div>
+                      </div>
                     </div>
+
+                    {/* Tombol Coba Ulang Foto Ini */}
+                    <button
+                      type="button"
+                      onClick={() => retryOne(i)}
+                      disabled={isRetrying || loading}
+                      style={{
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: 7,
+                        padding: "9px 18px",
+                        borderRadius: 10,
+                        border: "1px solid rgba(220, 38, 38, 0.3)",
+                        background: isRetrying ? "rgba(239, 68, 68, 0.15)" : "linear-gradient(135deg, #ef4444, #dc2626)",
+                        color: isRetrying ? "#dc2626" : "#ffffff",
+                        fontSize: 12.5,
+                        fontWeight: 800,
+                        cursor: isRetrying || loading ? "not-allowed" : "pointer",
+                        boxShadow: isRetrying ? "none" : "0 3px 12px rgba(220, 38, 38, 0.25)",
+                        transition: "all 0.15s ease",
+                        whiteSpace: "nowrap"
+                      }}
+                    >
+                      <RotateCw size={14} style={{ animation: isRetrying ? "spin 0.8s linear infinite" : "none" }} />
+                      <span>{isRetrying ? "Mencoba Ulang..." : "Coba Ulang Foto Ini"}</span>
+                    </button>
                   </div>
                 );
               }
