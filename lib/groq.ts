@@ -8,9 +8,10 @@ import { getGroqApiKeys } from "@/lib/config";
 
 const GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions";
 
-const CHAT_MODEL            = "openai/gpt-oss-120b";
-const VISION_MODEL          = "qwen/qwen3.8-27b";
-const VISION_FALLBACK_MODEL = "qwen/qwen3.6-27b";
+export const REASONING_MODEL       = "openai/gpt-oss-120b";
+export const CHAT_MODEL            = "openai/gpt-oss-120b";
+export const VISION_MODEL          = "qwen/qwen3.8-27b";
+export const VISION_FALLBACK_MODEL = "qwen/qwen3.6-27b";
 
 export interface GroqMessage {
   role: "system" | "user" | "assistant";
@@ -27,6 +28,7 @@ export interface GroqOptions {
   max_tokens?: number;
   vision?: boolean;
   jsonMode?: boolean;
+  model?: string;
 }
 
 export interface GroqUsage {
@@ -167,9 +169,11 @@ export async function callGroq(
     (m) => Array.isArray(m.content) && m.content.some((c) => c.type === "image_url")
   );
 
-  const modelsToTry = hasImage
+  const modelsToTry = opts.model
+    ? [opts.model, ...(hasImage ? [VISION_MODEL, VISION_FALLBACK_MODEL] : [REASONING_MODEL])]
+    : hasImage
     ? [VISION_MODEL, VISION_FALLBACK_MODEL]
-    : [CHAT_MODEL];
+    : [REASONING_MODEL];
 
   let lastError: Error | null = null;
 
