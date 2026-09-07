@@ -90,6 +90,7 @@ async function callGroqKey(
         "Authorization": `Bearer ${apiKey}`,
       },
       body: JSON.stringify(requestBody),
+      signal: AbortSignal.timeout(18000),
     });
 
     if (!response.ok) {
