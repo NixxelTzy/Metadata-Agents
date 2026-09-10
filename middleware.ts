@@ -16,6 +16,32 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { analyzeRequest, getSecurityHeaders, type AiDecision } from "@/lib/security/ai-engine";
+import { Redis } from "@upstash/redis";
+import { getRedisConfig } from "@/lib/config";
+
+// ─── Upstash Redis Client (Edge compatible) ──────────────────────────────────
+
+let _redis: Redis | null = null;
+function getRedis(): Redis | null {
+  try {
+    if (_redis) return _redis;
+    const { url, token } = getRedisConfig();
+    if (!url || !token) return null;
+    _redis = new Redis({ url, token });
+    return _redis;
+  } catch {
+    return null;
+  }
+}
+
+// Default feature usage endpoints requiring authentication
+const FEATURE_USAGE_ENDPOINTS = [
+  "/api/research",
+  "/api/generate",
+  "/api/vector",
+  "/api/validate/links",
+  "/api/chat",
+];
 
 // ─── Public Paths (no auth required) ────────────────────────────────────────
 
@@ -199,9 +225,74 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
+  const ip =
+    request.headers.get("cf-connecting-ip") ??
+    request.headers.get("x-real-ip") ??
+    request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??
+    "unknown";
+
+  const redis = getRedis();
+
+  // ── Fast-path: Blocked IP check from Redis ──
+  if (redis && ip !== "unknown") {
+    try {
+      const blockedReason = await redis.get<string>(`sec:ipblk:${ip}`);
+      if (blockedReason) {
+        return blockedResponse(403, "BLOCKED_IP", `Akses ditolak: IP diblokir sementara (${blockedReason})`, {
+          "X-Blocked-Reason": blockedReason,
+        });
+      }
+    } catch { /* silent */ }
+  }
+
   const isPublicPath = PUBLIC_PATHS.some(p => pathname.startsWith(p));
   const isApiPath    = pathname.startsWith("/api/");
   const token        = request.cookies.get("auth_token")?.value;
+
+  // ── Feature usage enforcement: block 24 jam jika akses feature endpoint tanpa auth_token ──
+  const isFeatureUsage = FEATURE_USAGE_ENDPOINTS.some(p => pathname === p || pathname.startsWith(p));
+  if (isFeatureUsage && !token) {
+    const reason = `blocked_by_missing_email: ${request.method} ${pathname}`;
+    if (redis && ip !== "unknown") {
+      try {
+        const now = Date.now();
+        // 1. Block sementara 24 jam (TTL 86400s)
+        await redis.set(`sec:ipblk:${ip}`, reason, { ex: 86400 });
+
+        // 2. Catat event ke Redis list agar terbawa ke app/api/monitor snapshot
+        const event = {
+          id: `sec_${now}_mw_${Math.random().toString(36).substring(2, 8)}`,
+          timestamp: now,
+          ip,
+          endpoint: pathname,
+          method: request.method,
+          userAgent: request.headers.get("user-agent") ?? "",
+          signals: [
+            {
+              type: "anomaly",
+              severity: "critical",
+              confidence: 1.0,
+              detail: reason,
+            },
+          ],
+          threatScore: 95,
+          normalityScore: 0,
+          action: "block",
+          blocked: true,
+          reason,
+        };
+        await redis.lpush("sec:events", JSON.stringify(event));
+        await redis.ltrim("sec:events", 0, 499);
+        await redis.expire("sec:events", 86400);
+      } catch (err) {
+        console.error("[Middleware] Redis feature block error:", err);
+      }
+    }
+
+    return blockedResponse(403, "BLOCKED_BY_MISSING_EMAIL", reason, {
+      "X-Blocked-Reason": reason,
+    });
+  }
 
   // ── LAYER 5: Auth token validation (All Protected Pages & APIs) ──
   if (!isPublicPath) {
@@ -272,11 +363,6 @@ export async function middleware(request: NextRequest) {
   // ── Extract request metadata ──────────────────────────────────────────────
   const userAgent = request.headers.get("user-agent") ?? "";
   const method    = request.method;
-  const ip =
-    request.headers.get("cf-connecting-ip") ??
-    request.headers.get("x-real-ip") ??
-    request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??
-    "unknown";
 
   const country = request.headers.get("cf-ipcountry")   ?? undefined;
   const asn     = request.headers.get("cf-ray")         ?? undefined;  // Ray ID encodes ASN info

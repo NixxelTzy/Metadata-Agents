@@ -140,6 +140,7 @@ export interface SecurityEvent {
   normalityScore: number; // 0–100, 100 = completely normal
   action: MitigationAction;
   blocked: boolean;
+  reason?: string;
   trustScore?: number;
   botScore?: number;
   fusedScore?: number;
@@ -1838,10 +1839,28 @@ async function withTimeout<T>(fn: () => Promise<T>, timeoutMs: number, fallback:
 export async function inspect(req: InspectRequest): Promise<InspectResult> {
   const { ip, userId, endpoint, method, userAgent, headers, body, requestDurationMs, skipBodyScan } = req;
 
-  // ── Feature usage enforcement: HANYA block jika tidak ada token sama sekali ──
-  // Catatan: Jangan block berdasarkan userId yang tidak di-propagate,
-  // karena banyak route tidak mengirimkan userId ke inspect().
-  // Cukup cek token dari cookie untuk memastikan user sudah login.
+  // ── 0. Fast-path: Cek apakah IP sudah diblokir sebelumnya di Redis ──
+  const ipBlockCheck = await isIpBlockedRedis(ip);
+  if (ipBlockCheck.blocked) {
+    const now = Date.now();
+    const result: InspectResult = {
+      action: "block",
+      threatScore: 100,
+      normalityScore: 0,
+      severity: "critical",
+      signals: [{ type: "blocked_ip", severity: "critical", confidence: 1.0, detail: ipBlockCheck.reason }],
+      blocked: true,
+      reason: ipBlockCheck.reason,
+      trustScore: 0,
+      botScore: 0,
+      fusedScore: 100,
+      attackChainLength: 0,
+    };
+    await logEventRedis({ timestamp: now, ip, userId, endpoint, method, userAgent, ...result });
+    return result;
+  }
+
+  // ── Feature usage enforcement: Block 24 jam jika akses feature endpoint tanpa auth_token ──
   const FEATURE_USAGE_ENDPOINTS = new Set([
     "/api/research",
     "/api/generate",
@@ -1859,10 +1878,14 @@ export async function inspect(req: InspectRequest): Promise<InspectResult> {
   const tokenMatch = cookieHeader.match(/auth_token=([^;]+)/);
   const tokenInRequest = tokenMatch ? tokenMatch[1] : null;
 
-  // HANYA block jika tidak ada token sama sekali (benar-benar unauthenticated)
-  // Jangan block hanya karena userId tidak di-propagate
+  // Block sementara 24 jam jika tidak ada auth_token pada default feature endpoints
   if (isFeatureUsage && !tokenInRequest) {
     const now = Date.now();
+    const reason = `blocked_by_missing_email: ${method} ${endpoint}`;
+
+    // Action: block sementara 24 jam (TTL 86400s)
+    await blockIpRedis(ip, reason, 86400);
+
     const result: InspectResult = {
       action: "block",
       threatScore: 95,
@@ -1873,18 +1896,18 @@ export async function inspect(req: InspectRequest): Promise<InspectResult> {
           type: "anomaly",
           severity: "critical",
           confidence: 1.0,
-          detail: `Unauthorized access to feature endpoint: ${endpoint}`,
+          detail: reason,
         },
       ],
       blocked: true,
-      reason: `Akses fitur tidak diizinkan tanpa autentikasi`,
+      reason,
       trustScore: 0,
       botScore: 0,
       fusedScore: 100,
       attackChainLength: 0,
     };
 
-    // Log event tapi JANGAN ban IP — mungkin hanya session expired, bukan attacker
+    // Log event ke Redis (terbawa ke monitor snapshot)
     await logEventRedis({ timestamp: now, ip, userId, endpoint, method, userAgent, ...result });
 
     return result;
