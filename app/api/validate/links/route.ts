@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { inspect } from "@/lib/security/core";
 
 type InputBody = {
   links: string[];
@@ -51,7 +52,39 @@ function validateAdobestockSearchUrl(urlStr: string, expectedBase: string) {
 
 export async function POST(request: NextRequest) {
   try {
-    const body = (await request.json()) as InputBody;
+    const token = request.cookies.get("auth_token")?.value;
+    const ip =
+      request.headers.get("cf-connecting-ip") ??
+      request.headers.get("x-real-ip") ??
+      request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??
+      "127.0.0.1";
+    const headersObj: Record<string, string> = {};
+    request.headers.forEach((v, k) => { headersObj[k] = v; });
+
+    let body: InputBody | null = null;
+    try {
+      body = (await request.json()) as InputBody;
+    } catch {
+      body = { links: [] };
+    }
+
+    if (!token) {
+      const sec = await inspect({
+        ip,
+        endpoint: "/api/validate/links",
+        method: "POST",
+        userAgent: headersObj["user-agent"] ?? "",
+        headers: headersObj,
+        body,
+      });
+      if (sec.blocked) {
+        return NextResponse.json(
+          { error: "Akses ditolak", reason: sec.reason, threatScore: sec.threatScore },
+          { status: 403 }
+        );
+      }
+    }
+
     const links = Array.isArray(body?.links) ? body.links : [];
     const expectedBase = body?.expectedBase ?? "https://stock.adobe.com/search";
 

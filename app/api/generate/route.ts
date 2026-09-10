@@ -5,6 +5,7 @@ import { inspect, getClientIp, recordIpError } from "@/lib/security/core";
 import { validateAndSanitize } from "@/lib/stock-compliance";
 import { verifyToken } from "@/lib/auth";
 import { appendActivityEvent } from "@/lib/db";
+import { optimizeMetadata, type MetadataQualityMetrics } from "@/MACHINE";
 
 export const runtime = "nodejs"; // Required for Redis (security core)
 export const maxDuration = 60; // Vercel Hobby max = 60s
@@ -26,12 +27,15 @@ export interface MetadataResult {
   stabilized?: boolean;
   modelUsed?: string;
   usage?: { promptTokens: number; completionTokens: number; totalTokens: number };
+  confidenceScore?: number;
+  qualityMetrics?: MetadataQualityMetrics;
 }
 
 interface ImagePayload {
   filename: string;
   dataUrl: string;
   visualHints?: string;
+  existingPrompt?: string;
 }
 
 const MASTER_PROMPT_CORE = `# MASTER PROMPT — HIGH-CONVERTING MICROSTOCK METADATA OPTIMIZER
@@ -174,19 +178,19 @@ FORMAT OUTPUT WAJIB STRICT VALID JSON TANPA TEKS LAIN DI LUAR JSON:
 const MAGNIFIC_SYSTEM_PROMPT = `${MASTER_PROMPT_CORE}
 
 ═══ PLATFORM SPESIFIK: MAGNIFIC CONTRIBUTOR ═══
-- Title: 8–12 kata bahasa Inggris deskriptif & bernilai jual tinggi (Formula Step 2).
-- Keywords: Berikan MINIMAL 50–60 kata kunci unik yang hyper-relevan dan akurat sesuai visual, terurut ketat dari Tier 1 ke Tier 4 (Step 3).
-- Prompt: WAJIB. Prompt generative AI yang sangat detail, kaya, dan fotorealistik dalam bahasa Inggris mendeskripsikan subjek, pencahayaan, sudut kamera, tekstur material, warna, dan detail rendering untuk Magnific Contributor.
-- Model: WAJIB. Pilih model AI yang paling cocok dari ["Midjourney 6", "Flux", "Stable Diffusion XL", "Midjourney 5", "DALL-E 3", "Adobe Firefly"] (Default "Midjourney 6").
+- Title: 8–12 kata bahasa Inggris deskriptif & bernilai jual tinggi (Formula Step 2). Dilarang menyertakan tanda kutip tunggal (') atau ganda (").
+- Keywords: Berikan TEPAT 49 kata kunci unik yang hyper-relevan dan akurat sesuai visual, terurut ketat dari Tier 1 ke Tier 4 (Step 3). Tepat 49 kata kunci agar ketika sistem Magnific otomatis menambahkan tag ke-50 ('ai generate'), jumlahnya pas tidak melebihi batas 50. DILARANG menggunakan tanda kutip (') di setiap kata kunci.
+- Prompt: WAJIB. Prompt generative AI yang sangat detail, kaya, dan fotorealistik dalam bahasa Inggris mendeskripsikan subjek, pencahayaan, sudut kamera, tekstur material, warna, dan detail rendering untuk Magnific Contributor. Jika uploader sudah memiliki prompt awal, optimalkan dan pertajam prompt tersebut agar menghasilkan visual terbaik.
+- Model: WAJIB "Adobe Firefly" (atau pilih dari ["Adobe Firefly", "Midjourney 6", "Flux", "Stable Diffusion XL", "Midjourney 5", "DALL-E 3"]) (Default "Adobe Firefly").
 - Primary Concept: Konsep utama komersial.
 - Visual Description: Ringkasan visual singkat.
 
 FORMAT OUTPUT WAJIB STRICT VALID JSON TANPA TEKS LAIN DI LUAR JSON:
 {
-  "title": "Exact descriptive title following Step 2",
-  "keywords": ["kw1", "kw2", ...at least 50-60 keywords in strict tier order...],
+  "title": "Exact descriptive title following Step 2 without any quotes",
+  "keywords": ["kw1", "kw2", ...exactly 49 keywords in strict tier order without any quotes...],
   "prompt": "Detailed photorealistic generative AI prompt in English describing subject, lighting, angle, colors, texture, camera lens, 8k resolution",
-  "model": "Midjourney 6",
+  "model": "Adobe Firefly",
   "primaryConcept": "Primary concept name",
   "visualDescription": "Brief visual summary"
 }`;
@@ -202,7 +206,7 @@ function extractJsonFromText(text: string): string {
   return cleaned;
 }
 
-function safeParseMetadataJson(jsonText: string, filename: string): {
+function safeParseMetadataJson(jsonText: string, filename: string, existingPrompt?: string, defaultModel = "Adobe Firefly"): {
   title: string;
   keywords: string[];
   categories?: string[];
@@ -234,19 +238,30 @@ function safeParseMetadataJson(jsonText: string, filename: string): {
     }
   }
 
+  const cleanQuote = (s: string) =>
+    s
+      .replace(/^['"`\s]+|['"`\s]+$/g, "")
+      .replace(/\\'/g, "'")
+      .replace(/\\"/g, '"')
+      .replace(/'([^']+)'/g, "$1")
+      .replace(/['"`]{2,}/g, "")
+      .trim();
+
   // Step 2: If parsed successfully as object
   if (parsed && typeof parsed === "object") {
-    let title = typeof parsed.title === "string" ? parsed.title.trim() : "";
+    let title = typeof parsed.title === "string" ? cleanQuote(parsed.title) : "";
     const rawKw = Array.isArray(parsed.keywords) ? parsed.keywords : [];
-    const keywords = rawKw.map((k: any) => String(k).trim()).filter(Boolean);
-    const primaryConcept = typeof parsed.primaryConcept === "string" ? parsed.primaryConcept.trim() : "";
-    const visualDescription = typeof parsed.visualDescription === "string" ? parsed.visualDescription.trim() : "";
+    const keywords = rawKw
+      .map((k: any) => String(k).replace(/['"`\\]/g, "").trim())
+      .filter(Boolean);
+    const primaryConcept = typeof parsed.primaryConcept === "string" ? cleanQuote(parsed.primaryConcept) : "";
+    const visualDescription = typeof parsed.visualDescription === "string" ? cleanQuote(parsed.visualDescription) : "";
     const prompt = typeof parsed.prompt === "string" && parsed.prompt.length > 5
-      ? parsed.prompt.trim()
-      : (visualDescription || `${title}, photorealistic, high resolution, cinematic lighting, 8k, detailed textures`);
+      ? cleanQuote(parsed.prompt)
+      : (existingPrompt || visualDescription || `${title}, photorealistic photography, cinematic lighting, 8k resolution, highly detailed`);
     const model = typeof parsed.model === "string" && parsed.model.length > 2
-      ? parsed.model.trim()
-      : "Midjourney 6";
+      ? cleanQuote(parsed.model)
+      : defaultModel;
 
     // If title is too short or missing, synthesize intelligently from visual cues
     if (title.length < 5) {
@@ -262,7 +277,7 @@ function safeParseMetadataJson(jsonText: string, filename: string): {
 
     return {
       ...parsed,
-      title,
+      title: cleanQuote(title),
       keywords: keywords.length > 0 ? keywords : ["stock", "photo", "creative", "media", "digital", "modern", "design"],
       prompt,
       model,
@@ -282,24 +297,24 @@ function safeParseMetadataJson(jsonText: string, filename: string): {
   const conceptMatch = jsonText.match(/"primaryConcept"\s*:\s*"([^"]+)"/i);
   const descMatch = jsonText.match(/"visualDescription"\s*:\s*"([^"]+)"/i);
 
-  const primaryConcept = conceptMatch ? conceptMatch[1].trim() : "";
-  const visualDescription = descMatch ? descMatch[1].trim() : "";
-  let title = titleMatch ? titleMatch[1].trim().replace(/^["']|["']$/g, "") : "";
-  const model = modelMatch ? modelMatch[1].trim() : "Midjourney 6";
-  const prompt = promptMatch ? promptMatch[1].trim() : (visualDescription || `${title || filename}, professional photography, 8k, detailed`);
+  const primaryConcept = conceptMatch ? cleanQuote(conceptMatch[1]) : "";
+  const visualDescription = descMatch ? cleanQuote(descMatch[1]) : "";
+  let title = titleMatch ? cleanQuote(titleMatch[1]) : "";
+  const model = modelMatch ? cleanQuote(modelMatch[1]) : defaultModel;
+  const prompt = promptMatch ? cleanQuote(promptMatch[1]) : (existingPrompt || visualDescription || `${title || filename}, professional photography, 8k, detailed`);
 
   const extractedKeywords: string[] = [];
   if (keywordsMatch && keywordsMatch[1]) {
     const rawMatch = keywordsMatch[1];
     if (rawMatch.includes(",")) {
       rawMatch.split(",").forEach((item) => {
-        const clean = item.replace(/[\[\]"'\r\n]/g, "").trim();
+        const clean = item.replace(/[\[\]"'\r\n\\]/g, "").trim();
         if (clean.length > 1) extractedKeywords.push(clean);
       });
     } else {
       const matches = rawMatch.match(/"([^"]+)"/g);
       if (matches) {
-        matches.forEach((m) => extractedKeywords.push(m.replace(/"/g, "").trim()));
+        matches.forEach((m) => extractedKeywords.push(m.replace(/["'\\]/g, "").trim()));
       }
     }
   }
@@ -316,7 +331,7 @@ function safeParseMetadataJson(jsonText: string, filename: string): {
   }
 
   return {
-    title,
+    title: cleanQuote(title),
     keywords: extractedKeywords.length > 0 ? extractedKeywords : ["stock", "photo", "creative", "media", "digital", "modern", "design"],
     prompt,
     model,
@@ -337,7 +352,12 @@ function buildGuaranteedKeywords(
   const seen = new Set<string>();
 
   const add = (k: string) => {
-    const clean = k.trim().toLowerCase().replace(/^[,\-–—\s]+|[,\-–—\s]+$/g, "");
+    // Strip ALL quotes, backslashes, and unwanted punctuation
+    const clean = k
+      .replace(/['"`\\]/g, "")
+      .trim()
+      .toLowerCase()
+      .replace(/^[,\-–—\s]+|[,\-–—\s]+$/g, "");
     if (!clean || clean.length < 2 || clean.length > 35) return;
     // Disallow generic filler/spam words that hurt ranking
     if (["photo", "image", "picture", "wallpaper", "4k", "8k", "hd", "best", "cool"].includes(clean)) return;
@@ -449,7 +469,8 @@ async function generateMetadata(
   visualHints?: string,
   platform: "adobe_stock" | "shutterstock" | "magnific" = "adobe_stock",
   complianceGuard: boolean = false,
-  attempt: number = 1
+  attempt: number = 1,
+  existingPrompt?: string
 ): Promise<MetadataResult> {
   if (!base64DataUrl.startsWith("data:image/")) {
     throw new Error("Format data URL tidak valid");
@@ -502,19 +523,26 @@ Be concrete, concise, and purely factual.`
     // STAGE 2: 120B Flagship Reasoning Engine (openai/gpt-oss-120b)
     // Applies 120B parameter reasoning with chain-of-thought to formulate 99% accurate metadata & buyer SEO
     // ══════════════════════════════════════════════════════════════════
+    const targetKwCount = platform === "shutterstock" ? 50 : 49;
+
     const reasoningUserMessage = `VISUAL FORENSIC INSPECTION REPORT (EXTRACTED DIRECTLY FROM IMAGE PIXELS):
 ${visionResult.text}
 
 METADATA CONTEXT & REFERENCE:
 - Filename: ${filename} (Warning: If filename contradicts the visual evidence above, ignore filename 100%!)
-${visualHints ? `- Uploader Hints: ${visualHints}` : ""}
+${visualHints ? `- Visual / Uploader Hints: ${visualHints}` : ""}
+${existingPrompt ? `- Existing User Prompt to Optimize: "${existingPrompt}"` : ""}
 
-CRITICAL RULES (ATURAN KATA KUNCI JANGAN SUSAH):
-1. KATA KUNCI HARUS MUDAH & POPULER: Use ONLY simple, common, everyday English words that real buyers type into search bars. NEVER use obscure, academic, archaic, or poetic terms!
-2. KEYWORD LENGTH: 1 to 2 words per keyword (maximum 3 words for standard terms). NEVER output long descriptive phrases like "blue-purple dragon creature" or "backward baseball cap" — split into short, popular tags: "dragon", "pet", "creature", "cap", "baseball cap".
-3. First 15 keywords MUST be the literal physical objects visible in the image, using simple, direct words (e.g. if a guitar is in the photo → "guitar", "music", "acoustic guitar", "strings", "instrument", "wood").
-4. 100% VISUAL FIDELITY & ZERO HALLUCINATION.
-5. Title: 8-12 word natural English descriptive commercial title.
+CRITICAL RULES (ATURAN METADATA & KATA KUNCI JANGAN SUSAH):
+1. KATA KUNCI HARUS MUDAH & POPULER (HIGH-VOLUME): Use ONLY simple, common, everyday English words that real buyers type into search bars. NEVER use obscure, academic, archaic, or poetic terms!
+2. KEYWORD LENGTH: 1 to 2 words per keyword (maximum 3 words for standard terms). NEVER output long descriptive phrases like "blue-purple dragon creature" — split into short, popular tags: "dragon", "pet", "creature".
+3. STRICTLY NO QUOTE MARKS: Absolutely DO NOT include single quotes (') or double quotes (") anywhere inside keyword strings or title.
+4. First 15 keywords MUST be the literal physical objects visible in the image, using simple, direct words (e.g. if a guitar is in the photo → "guitar", "music", "acoustic guitar", "strings", "instrument", "wood").
+5. 100% VISUAL FIDELITY & ZERO HALLUCINATION.
+6. Title: 8-12 word natural English descriptive commercial title without quotes.
+7. TARGET KEYWORD COUNT: Output EXACTLY ${targetKwCount} keywords.${platform === "magnific" ? " Magnific requires EXACTLY 49 keywords because the platform automatically adds the 50th keyword 'ai generate'." : ""}
+8. PROMPT GENERATIF (MANDATORY): Always provide a detailed, photorealistic generative AI prompt in English (describing subject, lighting, angle, colors, texture, lens, 8k) to reproduce this image in Midjourney 6 / Flux.${existingPrompt ? ` Enhance and optimize the user's prompt: "${existingPrompt}".` : ""}
+9. MODEL: ${platform === "magnific" ? 'WAJIB gunakan "Adobe Firefly" sebagai model default untuk platform Magnific.' : 'Choose the most fitting AI model (default "Midjourney 6").'}
 Output ONLY raw valid JSON.`;
 
     const reasoningMessages: GroqMessage[] = [
@@ -538,22 +566,18 @@ Output ONLY raw valid JSON.`;
   } catch (err) {
     console.warn("[generateMetadata] Two-stage 120B pipeline error, falling back to direct vision model:", err);
     // Bulletproof Fallback: Direct single-pass vision model
-    const textPart = visualHints
-      ? `Analyze the image VISUALLY and generate accurate microstock metadata.
+    const targetKwCount = platform === "shutterstock" ? 50 : 49;
+    const textPart = `Analyze the image VISUALLY and generate accurate microstock metadata.
 FILENAME (for reference only, do NOT use for keywords): ${filename}
-Visual context/hints from uploader: ${visualHints}
-
+${visualHints ? `Visual context/hints: ${visualHints}\n` : ""}${existingPrompt ? `Existing prompt to optimize: ${existingPrompt}\n` : ""}
 CRITICAL RULES:
 1. Keywords MUST come from what you SEE in the image, NOT from the filename text.
 2. First 15 keywords MUST be the literal physical objects visible in the photo.
-3. Output ONLY raw valid JSON with no markdown fences or extra text.`
-      : `Analyze the image VISUALLY and generate accurate microstock metadata.
-FILENAME (for reference only, do NOT use for keywords): ${filename}
-
-CRITICAL RULES:
-1. Keywords MUST come from what you SEE in the image, NOT from the filename text.
-2. First 15 keywords MUST be the literal physical objects visible in the photo.
-3. Output ONLY raw valid JSON with no markdown fences or extra text.`;
+3. Keywords MUST be simple everyday words (1-2 words).
+4. STRICTLY NO QUOTES: Do NOT include single quotes (') or double quotes (") anywhere in keywords or title.
+5. TARGET KEYWORDS: Exactly ${targetKwCount} keywords.
+6. PROMPT: Provide a detailed photorealistic AI image prompt to recreate this visual.
+7. Output ONLY raw valid JSON with no markdown fences or extra text.`;
 
     const directMessages: GroqMessage[] = [
       { role: "system", content: promptText },
@@ -578,14 +602,15 @@ CRITICAL RULES:
     totalUsage = fallbackResult.usage;
   }
 
-  const parsed = safeParseMetadataJson(rawJsonText, filename);
+  const defaultModel = platform === "magnific" ? "Adobe Firefly" : "Midjourney 6";
+  const parsed = safeParseMetadataJson(rawJsonText, filename, existingPrompt, defaultModel);
 
   const rawKeywords = parsed.keywords
-    .map((k) => String(k).trim().toLowerCase())
+    .map((k) => String(k).replace(/['"`\\]/g, "").trim().toLowerCase())
     .filter(Boolean)
     .filter((k, i, arr) => arr.indexOf(k) === i);
 
-  const TARGET_KEYWORDS = platform === "shutterstock" || platform === "magnific" ? 50 : 49;
+  const TARGET_KEYWORDS = platform === "shutterstock" ? 50 : 49;
 
   // Seamlessly guarantee exact target keyword count without ever throwing errors
   const finalKeywords = buildGuaranteedKeywords(
@@ -618,24 +643,41 @@ CRITICAL RULES:
         .slice(0, 2)
     : [];
 
-  let finalTitle = parsed.title.trim();
+  let finalTitle = parsed.title.trim().replace(/^['"`\s]+|['"`\s]+$/g, "").replace(/'([^']+)'/g, "$1").replace(/['"`]{2,}/g, "");
   if (complianceGuard) {
     const check = validateAndSanitize(finalTitle);
-    finalTitle = check.title;
+    finalTitle = check.title.replace(/^['"`\s]+|['"`\s]+$/g, "");
   }
 
-  return {
-    filename,
+  // ── MACHINE ML OPTIMIZATION PIPELINE ────────────────────────────────────────
+  const mlOptimized = optimizeMetadata({
     title: finalTitle,
     keywords: finalKeywords,
-    categories,
+    visualDescription: parsed.visualDescription || "",
+    visualHints,
+    existingPrompt,
+    platform,
+    targetModel: platform === "magnific" ? "Adobe Firefly" : (parsed.model || "Midjourney 6"),
     editorial,
     matureContent,
     illustration,
-    prompt: parsed.prompt,
-    model: parsed.model,
+    filename,
+  });
+
+  return {
+    filename,
+    title: mlOptimized.title,
+    keywords: mlOptimized.keywords,
+    categories: mlOptimized.categories.length > 0 ? mlOptimized.categories : categories,
+    editorial: mlOptimized.editorial,
+    matureContent: mlOptimized.matureContent,
+    illustration: mlOptimized.illustration,
+    prompt: mlOptimized.prompt,
+    model: mlOptimized.model,
     primaryConcept: parsed.primaryConcept,
     visualDescription: parsed.visualDescription,
+    confidenceScore: mlOptimized.confidenceScore,
+    qualityMetrics: mlOptimized.qualityMetrics,
     modelUsed: modelUsed || "openai/gpt-oss-120b",
     stabilized: true,
     attempts: attempt,
@@ -652,11 +694,12 @@ async function generateMetadataWithRetry(
   visualHints?: string,
   platform: "adobe_stock" | "shutterstock" | "magnific" = "adobe_stock",
   complianceGuard: boolean = false,
+  existingPrompt?: string
 ): Promise<MetadataResult> {
   const MAX_ATTEMPTS = 3;
   for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
     try {
-      const result = await generateMetadata(dataUrl, filename, visualHints, platform, complianceGuard, attempt);
+      const result = await generateMetadata(dataUrl, filename, visualHints, platform, complianceGuard, attempt, existingPrompt);
       return result;
     } catch (err) {
       const msg = err instanceof Error ? err.message : "";
@@ -726,7 +769,14 @@ export async function POST(request: NextRequest) {
     for (let i = 0; i < images.length; i++) {
       const image = images[i];
       try {
-        const result = await generateMetadataWithRetry(image!.dataUrl, image!.filename, image!.visualHints, platform, complianceGuard);
+        const result = await generateMetadataWithRetry(
+          image!.dataUrl,
+          image!.filename,
+          image!.visualHints,
+          platform,
+          complianceGuard,
+          image!.existingPrompt
+        );
         results.push({ ...result, stabilized });
       } catch (error) {
         results.push({

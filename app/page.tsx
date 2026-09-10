@@ -166,7 +166,10 @@ export default function Home() {
       setCurrentUserCache(null);
       await fetch("/api/auth/logout", { method: "POST", credentials: "include" }).catch(() => {});
     } catch { /**/ }
-    window.location.href = "/login";
+    // Use replace (not href) — cannot be intercepted by browser back button
+    // Also set a hard timeout fallback in case replace is somehow delayed
+    setTimeout(() => { window.location.replace("/login"); }, 0);
+    window.location.replace("/login");
   }, []);
 
   const pctColor = isUnlimited ? "#38bdf8" : tokenPct >= 85 ? "#f87171" : tokenPct >= 60 ? "#fbbf24" : "#4ade80";

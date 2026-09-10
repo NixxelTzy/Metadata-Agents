@@ -167,6 +167,8 @@ async function buildSnapshot() {
       blocked: e.blocked,
       timestamp: e.timestamp,
       requestId: e.id,
+      reason: (e as any).reason ?? e.signals?.find(s => s.detail?.includes("blocked_by_missing_email"))?.detail ?? "",
+      blockedReason: (e as any).reason ?? "",
       signals: e.signals.map(s => ({ type: s.type, severity: s.severity, confidence: s.confidence, detail: s.detail })),
       hasIdentity: !!userEmail,
     };
