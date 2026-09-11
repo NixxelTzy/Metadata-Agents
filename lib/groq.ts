@@ -8,9 +8,12 @@ import { getGroqApiKeys } from "@/lib/config";
 
 const GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions";
 
+// Best Groq reasoning model — 120B parameters, chain-of-thought, highest quality output
 export const REASONING_MODEL       = "openai/gpt-oss-120b";
 export const CHAT_MODEL            = "openai/gpt-oss-120b";
+// Best Groq vision model — multimodal (vision + text), supports up to 3 images
 export const VISION_MODEL          = "qwen/qwen3.8-27b";
+// Fallback vision if primary quota exceeded
 export const VISION_FALLBACK_MODEL = "qwen/qwen3.6-27b";
 
 export interface GroqMessage {
