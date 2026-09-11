@@ -102,9 +102,9 @@ export function extractVisualFeatures(
     }
   }
 
-  // 5. Detected Subjects / Objects
+  // 5. Detected Subjects / Objects (Comprehensive stock photography dictionary)
   const detectedObjects: string[] = [];
-  const subjectRegex = /\b(person|man|woman|child|dog|cat|bird|animal|car|vehicle|building|tree|plant|flower|coffee|food|meal|fruit|computer|phone|water|lake|river|ocean|sea|beach|mountain|forest|sunset|sunrise|sky|cloud|office|street|house|room|cup|leaf|droplet|hand|face|landscape|skyline|furniture|product|athlete|garden|desk|table)\b/gi;
+  const subjectRegex = /\b(person|man|woman|girl|boy|child|baby|infant|toddler|senior|couple|family|team|group|crowd|model|worker|mechanic|doctor|nurse|patient|chef|teacher|student|athlete|runner|diver|hiker|swimmer|driver|pilot|engineer|builder|farmer|artist|musician|dog|cat|puppy|kitten|bird|horse|animal|wildlife|pet|fish|car|vehicle|automobile|truck|motorcycle|bicycle|plane|airplane|train|boat|ship|brake|rotor|caliper|engine|wheel|tire|tool|wrench|spanner|building|house|home|office|room|kitchen|bedroom|bathroom|garage|workshop|factory|warehouse|hospital|clinic|school|university|restaurant|cafe|bar|hotel|store|shop|tree|plant|flower|rose|leaf|grass|forest|woods|garden|mountain|hill|rock|cliff|waterfall|river|lake|ocean|sea|beach|coast|island|desert|sunset|sunrise|sky|cloud|rain|snow|ice|sun|sunlight|night|star|coffee|tea|cup|mug|food|meal|breakfast|lunch|dinner|snack|dessert|cake|bread|pizza|burger|sandwich|salad|fruit|vegetable|meat|fish|sushi|pasta|wine|beer|juice|bottle|glass|plate|bowl|computer|laptop|phone|smartphone|tablet|screen|keyboard|mouse|monitor|camera|lens|headphones|robot|drone|desk|table|chair|sofa|furniture|book|notebook|pen|paper|wallet|money|bag|backpack|box|package|door|window|bridge|road|street|highway|landscape|skyline|hand|face|eye|headshot|portrait)\b/gi;
   let match: RegExpExecArray | null;
   while ((match = subjectRegex.exec(combinedText)) !== null) {
     const obj = match[1].toLowerCase();

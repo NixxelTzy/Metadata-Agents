@@ -163,8 +163,67 @@ describe("MACHINE Intelligence Engine Test Suite", () => {
       expect(result.keywords.length).toBe(49); // Strict Adobe Stock requirement
       expect(result.categories.length).toBeGreaterThanOrEqual(2);
       expect(result.qualityMetrics.overallScore).toBeGreaterThan(75);
-      expect(result.mlInsights.aiModelUsed).toBe("MACHINE-ML-Cognitive-v2");
+      expect(result.mlInsights.aiModelUsed).toBe("MACHINE-ML-Cognitive-v3");
       expect(result.mlInsights.reasoningChain?.length).toBeGreaterThan(5);
+    });
+
+    it("should optimize automotive mechanic scene with ultra-simple, high-converting buyer tags", () => {
+      const result = optimizeMetadata({
+        title: "Mechanic inspecting brake rotor on vehicle lift in workshop",
+        keywords: [
+          "blue lift", "vehicle lift", "car", "mechanic", "brake rotor", "work gloves", "work shirt",
+          "garage", "dark", "workshop", "clean", "professional", "bright", "car maintenance",
+          "brake caliper", "mechanic training", "brake service", "mechanical engineering",
+          "tool chest", "tool cart", "concrete floor", "red tool", "vehicle inspection",
+          "man", "black hose", "wheel", "shelf", "tire", "hose", "suspension", "metal",
+          "silver", "industrial", "diy", "detailed", "realistic", "close up", "side view",
+          "automotive repair", "auto service", "repair shop", "industrial safety",
+          "technical illustration", "maintenance manual", "engine repair", "auto parts",
+          "training guide", "service manual", "high quality"
+        ],
+        visualDescription: "Mechanic inspecting brake rotor on vehicle lift in workshop",
+        platform: "adobe_stock",
+        filename: "mechanic_brake_repair.jpg",
+      });
+
+      expect(result.keywords.length).toBe(49);
+
+      // Verify that obscure / awkward jargon terms are strictly pruned
+      const forbiddenPhrases = [
+        "technical illustration", "training guide", "maintenance manual",
+        "service manual", "concrete floor", "black hose", "blue lift"
+      ];
+      for (const phrase of forbiddenPhrases) {
+        expect(result.keywords).not.toContain(phrase);
+      }
+
+      // Verify presence of simple, high-converting everyday buyer tags
+      expect(result.keywords).toEqual(expect.arrayContaining([
+        "car", "mechanic", "brake", "auto", "repair", "service", "garage", "workshop", "tool", "wheel"
+      ]));
+
+      // Check quality score and simplicity index
+      expect(result.qualityMetrics.overallScore).toBeGreaterThanOrEqual(80);
+      expect(result.qualityMetrics.simplicityIndex).toBeGreaterThanOrEqual(0.8);
+    });
+  });
+
+  describe("Title Optimizer Engine", () => {
+    it("should analyze titles, detect issues, and synthesize high-converting commercial titles", () => {
+      const { analyzeTitle, synthesizeTitleSync } = require("@/MACHINE");
+      
+      const shortAnalysis = analyzeTitle("Mechanic brake", "adobe_stock");
+      expect(shortAnalysis.isOptimalLength).toBe(false);
+      expect(shortAnalysis.issues.length).toBeGreaterThan(0);
+
+      const synthesized = synthesizeTitleSync("Mechanic brake", ["mechanic", "car", "brake"], "auto repair service", "adobe_stock");
+      expect(synthesized.split(" ").length).toBeGreaterThanOrEqual(7);
+      expect(synthesized.charAt(0)).toBe(synthesized.charAt(0).toUpperCase());
+
+      const dirtyAnalysis = analyzeTitle("HD 4K best mechanic inspecting car photo", "adobe_stock");
+      expect(dirtyAnalysis.optimizedTitle.toLowerCase()).not.toContain("hd");
+      expect(dirtyAnalysis.optimizedTitle.toLowerCase()).not.toContain("4k");
+      expect(dirtyAnalysis.optimizedTitle.toLowerCase()).not.toContain("photo");
     });
   });
 });

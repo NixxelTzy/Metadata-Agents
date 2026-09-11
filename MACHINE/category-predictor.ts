@@ -8,6 +8,7 @@
  */
 
 import { CategoryPrediction, VisualFeatureVector, MicrostockPlatform } from "./types";
+import { callGroq, REASONING_MODEL, GroqMessage } from "@/lib/groq";
 
 interface CategoryDefinition {
   name: string;
@@ -287,4 +288,69 @@ export function classifyCategory(
     reasoning,
     platformTaxonomy: platform === "shutterstock" ? "shutterstock" : "adobe_stock",
   };
+}
+
+/**
+ * AI-Augmented Category Classifier using Groq 120B Reasoning Engine.
+ * Evaluates visual context against official microstock taxonomy.
+ */
+export async function classifyCategoryWithAI(
+  keywords: string[],
+  features?: VisualFeatureVector,
+  title?: string,
+  platform: MicrostockPlatform = "adobe_stock"
+): Promise<CategoryPrediction> {
+  const baseline = classifyCategory(keywords, features, title, platform);
+
+  try {
+    const validTaxonomy = platform === "shutterstock"
+      ? SHUTTERSTOCK_CATEGORIES.map(c => c.name)
+      : ADOBE_STOCK_CATEGORIES.map(c => c.name);
+
+    const messages: GroqMessage[] = [
+      {
+        role: "system",
+        content: `You are an elite microstock classification AI. Predict the best primary and secondary categories for ${platform}.
+Allowed categories for ${platform}: [${validTaxonomy.join(", ")}].
+Output JSON:
+{
+  "primaryCategory": "exact category from allowed list",
+  "secondaryCategory": "exact category from allowed list",
+  "confidence": 0.95,
+  "reasoning": "Brief explanation of category selection"
+}`
+      },
+      {
+        role: "user",
+        content: `Title: "${title || ""}". Visual features: ${JSON.stringify(features?.detectedObjects || [])}.
+Top keywords: ${keywords.slice(0, 20).join(", ")}.
+Determine the optimal primary and secondary categories from the allowed list in JSON format.`
+      }
+    ];
+
+    const res = await callGroq(messages, {
+      model: REASONING_MODEL,
+      temperature: 0.1,
+      max_tokens: 300,
+      jsonMode: true,
+    });
+
+    const parsed = JSON.parse(res.text);
+
+    if (validTaxonomy.includes(parsed.primaryCategory)) {
+      const sec = validTaxonomy.includes(parsed.secondaryCategory) ? parsed.secondaryCategory : baseline.secondaryCategory;
+      return {
+        primaryCategory: parsed.primaryCategory,
+        secondaryCategory: sec,
+        confidence: Math.min(0.99, Math.max(0.75, Number(parsed.confidence) || 0.95)),
+        matchedSignals: baseline.matchedSignals,
+        reasoning: parsed.reasoning || `AI Categorization via Groq (${res.modelUsed})`,
+        platformTaxonomy: platform === "shutterstock" ? "shutterstock" : "adobe_stock",
+      };
+    }
+
+    return baseline;
+  } catch {
+    return baseline;
+  }
 }

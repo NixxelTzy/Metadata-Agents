@@ -5,7 +5,7 @@ import { inspect, getClientIp, recordIpError } from "@/lib/security/core";
 import { validateAndSanitize } from "@/lib/stock-compliance";
 import { verifyToken } from "@/lib/auth";
 import { appendActivityEvent } from "@/lib/db";
-import { optimizeMetadata, type MetadataQualityMetrics } from "@/MACHINE";
+import { optimizeMetadata, optimizeMetadataWithAI, type MetadataQualityMetrics } from "@/MACHINE";
 
 export const runtime = "nodejs"; // Required for Redis (security core)
 export const maxDuration = 60; // Vercel Hobby max = 60s
@@ -650,19 +650,36 @@ CRITICAL RULES:
   }
 
   // ── MACHINE ML OPTIMIZATION PIPELINE ────────────────────────────────────────
-  const mlOptimized = optimizeMetadata({
-    title: finalTitle,
-    keywords: finalKeywords,
-    visualDescription: parsed.visualDescription || "",
-    visualHints,
-    existingPrompt,
-    platform,
-    targetModel: platform === "magnific" ? "Adobe Firefly" : (parsed.model || "Midjourney 6"),
-    editorial,
-    matureContent,
-    illustration,
-    filename,
-  });
+  let mlOptimized;
+  try {
+    mlOptimized = await optimizeMetadataWithAI({
+      title: finalTitle,
+      keywords: finalKeywords,
+      visualDescription: parsed.visualDescription || "",
+      visualHints,
+      existingPrompt,
+      platform,
+      targetModel: platform === "magnific" ? "Adobe Firefly" : (parsed.model || "Midjourney 6"),
+      editorial,
+      matureContent,
+      illustration,
+      filename,
+    });
+  } catch {
+    mlOptimized = optimizeMetadata({
+      title: finalTitle,
+      keywords: finalKeywords,
+      visualDescription: parsed.visualDescription || "",
+      visualHints,
+      existingPrompt,
+      platform,
+      targetModel: platform === "magnific" ? "Adobe Firefly" : (parsed.model || "Midjourney 6"),
+      editorial,
+      matureContent,
+      illustration,
+      filename,
+    });
+  }
 
   return {
     filename,

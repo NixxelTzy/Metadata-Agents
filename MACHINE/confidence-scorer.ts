@@ -9,6 +9,7 @@
 
 import { MetadataQualityMetrics, VisualFeatureVector, KeywordCategory } from "./types";
 import { isInvalidKeyword, getStemKey } from "./semantic-engine";
+import { callGroq, REASONING_MODEL, GroqMessage } from "@/lib/groq";
 
 /**
  * Evaluates complete metadata package against strict microstock agency standards.
@@ -49,9 +50,10 @@ export function scoreMetadata(
   }
 
   // ── 2. Keyword Count & Agency Compliance Audit ──
+  // targetKeywordCount is the FINAL metadata output count (49 or 50), NOT the pool size.
   let complianceScore = 1.0;
   if (keywords.length === targetKeywordCount) {
-    passedChecks.push(`Exact target keyword count met (${targetKeywordCount} keywords)`);
+    passedChecks.push(`Exact metadata keyword count met (${targetKeywordCount} keywords for platform)`);
   } else {
     const diff = Math.abs(keywords.length - targetKeywordCount);
     warnings.push(`Keyword count mismatch: ${keywords.length} provided, target is ${targetKeywordCount}`);
@@ -147,6 +149,14 @@ export function scoreMetadata(
     style: 0,
     commercial: 0,
     technical: 0,
+    color: 0,
+    material: 0,
+    demographic: 0,
+    concept: 0,
+    seasonal: 0,
+    industry: 0,
+    emotion: 0,
+    composition: 0,
   };
 
   for (const kw of keywords) {
@@ -185,4 +195,76 @@ export function scoreMetadata(
       categoryDistribution,
     },
   };
+}
+
+/**
+ * AI-Augmented Forensic Quality Scorer using Groq 120B Reasoning Engine.
+ * Evaluates commercial microstock viability and agency acceptance probability.
+ */
+export async function scoreMetadataWithAI(
+  title: string,
+  keywords: string[],
+  features?: VisualFeatureVector,
+  targetKeywordCount = 49
+): Promise<MetadataQualityMetrics> {
+  const baseline = scoreMetadata(title, keywords, features, targetKeywordCount);
+
+  try {
+    const messages: GroqMessage[] = [
+      {
+        role: "system",
+        content: `You are an elite microstock agency quality inspector for Adobe Stock and Shutterstock.
+Audit the metadata package for:
+1. Title quality (optimal 8-12 words, no quotes, high commercial appeal).
+2. Keyword simplicity (ensure words are simple everyday English; flag any awkward phrases like "technical illustration", "training guide", "maintenance manual").
+3. Visual alignment against detected subjects.
+4. Overall commercial viability (0 to 100).
+Output JSON:
+{
+  "overallScore": 98.5,
+  "accuracyConfidence": 0.99,
+  "commercialViability": 0.98,
+  "simplicityIndex": 0.95,
+  "passedChecks": ["check1", "check2"],
+  "warnings": [],
+  "recommendations": [],
+  "auditSummary": "Forensic audit assessment text"
+}`
+      },
+      {
+        role: "user",
+        content: `Title: "${title}".
+Keywords (${keywords.length}): [${keywords.slice(0, 30).join(", ")}].
+Visual features: ${JSON.stringify(features?.detectedObjects || [])}.
+Inspect and evaluate in JSON format.`
+      }
+    ];
+
+    const res = await callGroq(messages, {
+      model: REASONING_MODEL,
+      temperature: 0.1,
+      max_tokens: 500,
+      jsonMode: true,
+    });
+
+    const parsed = JSON.parse(res.text);
+
+    return {
+      overallScore: typeof parsed.overallScore === "number" ? Math.min(99.9, Math.max(70, parsed.overallScore)) : baseline.overallScore,
+      accuracyConfidence: typeof parsed.accuracyConfidence === "number" ? Math.min(1.0, Math.max(0.7, parsed.accuracyConfidence)) : baseline.accuracyConfidence,
+      commercialViability: typeof parsed.commercialViability === "number" ? Math.min(1.0, Math.max(0.7, parsed.commercialViability)) : baseline.commercialViability,
+      diversityIndex: baseline.diversityIndex,
+      complianceScore: baseline.complianceScore,
+      simplicityIndex: typeof parsed.simplicityIndex === "number" ? Math.min(1.0, Math.max(0.6, parsed.simplicityIndex)) : baseline.simplicityIndex,
+      details: {
+        passedChecks: Array.isArray(parsed.passedChecks) && parsed.passedChecks.length > 0 ? parsed.passedChecks : baseline.details.passedChecks,
+        warnings: Array.isArray(parsed.warnings) ? parsed.warnings : baseline.details.warnings,
+        recommendations: Array.isArray(parsed.recommendations) ? parsed.recommendations : baseline.details.recommendations,
+        aiForensicAudit: parsed.auditSummary || `AI Forensic Audit via Groq (${res.modelUsed})`,
+        categoryDistribution: baseline.details.categoryDistribution,
+      },
+    };
+  } catch {
+    return baseline;
+  }
 }
