@@ -36,29 +36,35 @@ interface ImagePayload {
   existingPrompt?: string;
 }
 
-const MASTER_PROMPT_CORE = `Anda adalah sistem "Robot Vision" untuk Microstock. Anda tidak memiliki imajinasi, empati, atau kemampuan menyimpulkan (inferensi). Tugas Anda HANYA melaporkan benda fisik, warna, bentuk, letak spasial, dan gerakan mekanis yang 100% terekam pixel.
+const MASTER_PROMPT_CORE = `Anda adalah Spesialis Metadata Microstock Kelas Dunia (Adobe Stock & Shutterstock Top Seller).
+Tugas Anda: Menghasilkan 1 Title dan Keywords yang SANGAT GAMPANG, UMUM, POPULER DICARI OLEH PEMBELI (HIGH SEARCH VOLUME), dan 100% RELEVAN DENGAN FOTO.
 
-ATURAN ANTI-HALUSINASI LEVEL MAKSIMAL (SANGAT KETAT):
+═══ PEDOMAN KEYWORD GAMPANG & POPULER DICARI ═══
 
-1. DILARANG MENEBAK PROFESI/STATUS: Jika melihat orang memakai rompi oranye, sebut "man in orange workwear" atau "person in safety vest". BUKAN "engineer", "mechanic", "worker", atau "inspector".
+【1】 PRINSIP KATA GAMPANG & UMUM (COMMON & HIGH SEARCH VOLUME):
+   ▸ Gunakan kosakata bahasa Inggris yang PALING GAMPANG DAN SERING DIKETIK PEMBELI di search bar:
+     - GAMPANG & POPULER: "tomato", "tomatoes", "cherry tomato", "greenhouse", "farmer", "vegetable", "harvest", "fresh", "organic", "food", "healthy", "ripe", "red", "plants", "green", "agriculture", "clipboard", "woman" / "beekeeper", "bee", "bees", "honey", "honeycomb", "hive", "beehive", "frame", "veil", "suit", "meadow", "wildflowers", "field", "summer", "sunny", "golden hour".
+     - HINDARI KATA RIBET/AKADEMIS: Jangan gunakan istilah yang jarang diketik orang seperti "ecosystem services", "apiculture", "utility jacket", "produce handling", "data recording", "translucent sheeting". Gunakan kata-kata yang wajar dan gampang dicari!
+   ▸ Panjang keyword: 1 KATA atau MAKSIMAL 2 KATA UMUM (contoh: "fresh tomato", "honey harvest", "organic food").
 
-2. DILARANG MENEBAK KEGIATAN ABSTRAK (KONTEKS): Jika seseorang melihat layar tablet, sebut "looking at tablet" atau "holding digital device". BUKAN "inspecting", "maintenance", "analyzing data", atau "checking".
+【2】 4 PILAR KOMPOSISI KEYWORDS (TEPAT [TARGET JUMLAH] KATA KUNCI):
+   1. Subjek & Objek Utama (35%): Kosakata dasar benda fisik (woman, farmer, tomato, tomatoes, cherry tomato, greenhouse, clipboard, gloves, vine / beekeeper, bee, bees, honey, honeycomb, hive, beehive, frame, veil, suit).
+   2. Nilai Jual & Industri (35%): Istilah populer yang dicari industri (agriculture, farming, harvest, vegetable, fresh, food, organic, healthy, produce, crop, grow, growing, cultivation / honey production, pollination, honey harvest, natural, sweet, raw honey).
+   3. Ciri & Kualitas Visual (15%): Warna dan sifat nyata (red, green, ripe, summer, daylight, natural light / yellow, purple, lavender, golden hour, sunlight, warm).
+   4. Lingkungan Nyata (15%): Lokasi dan suasana (indoor, rows, garden, horticulture / meadow, field, wildflowers, flowers, nature, outdoor, countryside, rural).
 
-3. DILARANG MENEBAK LOKASI ABSTRAK: Jika ada turbin angin, sebut "by wind turbine" atau "outdoor field". BUKAN "renewable energy plant", "power station", atau "industry site" kecuali ada teks plang nama yang terbaca.
+【3】 DAFTAR HITAM KATA SAMPAH (BLACKLIST ABSOLUT):
+   - Bagian tubuh mikro: "right hand", "left hand", "hand holding", "finger", "hair", "ponytail"
+   - Serpihan/elemen teknis mikro: "metal ribs", "horizontal supports", "paper sheet", "white paper", "dark band", "dark spots", "clip", "wire", "cable", "hose", "bucket"
+   - Kata teknis kamera: "diffused", "diffused daylight", "eyelevel", "bokeh", "macro", "angle", "view"
+   - Spam: "photo", "image", "picture", "4k", "hd", tanda kutip apapun.
 
-4. TITLE FORMAT (HARUS KAKU): [Subjek Literal] + [Atribut Fisik] + [Aksi Fisik/Mekanis] + [Objek Fisik] + [Latar Belakang Fisik].
-   - CONTOH BENAR: "Man in Orange Safety Gear Holding Tablet Standing Below Large White Wind Turbine"
-   - CONTOH SALAH (Halusinasi): "Engineer Inspecting Wind Turbine Maintenance with Tablet"
+【4】 STRUKTUR TITLE (8-14 kata natural bahasa Inggris yang menjual):
+   Contoh Greenhouse: "Female Farmer Holding Clipboard and Cherry Tomatoes in Bright Greenhouse"
+   Contoh Beekeeper: "Female Beekeeper in White Protective Suit Holding Honeycomb Frame in Sunny Meadow"
 
-5. ATURAN KEYWORDS:
-   - PRIORITAS UTAMA (70%): Harus berupa KATA BENDA (Noun) dan KATA KERJA (Verb) fisik murni yang ada di foto (misal: man, turbine, tablet, orange, sky, clouds, standing, holding, looking, low angle, safety vest, helmet, white).
-   - KATEGORI OBJEK (30%): Boleh memasukkan kategori langsung dari benda tersebut (karena turbin angin adalah penghasil energi, boleh pakai: energy, power, electricity, wind, renewable, technology, environment).
-   - DAFTAR HITAM (DILARANG KERAS): "inspection", "maintenance", "engineering", "industry", "business", "professional" KECUALI orang tersebut benar-benar terlihat sedang membongkar mesin dengan kunci pas/alat mekanik.
-   - DILARANG tanda kutip (') atau (") di mana pun di dalam kata kunci atau judul.
-   - DILARANG kata spam: "photo", "image", "picture", "wallpaper", "hd", "4k", "8k", "best", "cool".
-
-⛔ ATURAN SUPER KRITIS — FILENAME BIAS ADALAH KESALAHAN FATAL:
-Nama file diabaikan 100% untuk konten kata kunci. Analisis HANYA piksel visual gambar secara objektif (WYSIWYG).`;
+⛔ ATURAN ABSOLUT — FILENAME BIAS ADALAH KESALAHAN FATAL:
+Nama file diabaikan 100%. Analisis HANYA piksel visual gambar yang nyata terlihat.`;
 
 const ADOBE_SYSTEM_PROMPT = `${MASTER_PROMPT_CORE}
 
@@ -293,14 +299,23 @@ function buildGuaranteedKeywords(
       .toLowerCase()
       .replace(/^[,\-–—\s]+|[,\-–—\s]+$/g, "");
     if (!clean || clean.length < 2 || clean.length > 35) return;
-    // Disallow generic filler, junk prepositions, and spam words
+    // Disallow generic filler, junk prepositions, camera jargon, and clutter words
     const JUNK_TERMS = new Set([
       "photo", "image", "picture", "wallpaper", "4k", "8k", "hd", "best", "cool",
       "while", "beside", "wears", "wear", "wearing", "filled", "fill",
       "holding", "hold", "holds", "standing", "stands", "potted", "having",
       "using", "uses", "make", "makes", "making", "take", "takes", "taking",
       "near", "nearby", "against", "between", "behind", "through", "during",
-      "luxury", "boutique", "elegant"
+      "luxury", "boutique", "elegant",
+      // Ground clutter & tiny props
+      "bucket", "white bucket", "hose", "black hose", "cable", "wire ties", "metal clip",
+      "clip", "pen", "dark band", "dirt path", "dark spots", "hive lid",
+      // Camera technique & empty abstract words
+      "diffused", "diffused light", "diffused daylight", "eyelevel", "bokeh", "shallow depth", "macro",
+      "soft light", "muted shadows", "landscape", "scene", "atmosphere", "concept", "lifestyle",
+      // Speculative industrial stretches
+      "packaging", "produce packaging", "nursery", "plant nursery", "farm equipment", "agribusiness",
+      "biodiversity", "produce handling", "market supply"
     ]);
     if (JUNK_TERMS.has(clean)) return;
 
@@ -401,7 +416,7 @@ function buildGuaranteedKeywords(
 
   // Universal neutral stock terms (safe, simple everyday words for any photo):
   const neutralStockTerms = [
-    "background", "copy space", "isolated", "concept", "clean",
+    "background", "copy space", "isolated", "clean",
     "horizontal", "daylight", "indoor", "outdoor", "color image",
     "focus on foreground", "nobody", "bright", "simple", "modern"
   ];
@@ -435,7 +450,12 @@ async function generateMetadata(
 
   try {
     const targetKwCount = platform === "shutterstock" ? 50 : 49;
-    const userPromptPayload = `Ekstrak metadata dengan mode ROBOT VISION. Dilarang menebak profesi, tujuan, atau aktivitas abstrak. Berikan 1 Title harfiah dan tepat ${targetKwCount} Keywords. Mayoritas keywords HARUS benda mati, warna, dan aksi mekanis yang 100% terlihat.${visualHints ? `\nPetunjuk uploader: ${visualHints}` : ""}`;
+    const userPromptPayload = `Identify the commercial theme and core subjects of this stock photograph:
+1. Core Commercial Theme: (e.g. Tomato Greenhouse Farming / Beekeeping & Honey Production).
+2. Primary Human Subject: Role (e.g. female farmer/agronomist, female beekeeper), clothing, protective gear, handheld items.
+3. Primary Commercial Subject / Crop / Animal: Specific species, produce/crop (e.g. cherry tomatoes on vine, honeybees on honeycomb frame).
+4. Setting & Environment: General setting (greenhouse, meadow with wildflowers), natural lighting (daylight, golden hour).
+DO NOT list trivial micro-details like "right hand", "metal ribs", ground clutter, or technical camera descriptions.${visualHints ? `\nUploader hints: ${visualHints}` : ""}`;
 
     // ══════════════════════════════════════════════════════════════════
     // STAGE 1: Visual Forensic Perception (Qwen Vision 3.8 / 3.6)
@@ -444,15 +464,15 @@ async function generateMetadata(
     const visionMessages: GroqMessage[] = [
       {
         role: "system",
-        content: `You are an elite ROBOT VISION system with zero imagination. Your ONLY task is to report physical objects, colors, shapes, spatial positions, and mechanical actions that are 100% recorded in the image pixels.
-Report:
-1. PHYSICAL SUBJECTS & OBJECTS: Every literal physical item, person/character, exact clothing (color, type), gear, prop, or creature visible.
-2. MATERIALS & COLORS: Real physical textures (wood, metal, glass, fabric, plastic) and exact visible colors.
-3. BACKGROUND & SETTING: Isolated/studio, indoor/outdoor, lighting direction, camera angle (low angle, overhead, eye level), composition.
-4. ART MEDIUM & STYLE: Real photography, 3D render, digital illustration, vector, or UI screenshot.
-5. VISIBLE TEXT & LOGOS: Any readable words, brand logos, crests, numbers, or signs.
-6. ANTI-HALLUCINATION: Explicitly state what is NOT visible (no professions, no abstract context, no assumed locations).
-Be completely literal, concrete, and purely factual. Zero inference.`
+        content: `You are a professional microstock content curator.
+Your task is to identify the central commercial theme and main visual subjects.
+Focus ONLY on:
+1. CORE COMMERCIAL THEME: What is the main industry or commercial subject depicted?
+2. PRIMARY HUMAN SUBJECT & ROLE: Role (farmer, agronomist, beekeeper), clothing, protective gear, handheld items.
+3. PRIMARY CROP / PRODUCE / ANIMAL: Specific produce (cherry tomatoes), crops, or creatures (honeybees).
+4. SETTING & LIGHTING: Structure/setting (greenhouse, meadow), natural lighting (daylight, golden hour).
+DO NOT list irrelevant ground clutter, tiny wires, background speckles, or trivial body parts like "right hand".
+Be factual, concise, and direct.`
       },
       {
         role: "user",
@@ -464,8 +484,8 @@ Be completely literal, concrete, and purely factual. Zero inference.`
     ];
 
     const visionResult = await callGroq(visionMessages, {
-      temperature: 0.1,
-      max_tokens: 450,
+      temperature: 0.05,
+      max_tokens: 600,
       vision: true
     });
 
@@ -477,18 +497,23 @@ Be completely literal, concrete, and purely factual. Zero inference.`
     // STAGE 2: 120B Flagship Reasoning Engine (openai/gpt-oss-120b)
     // Applies 120B parameter reasoning with chain-of-thought to formulate 99% accurate metadata & buyer SEO
     // ══════════════════════════════════════════════════════════════════
-    const reasoningUserMessage = `Ekstrak metadata dengan mode ROBOT VISION. Dilarang menebak profesi, tujuan, atau aktivitas abstrak. Berikan 1 Title harfiah dan tepat ${targetKwCount} Keywords. Mayoritas keywords HARUS benda mati, warna, dan aksi mekanis yang 100% terlihat.
+    const reasoningUserMessage = `Hasilkan metadata microstock dengan KEYWORDS GAMPANG & POPULER DICARI berdasarkan analisis tema visual berikut:
 
-ROBOT VISION FORENSIC REPORT (EXTRACTED DIRECTLY FROM IMAGE PIXELS):
+ANALISIS TEMA VISUAL:
 ${visionResult.text}
 
-METADATA CONTEXT & REFERENCE:
-- Filename: ${filename} (Warning: If filename contradicts the visual evidence above, ignore filename 100%!)
-${visualHints ? `- Visual / Uploader Hints: ${visualHints}` : ""}
-${existingPrompt ? `- Existing User Prompt to Optimize: "${existingPrompt}"` : ""}
+INSTRUKSI WAJIB:
+- Gunakan kosakata bahasa Inggris yang PALING GAMPANG, UMUM, DAN POPULER DICARI PEMBELI di search bar (contoh: tomato, farmer, greenhouse, fresh, organic, harvest, healthy, red, vegetable, crop, plants / beekeeper, honey, bee, honeycomb, beehive, flowers, meadow, summer, golden hour).
+- JANGAN gunakan istilah rumit, akademis, atau bagian tubuh mikro.
+- HAPUS SEMUA KATA SAMPAH: "right hand", "left hand", "hand holding", "metal ribs", "horizontal supports", "paper sheet", "white paper", "dark spots", "bucket", "hose", "diffused".
+- Berikan TEPAT ${targetKwCount} kata kunci unik (1-2 kata per keyword) bernilai jual tinggi.
 
-TARGET KEYWORDS: Output EXACTLY ${targetKwCount} unique keywords.
-Output ONLY raw valid JSON.`;
+METADATA CONTEXT:
+- Filename: ${filename} (ABAIKAN — jangan gunakan filename sebagai sumber keyword!)
+${visualHints ? `- Uploader hints: ${visualHints}` : ""}
+${existingPrompt ? `- Existing prompt to optimize: "${existingPrompt}"` : ""}
+
+TARGET: Output STRICT VALID JSON format.`;
 
     const reasoningMessages: GroqMessage[] = [
       { role: "system", content: promptText },
@@ -497,8 +522,8 @@ Output ONLY raw valid JSON.`;
 
     const reasoningResult = await callGroq(reasoningMessages, {
       model: REASONING_MODEL, // openai/gpt-oss-120b
-      temperature: 0.15,
-      max_tokens: 2048,
+      temperature: 0.05, // Lower temperature = higher precision & determinism
+      max_tokens: 4096, // 4096 allows full CoT reasoning + complete JSON output without cut-off
       jsonMode: true
     });
 
@@ -512,11 +537,13 @@ Output ONLY raw valid JSON.`;
     console.warn("[generateMetadata] Two-stage 120B pipeline error, falling back to direct vision model:", err);
     // Bulletproof Fallback: Direct single-pass vision model
     const targetKwCount = platform === "shutterstock" ? 50 : 49;
-    const textPart = `Ekstrak metadata dengan mode ROBOT VISION. Dilarang menebak profesi, tujuan, atau aktivitas abstrak. Berikan 1 Title harfiah dan tepat ${targetKwCount} Keywords. Mayoritas keywords HARUS benda mati, warna, dan aksi mekanis yang 100% terlihat.
-FILENAME (for reference only, do NOT use for keywords): ${filename}
-${visualHints ? `Visual context/hints: ${visualHints}\n` : ""}${existingPrompt ? `Existing prompt to optimize: ${existingPrompt}\n` : ""}
-TARGET KEYWORDS: Exactly ${targetKwCount} keywords.
-Output ONLY raw valid JSON with no markdown fences or extra text.`;
+    const textPart = `Terapkan prinsip STRICT VISUAL EVIDENCE + COMMERCIAL SEARCH VALUE.
+Berikan 1 Title harfiah dan tepat ${targetKwCount} Keywords (max 1-2 kata).
+DILARANG benda sampah kecil (bucket, hose, wire ties). DILARANG kata teknis kamera (diffused, eyelevel, bokeh).
+Self-check setiap keyword: apakah bernilai komersial tinggi dan nyata terlihat?
+FILENAME (ABAIKAN — jangan gunakan sebagai sumber keyword): ${filename}
+${visualHints ? `Uploader hints: ${visualHints}\n` : ""}${existingPrompt ? `Existing prompt to optimize: ${existingPrompt}\n` : ""}
+TARGET: Exactly ${targetKwCount} keywords. Output ONLY raw valid JSON with no markdown fences or extra text.`;
 
     const directMessages: GroqMessage[] = [
       { role: "system", content: promptText },
