@@ -98,18 +98,18 @@ export function extractImageHints(dataUrl: string): Promise<string> {
         .slice(0, 5)
         .map(([rgb]) => `rgb(${rgb})`);
 
-      const orientation =
+      const aspect =
         img.width > img.height * 1.2
-          ? "landscape"
+          ? "horizontal"
           : img.height > img.width * 1.2
-            ? "portrait"
+            ? "vertical"
             : "square";
 
       resolve(
-        `Dimensions: ${img.width}x${img.height}px, Orientation: ${orientation}, Dominant colors: ${topColors.join(", ")}`
+        `Dimensions: ${img.width}x${img.height}px (${aspect})`
       );
     };
-    img.onerror = () => resolve("Image analysis unavailable");
+    img.onerror = () => resolve("");
     img.src = dataUrl;
   });
 }
