@@ -36,22 +36,26 @@ interface ImagePayload {
   existingPrompt?: string;
 }
 
-const MASTER_PROMPT_CORE = `Anda adalah Quality Control Metadata Microstock Senior. Tugas utama Anda adalah MENGHAPUS SEMUA HALUSINASI dari deskripsi gambar dan hanya memberikan metadata literal, nyata, dan objektif.
+const MASTER_PROMPT_CORE = `Anda adalah sistem "Robot Vision" untuk Microstock. Anda tidak memiliki imajinasi, empati, atau kemampuan menyimpulkan (inferensi). Tugas Anda HANYA melaporkan benda fisik, warna, bentuk, letak spasial, dan gerakan mekanis yang 100% terekam pixel.
 
-ATURAN ANTI-HALUSINASI (SANGAT KETAT):
-1. JANGAN ASUMSIKAN PROFESI: Jika melihat pria berjas, dia adalah "businessman", "professional", atau "man in suit". BUKAN "CEO", "Manager", atau "Concierge" kecuali ada seragam/name tag eksplisit.
-2. JANGAN ASUMSIKAN LOKASI SPESIFIK: Jika melihat meja dan komputer, itu adalah "office" atau "workspace". BUKAN "tech startup", "Wall Street", atau "luxury boutique hotel" kecuali terbukti 100% dari teks/arsitektur di gambar.
-3. JANGAN ASUMSIKAN HUBUNGAN: BUKAN "husband and wife" (gunakan "couple", "man and woman"), BUKAN "friends" (gunakan "group of people").
-4. DESKRIPSI TITLE: Fokus HANYA pada [Subjek Utama] + [Atribut Fisik] + [Aksi Literal] + [Objek Terlihat] + [Lingkungan Fisik Dasar].
-   - CONTOH BURUK (Halusinasi): "Senior Hotel Concierge Showing Directions on City Map to Female Traveler in Luxury Hotel Lobby"
-   - CONTOH BAIK (Literal): "Older Man in Uniform Pointing at Map with Woman Holding Luggage in Indoor Building Lobby"
-5. KEYWORDS:
-   - Gunakan kosakata bahasa Inggris yang paling umum dicari (Broad, Common & Literal).
-   - Panjang kata kunci: 1 hingga 2 kata saja (maksimal 3 kata untuk istilah umum).
-   - Konsep abstrak HANYA BOLEH dimasukkan JIKA sangat didukung oleh aksi visual (misal: "guidance", "travel", "hospitality" boleh jika ada peta dan koper).
-   - DILARANG KERAS memasukkan kata sifat berlebihan seperti "luxury", "boutique", "elegant" jika tidak ada bukti kemewahan ekstrem yang terlihat jelas secara fisik.
-   - DILARANG memasukkan kata spam: "photo", "image", "picture", "wallpaper", "hd", "4k", "8k", "best", "cool".
+ATURAN ANTI-HALUSINASI LEVEL MAKSIMAL (SANGAT KETAT):
+
+1. DILARANG MENEBAK PROFESI/STATUS: Jika melihat orang memakai rompi oranye, sebut "man in orange workwear" atau "person in safety vest". BUKAN "engineer", "mechanic", "worker", atau "inspector".
+
+2. DILARANG MENEBAK KEGIATAN ABSTRAK (KONTEKS): Jika seseorang melihat layar tablet, sebut "looking at tablet" atau "holding digital device". BUKAN "inspecting", "maintenance", "analyzing data", atau "checking".
+
+3. DILARANG MENEBAK LOKASI ABSTRAK: Jika ada turbin angin, sebut "by wind turbine" atau "outdoor field". BUKAN "renewable energy plant", "power station", atau "industry site" kecuali ada teks plang nama yang terbaca.
+
+4. TITLE FORMAT (HARUS KAKU): [Subjek Literal] + [Atribut Fisik] + [Aksi Fisik/Mekanis] + [Objek Fisik] + [Latar Belakang Fisik].
+   - CONTOH BENAR: "Man in Orange Safety Gear Holding Tablet Standing Below Large White Wind Turbine"
+   - CONTOH SALAH (Halusinasi): "Engineer Inspecting Wind Turbine Maintenance with Tablet"
+
+5. ATURAN KEYWORDS:
+   - PRIORITAS UTAMA (70%): Harus berupa KATA BENDA (Noun) dan KATA KERJA (Verb) fisik murni yang ada di foto (misal: man, turbine, tablet, orange, sky, clouds, standing, holding, looking, low angle, safety vest, helmet, white).
+   - KATEGORI OBJEK (30%): Boleh memasukkan kategori langsung dari benda tersebut (karena turbin angin adalah penghasil energi, boleh pakai: energy, power, electricity, wind, renewable, technology, environment).
+   - DAFTAR HITAM (DILARANG KERAS): "inspection", "maintenance", "engineering", "industry", "business", "professional" KECUALI orang tersebut benar-benar terlihat sedang membongkar mesin dengan kunci pas/alat mekanik.
    - DILARANG tanda kutip (') atau (") di mana pun di dalam kata kunci atau judul.
+   - DILARANG kata spam: "photo", "image", "picture", "wallpaper", "hd", "4k", "8k", "best", "cool".
 
 ⛔ ATURAN SUPER KRITIS — FILENAME BIAS ADALAH KESALAHAN FATAL:
 Nama file diabaikan 100% untuk konten kata kunci. Analisis HANYA piksel visual gambar secara objektif (WYSIWYG).`;
@@ -431,7 +435,7 @@ async function generateMetadata(
 
   try {
     const targetKwCount = platform === "shutterstock" ? 50 : 49;
-    const userPromptPayload = `Lakukan analisis visual SUPER KETAT berdasarkan fakta fisik (WYSIWYG). Jangan berhalusinasi. Buat Title deskriptif literal dan ekstrak TEPAT ${targetKwCount} Keyword umum yang relevan. Dilarang menebak profesi spesifik, lokasi bermerek, atau status (seperti luxury/boutique) tanpa bukti visual absolut.${visualHints ? `\nPetunjuk uploader: ${visualHints}` : ""}`;
+    const userPromptPayload = `Ekstrak metadata dengan mode ROBOT VISION. Dilarang menebak profesi, tujuan, atau aktivitas abstrak. Berikan 1 Title harfiah dan tepat ${targetKwCount} Keywords. Mayoritas keywords HARUS benda mati, warna, dan aksi mekanis yang 100% terlihat.${visualHints ? `\nPetunjuk uploader: ${visualHints}` : ""}`;
 
     // ══════════════════════════════════════════════════════════════════
     // STAGE 1: Visual Forensic Perception (Qwen Vision 3.8 / 3.6)
@@ -440,15 +444,15 @@ async function generateMetadata(
     const visionMessages: GroqMessage[] = [
       {
         role: "system",
-        content: `You are an elite, objective microstock vision forensic analyst. Your task is to perform an exhaustive, 100% factual visual inspection of the image.
+        content: `You are an elite ROBOT VISION system with zero imagination. Your ONLY task is to report physical objects, colors, shapes, spatial positions, and mechanical actions that are 100% recorded in the image pixels.
 Report:
-1. SUBJECT & PHYSICAL OBJECTS: Every literal physical item, person/character, clothing, gear, prop, or creature visible.
+1. PHYSICAL SUBJECTS & OBJECTS: Every literal physical item, person/character, exact clothing (color, type), gear, prop, or creature visible.
 2. MATERIALS & COLORS: Real physical textures (wood, metal, glass, fabric, plastic) and exact visible colors.
-3. BACKGROUND & SETTING: Isolated/studio, indoor/outdoor, lighting, angle, and composition.
-4. ART MEDIUM & STYLE: Real photography, 3D render (low-poly/hyper-realistic), digital illustration, vector, game screenshot, or UI overlay.
-5. TEXT & DETAILS: Any visible words, logos, crests, or numbers.
-6. ANTI-HALLUCINATION: Note what is definitely NOT in the image.
-Be concrete, concise, and purely factual.`
+3. BACKGROUND & SETTING: Isolated/studio, indoor/outdoor, lighting direction, camera angle (low angle, overhead, eye level), composition.
+4. ART MEDIUM & STYLE: Real photography, 3D render, digital illustration, vector, or UI screenshot.
+5. VISIBLE TEXT & LOGOS: Any readable words, brand logos, crests, numbers, or signs.
+6. ANTI-HALLUCINATION: Explicitly state what is NOT visible (no professions, no abstract context, no assumed locations).
+Be completely literal, concrete, and purely factual. Zero inference.`
       },
       {
         role: "user",
@@ -473,9 +477,9 @@ Be concrete, concise, and purely factual.`
     // STAGE 2: 120B Flagship Reasoning Engine (openai/gpt-oss-120b)
     // Applies 120B parameter reasoning with chain-of-thought to formulate 99% accurate metadata & buyer SEO
     // ══════════════════════════════════════════════════════════════════
-    const reasoningUserMessage = `Lakukan analisis visual SUPER KETAT berdasarkan fakta fisik (WYSIWYG). Jangan berhalusinasi. Buat Title deskriptif literal dan ekstrak TEPAT ${targetKwCount} Keyword umum yang relevan. Dilarang menebak profesi spesifik, lokasi bermerek, atau status (seperti luxury/boutique) tanpa bukti visual absolut.
+    const reasoningUserMessage = `Ekstrak metadata dengan mode ROBOT VISION. Dilarang menebak profesi, tujuan, atau aktivitas abstrak. Berikan 1 Title harfiah dan tepat ${targetKwCount} Keywords. Mayoritas keywords HARUS benda mati, warna, dan aksi mekanis yang 100% terlihat.
 
-VISUAL FORENSIC INSPECTION REPORT (EXTRACTED DIRECTLY FROM IMAGE PIXELS):
+ROBOT VISION FORENSIC REPORT (EXTRACTED DIRECTLY FROM IMAGE PIXELS):
 ${visionResult.text}
 
 METADATA CONTEXT & REFERENCE:
@@ -508,7 +512,7 @@ Output ONLY raw valid JSON.`;
     console.warn("[generateMetadata] Two-stage 120B pipeline error, falling back to direct vision model:", err);
     // Bulletproof Fallback: Direct single-pass vision model
     const targetKwCount = platform === "shutterstock" ? 50 : 49;
-    const textPart = `Lakukan analisis visual SUPER KETAT berdasarkan fakta fisik (WYSIWYG). Jangan berhalusinasi. Buat Title deskriptif literal dan ekstrak TEPAT ${targetKwCount} Keyword umum yang relevan. Dilarang menebak profesi spesifik, lokasi bermerek, atau status (seperti luxury/boutique) tanpa bukti visual absolut.
+    const textPart = `Ekstrak metadata dengan mode ROBOT VISION. Dilarang menebak profesi, tujuan, atau aktivitas abstrak. Berikan 1 Title harfiah dan tepat ${targetKwCount} Keywords. Mayoritas keywords HARUS benda mati, warna, dan aksi mekanis yang 100% terlihat.
 FILENAME (for reference only, do NOT use for keywords): ${filename}
 ${visualHints ? `Visual context/hints: ${visualHints}\n` : ""}${existingPrompt ? `Existing prompt to optimize: ${existingPrompt}\n` : ""}
 TARGET KEYWORDS: Exactly ${targetKwCount} keywords.
