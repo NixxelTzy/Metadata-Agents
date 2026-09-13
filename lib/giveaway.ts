@@ -152,7 +152,7 @@ export async function evaluateSundayGiveawayEligibility(): Promise<SundayEligibi
   // Cek apakah siklus hari Minggu ini sudah pernah dieksekusi
   const cycleLockKey = `giveaway:cycle:${dateKey}`;
   const cycleStatus = await redis.get<string>(cycleLockKey);
-  const alreadyExecutedThisSunday = Boolean(cycleStatus);
+  const alreadyExecutedThisSunday = cycleStatus === "completed";
 
   const fullFormatted = `${dayName}, ${wibDate.getUTCDate()} ${wibDate.toLocaleString("id-ID", { month: "long" })} ${wibDate.getUTCFullYear()} pukul ${String(hourWIB).padStart(2, "0")}:${String(minuteWIB).padStart(2, "0")} WIB`;
 
@@ -167,6 +167,8 @@ export async function evaluateSundayGiveawayEligibility(): Promise<SundayEligibi
     reason = `Hari ini Hari Minggu, namun jam saat ini (${String(hourWIB).padStart(2, "0")}:${String(minuteWIB).padStart(2, "0")} WIB) belum mencapai jam 10:00 WIB. Menunggu hitungan mundur selesai.`;
   } else if (alreadyExecutedThisSunday) {
     reason = `Pengundian giveaway untuk Hari Minggu ini (${dateKey}) telah sukses dieksekusi. Jadwal berikutnya Minggu depan.`;
+  } else if (cycleStatus === "in_progress") {
+    reason = `Pengundian giveaway untuk Hari Minggu ini (${dateKey}) sedang dalam proses eksekusi oleh background worker.`;
   } else {
     isEligible = true;
     reason = `Semua syarat terpenuhi! Hari Minggu pukul ${String(hourWIB).padStart(2, "0")}:${String(minuteWIB).padStart(2, "0")} WIB dan belum diundi untuk siklus ${dateKey}.`;
@@ -488,9 +490,10 @@ export async function checkAndAutoExecuteIfDue(): Promise<{
       return { executed: false, reason: status.reason };
     }
 
-    // Gunakan atomic Redis lock untuk mencegah race condition
+    // Gunakan atomic Redis lock berdurasi pendek (300 detik) saat in_progress
+    // agar jika terjadi server crash / timeout, sistem tidak terkunci permanen
     const cycleLockKey = `giveaway:cycle:${status.wibNow.dateKey}`;
-    const acquired = await redis.set(cycleLockKey, "in_progress", { nx: true, ex: 86400 * 14 });
+    const acquired = await redis.set(cycleLockKey, "in_progress", { nx: true, ex: 300 });
 
     if (!acquired) {
       return {
@@ -501,13 +504,60 @@ export async function checkAndAutoExecuteIfDue(): Promise<{
 
     console.log(`[GiveawayAuto] 🎯 Kriteria terpenuhi! Otomatis menjalankan Giveaway Hari Minggu (${status.wibNow.dateKey} pukul ${status.wibNow.hour}:${status.wibNow.minute} WIB) secara mandiri di background server...`);
 
-    const result = await executeGiveawayDraw("Sistem Otomatis Server (Auto Sunday Engine)", undefined, true);
-    await redis.set(cycleLockKey, "completed", { ex: 86400 * 14 });
-
-    return { executed: true, reason: status.reason, result };
+    try {
+      const result = await executeGiveawayDraw("Sistem Otomatis Server (Auto Sunday Engine)", undefined, true);
+      if (result.ok) {
+        // Kunci siklus sukses 14 hari penuh
+        await redis.set(cycleLockKey, "completed", { ex: 86400 * 14 });
+        return { executed: true, reason: status.reason, result };
+      } else {
+        // Jika hasil pengundian gagal (misal tidak ada kandidat), lepaskan lock agar dapat dicoba lagi
+        await redis.del(cycleLockKey);
+        return { executed: false, reason: result.message, result };
+      }
+    } catch (drawErr) {
+      // Lepaskan lock jika terjadi exception tak terduga
+      await redis.del(cycleLockKey);
+      throw drawErr;
+    }
   } catch (err) {
     console.error("[GiveawayAuto] Error auto-execute check:", err);
     return { executed: false, reason: err instanceof Error ? err.message : String(err) };
+  }
+}
+
+// ══════════════════════════════════════════════════════
+//  PASSIVE SELF-HEALING TRIGGER (Opportunistic Runner)
+// ══════════════════════════════════════════════════════
+
+let lastPassiveCheckMs = 0;
+
+/**
+ * Universal Passive Trigger (Opportunistic Cron)
+ * Dapat dipanggil secara non-blocking dari endpoint manapun (auth/me, tokens, health, generate).
+ * Di-throttle agar hanya mengecek waktu dan Redis paling sering sekali tiap 60 detik.
+ * Menjamin pengundian otomatis berjalan tanpa admin harus membuka halaman giveaway.
+ */
+export async function triggerPassiveGiveawayCheck(): Promise<void> {
+  const now = Date.now();
+  if (now - lastPassiveCheckMs < 60_000) return;
+  lastPassiveCheckMs = now;
+
+  // Cek cepat lokal WIB: Apakah hari ini Hari Minggu jam >= 10?
+  const wibOffsetMs = 7 * 60 * 60 * 1000;
+  const wibDate = new Date(now + wibOffsetMs);
+  const dayOfWeek = wibDate.getUTCDay(); // 0 = Minggu
+  const hourWIB = wibDate.getUTCHours();
+
+  if (dayOfWeek !== 0 || hourWIB < 10) return;
+
+  try {
+    const res = await checkAndAutoExecuteIfDue();
+    if (res.executed) {
+      console.log("[GiveawayPassive] ✅ Giveaway otomatis sukses dieksekusi via passive traffic trigger!");
+    }
+  } catch (err) {
+    console.error("[GiveawayPassive] Passive check execution error:", err);
   }
 }
 
@@ -547,8 +597,8 @@ export function startGiveawayAutonomousDaemon(): void {
   }
 }
 
-// Inisialisasi otomatis jika dijalankan di environment Node.js
-if (typeof process !== "undefined" && process.env.NEXT_RUNTIME === "nodejs") {
+// Inisialisasi otomatis di lingkungan server Node.js
+if (typeof window === "undefined") {
   startGiveawayAutonomousDaemon();
 }
 
