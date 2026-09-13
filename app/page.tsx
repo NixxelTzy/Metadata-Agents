@@ -582,7 +582,7 @@ export default function Home() {
         {/* ══ MAIN CONTENT ══ */}
         <main className="app-main" key={activeTab}>
           {activeTab === "dashboard" ? (
-            <Dashboard onNavigate={(t) => handleTabChange(t as Tab)} username={user?.username} isAdmin={isAdmin} />
+            <Dashboard onNavigate={(t: string) => handleTabChange(t as Tab)} username={user?.username} isAdmin={isAdmin} />
           ) : !isAdmin && closingMap[activeTab]?.closed ? (
             <FeatureClosedNotice featureName={currentTabMeta?.label} message={closingMap[activeTab]?.message} />
           ) : activeTab === "monitor" && isAdmin ? <ServerMonitor />

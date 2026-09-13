@@ -18,6 +18,12 @@ export async function GET(request: NextRequest) {
   if (userDb) {
     userDb = await checkAndExpireUserPremium(userDb);
   }
+
+  // Autonomous Sunday Giveaway passive trigger (non-blocking, 0ms latency)
+  import("@/lib/giveaway")
+    .then((m) => m.triggerPassiveGiveawayCheck())
+    .catch(() => {});
+
   const recId = userDb?.recipientId ?? generateRecipientId(payload.userId || payload.email);
   const effectiveRole = payload.email === "nixxeltzy@gmail.com" ? "admin" : (userDb?.role ?? payload.role ?? "user");
 

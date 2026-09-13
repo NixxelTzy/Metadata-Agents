@@ -1264,8 +1264,8 @@ export default function ImageUploader({ onTokensUpdated, userEmail, userRole, is
                       <label style={{ fontSize: 11, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.08em", color: "#1e40af", display: "block", marginBottom: 6 }}>
                         Judul / Deskripsi
                       </label>
-                      <input
-                        type="text"
+                      <textarea
+                        rows={2}
                         value={result.title}
                         onChange={(e) => handleUpdateResult(i, { title: e.target.value })}
                         style={{
@@ -1277,7 +1277,10 @@ export default function ImageUploader({ onTokensUpdated, userEmail, userRole, is
                           borderRadius: 10,
                           color: "#0f172a",
                           fontWeight: 700,
-                          outline: "none"
+                          outline: "none",
+                          resize: "vertical",
+                          lineHeight: 1.4,
+                          fontFamily: "inherit"
                         }}
                       />
                     </div>

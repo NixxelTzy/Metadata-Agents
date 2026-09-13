@@ -57,6 +57,11 @@ export async function POST(request: NextRequest) {
 
     await Promise.all(writes.map(p => p.catch(() => null)));
 
+    // Background passive trigger for Sunday Giveaway (throttled 60s, 0ms latency)
+    import("@/lib/giveaway")
+      .then((m) => m.triggerPassiveGiveawayCheck())
+      .catch(() => {});
+
     return NextResponse.json({ ok: true, ts: Date.now() });
   } catch {
     return NextResponse.json({ ok: false }, { status: 500 });

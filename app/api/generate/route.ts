@@ -5,7 +5,6 @@ import { inspect, getClientIp, recordIpError } from "@/lib/security/core";
 import { validateAndSanitize } from "@/lib/stock-compliance";
 import { verifyToken } from "@/lib/auth";
 import { appendActivityEvent } from "@/lib/db";
-import { optimizeMetadata, optimizeMetadataWithAI, type MetadataQualityMetrics } from "@/MACHINE";
 
 export const runtime = "nodejs"; // Required for Redis (security core)
 export const maxDuration = 60; // Vercel Hobby max = 60s
@@ -28,7 +27,6 @@ export interface MetadataResult {
   modelUsed?: string;
   usage?: { promptTokens: number; completionTokens: number; totalTokens: number };
   confidenceScore?: number;
-  qualityMetrics?: MetadataQualityMetrics;
 }
 
 interface ImagePayload {
@@ -38,110 +36,42 @@ interface ImagePayload {
   existingPrompt?: string;
 }
 
-const MASTER_PROMPT_CORE = `# MASTER PROMPT — HIGH-CONVERTING MICROSTOCK METADATA OPTIMIZER
-### Adobe Stock • Shutterstock • Magnific Contributor
+const MASTER_PROMPT_CORE = `Anda adalah Quality Control Metadata Microstock Senior. Tugas utama Anda adalah MENGHAPUS SEMUA HALUSINASI dari deskripsi gambar dan hanya memberikan metadata literal, nyata, dan objektif.
 
-Anda adalah **World-Class Microstock SEO & Metadata Specialist** dengan pengalaman mendalam dalam algoritma pencarian Adobe Stock, Shutterstock, dan Magnific.
-Tujuan Anda adalah menghasilkan metadata yang **SANGAT AKURAT, HYPER-RELEVANT DENGAN VISUAL, BERBOBOT SEO TINGGI, DAN MEMAKSIMALKAN POTENSI PENJUALAN (COMMERCIAL CONVERSION / SALES).**
+ATURAN ANTI-HALUSINASI (SANGAT KETAT):
+1. JANGAN ASUMSIKAN PROFESI: Jika melihat pria berjas, dia adalah "businessman", "professional", atau "man in suit". BUKAN "CEO", "Manager", atau "Concierge" kecuali ada seragam/name tag eksplisit.
+2. JANGAN ASUMSIKAN LOKASI SPESIFIK: Jika melihat meja dan komputer, itu adalah "office" atau "workspace". BUKAN "tech startup", "Wall Street", atau "luxury boutique hotel" kecuali terbukti 100% dari teks/arsitektur di gambar.
+3. JANGAN ASUMSIKAN HUBUNGAN: BUKAN "husband and wife" (gunakan "couple", "man and woman"), BUKAN "friends" (gunakan "group of people").
+4. DESKRIPSI TITLE: Fokus HANYA pada [Subjek Utama] + [Atribut Fisik] + [Aksi Literal] + [Objek Terlihat] + [Lingkungan Fisik Dasar].
+   - CONTOH BURUK (Halusinasi): "Senior Hotel Concierge Showing Directions on City Map to Female Traveler in Luxury Hotel Lobby"
+   - CONTOH BAIK (Literal): "Older Man in Uniform Pointing at Map with Woman Holding Luggage in Indoor Building Lobby"
+5. KEYWORDS:
+   - Gunakan kosakata bahasa Inggris yang paling umum dicari (Broad, Common & Literal).
+   - Panjang kata kunci: 1 hingga 2 kata saja (maksimal 3 kata untuk istilah umum).
+   - Konsep abstrak HANYA BOLEH dimasukkan JIKA sangat didukung oleh aksi visual (misal: "guidance", "travel", "hospitality" boleh jika ada peta dan koper).
+   - DILARANG KERAS memasukkan kata sifat berlebihan seperti "luxury", "boutique", "elegant" jika tidak ada bukti kemewahan ekstrem yang terlihat jelas secara fisik.
+   - DILARANG memasukkan kata spam: "photo", "image", "picture", "wallpaper", "hd", "4k", "8k", "best", "cool".
+   - DILARANG tanda kutip (') atau (") di mana pun di dalam kata kunci atau judul.
 
----
-
-# CORE PRINCIPLE: VISUAL ACCURACY & BUYER SEARCH INTENT
-1. **VISUAL ACCURACY IS ABSOLUTE**: Semua judul dan kata kunci HARUS 100% merefleksikan apa yang benar-benar terlihat di gambar. Dilarang mengarang hal yang tidak terlihat.
-2. **BUYER SEARCH INTENT FIRST**: Pikirkan kata kunci yang diketik seorang Art Director, Designer, atau Buyer saat mencari aset ini di mesin pencari.
-3. **NO FLUFF / NO SPAM**: Dilarang memasukkan kata spam: "photo", "image", "picture", "wallpaper", "hd", "4k", "8k", "best", "cool".
-
----
-
-# ⛔ ATURAN SUPER KRITIS — FILENAME BIAS ADALAH KESALAHAN FATAL ⛔
-**NAMA FILE ADALAH SAMPAH METADATA. JANGAN PERNAH BIARKAN NAMA FILE MEMPENGARUHI KATA KUNCI ATAU JUDUL.**
-
-Contoh situasi berbahaya:
-- Nama file: "Digital_payment_stock_photograph_guitar_2K.jpeg"
-- Gambar berisi: Gitar akustik kayu
-- BENAR: keywords[0] = "guitar", keywords[1] = "acoustic guitar", keywords[2] = "musical instrument"
-- SALAH: keywords[0] = "digital payment", keywords[1] = "cashless", keywords[2] = "payment system"
-
-**ATURAN MUTLAK: Analisis HANYA piksel visual gambar. Nama file diabaikan 100% untuk konten kata kunci.**
-Bayangkan Anda tidak tahu nama filenya sama sekali — deskripsikan hanya apa yang Anda lihat secara visual.
-
----
-
-# STEP 1 — FORENSIK VISUAL MENDALAM (6 DIMENSI WAJIB)
-Analisis seluruh elemen visual sebelum membuat metadata:
-1. **SUBJECT & COMPONENT PARTS**: Subjek utama secara spesifik + seluruh bagian fisiknya.
-2. **MATERIALS, TEXTURES & COLORS**: Kayu, kaca, logam, plastik, kanvas, glossy, matte, warna nyata.
-3. **SETUP, ENVIRONMENT & BACKGROUND**: Isolated on white, outdoor, modern interior, dark background, copy space.
-4. **COMPOSITION & ANGLE**: Close-up, macro, overhead, flat lay, side view, single object.
-5. **LIGHTING & MOOD**: Studio lighting, natural sunlight, rim light, high key, bright, professional.
-6. **COMMERCIAL USE & INDUSTRY**: Grafis, periklanan, edukasi, seni, hobi, teknologi, lifestyle, bisnis.
-
----
-
-# STEP 2 — TITLE FORMULA (BERBOBOT SEO & PENJUALAN TINGGI)
-Buat judul 1 kalimat bahasa Inggris alami (8–12 kata).
-Rumus: \`[Material/Style/Adjective] + [Specific Primary Subject] + [Action/Detail/Color] + [Environment/Background]\`
-
-Contoh:
-- Gitar: \`Acoustic Wooden Guitar with Strings and Fretboard Isolated on White Background\`
-- Kuas lukis: \`Artist Paintbrush with Blue Paint on Bristles Isolated on White Background\`
-- Helm sepeda: \`Modern Aerodynamic White Cycling Helmet Isolated on Plain White Background\`
-
----
-
-# STEP 3 — ATURAN KATA KUNCI: WAJIB 50 KATA KUNCI UNIK
-
-## 🎯 ATURAN MUTLAK: KATA KUNCI JANGAN SUSAH (MUDAH DICARI, HIGH-VOLUME, POPULER)
-1. **GUNAKAN KATA YANG MUDAH & UMUM DICARI BUYER**:
-   - Kata kunci HARUS sederhana, ramah pencarian, dan kata-kata bahasa Inggris sehari-hari yang sering diketik oleh pembeli/desainer di Adobe Stock & Shutterstock.
-   - Contoh untuk gitar: "guitar", "music", "acoustic guitar", "wood", "strings", "instrument", "song", "play", "sound", "musician", "concert", "melody", "audio", "vintage", "classic", "hobby", "rock", "band", "entertainment".
-2. **DILARANG KERAS MENGGUNAKAN KATA SUSAH / RUMIT / PUITIS / JARGON ILMIAH**:
-   - ❌ JANGAN gunakan kata-kata rumit yang tidak pernah dicari pembeli, seperti: "chordophone", "plectrum", "somatosensory", "juxtaposition", "ephemeral", "luminescent", "chiaroscuro", "idiosyncratic", "equilibrium", "polychrome", dll.
-3. **PANJANG KATA KUNCI HANYA 1–2 KATA (MAKSIMAL 3 KATA HANYA UNTUK ISTILAH UMUM)**:
-   - Pembeli microstock mencari dengan kata kunci pendek: "dragon", "pet", "creature", "sneakers", "cargo shorts", "baseball cap", "game character", "battle royale".
-   - ❌ Dilarang membuat frasa panjang seperti "blue-purple dragon creature" atau "backward baseball cap with feathers". Pecah menjadi kata kunci tunggal yang populer dan mudah dicari!
-
-## ⭐ TIER 1: LITERAL VISUAL NOUNS — POSISI 1–15 [BOBOT TERTINGGI, PALING KRITIS]
-**KATA KUNCI POSISI 1 SAMPAI 15 MUTLAK HARUS berisi nama benda fisik yang terlihat langsung di foto.**
-- Gunakan nama benda utama dalam bahasa Inggris yang SANGAT MUDAH DICARI (high search volume, simple, direct).
-- Jangan gunakan konsep abstrak atau kata dari nama file di sini.
-- Contoh jika foto adalah gitar:
-  ["guitar", "acoustic guitar", "musical instrument", "strings", "frets", "guitar neck", "wood guitar",
-   "music instrument", "acoustic", "folk guitar", "classical guitar", "guitar body", "soundhole", "guitar strings", "wooden guitar"]
-- Contoh jika foto adalah kuas:
-  ["paintbrush", "paint brush", "bristle", "blue paint", "wooden handle", "artist brush", "painting tool",
-   "art supplies", "acrylic paint", "ferrule", "oil paint", "fine art brush", "brush tip", "painter tool", "craft brush"]
-
-## TIER 2: PRESENTASI VISUAL, SETUP & BACKGROUND — POSISI 16–28
-- Lingkungan visual nyata, komposisi, sudut kamera, latar belakang yang terlihat (misal: "white background", "isolated", "studio lighting", "close up", "front view").
-
-## TIER 3: COMMERCIAL USE CASES & PROFESSION — POSISI 29–44
-- Profesi, industri, aktivitas, hobi, tujuan komersial aset ini (misal: "music lesson", "concert", "musician", "entertainment", "performance", "acoustic music").
-
-## TIER 4: SUPPORTING COMMERCIAL TERMS & STYLES — POSISI 45–50
-- Konsep pendukung umum yang dicari buyer (misal: "classic", "vintage", "traditional", "sound", "melody", "clean").
-
----
-
-# STEP 4 — PROMPT GENERATIF & AI REPRODUCTION
-Field "prompt": Prompt AI fotorealistik bahasa Inggris yang detail dan presisi (subjek, warna, pencahayaan studio, sudut kamera, tekstur, lensa, 8k quality, background) untuk mereproduksi aset secara identik.`;
+⛔ ATURAN SUPER KRITIS — FILENAME BIAS ADALAH KESALAHAN FATAL:
+Nama file diabaikan 100% untuk konten kata kunci. Analisis HANYA piksel visual gambar secara objektif (WYSIWYG).`;
 
 const ADOBE_SYSTEM_PROMPT = `${MASTER_PROMPT_CORE}
 
 ═══ PLATFORM SPESIFIK: ADOBE STOCK ═══
-- Title: 8–12 kata bahasa Inggris deskriptif & bernilai jual tinggi (Formula Step 2).
-- Keywords: Berikan MINIMAL 50–60 kata kunci unik yang hyper-relevan dan akurat sesuai visual, terurut ketat dari Tier 1 ke Tier 4 (Step 3).
-- Prompt: Prompt AI fotorealistik lengkap untuk reproduksi gambar di Magnific / Midjourney.
+- Title: Deskriptif literal 8–12 kata bahasa Inggris tanpa halusinasi, tanpa tanda kutip.
+- Keywords: Berikan TEPAT 49 kata kunci unik yang hyper-relevan dan akurat sesuai fakta visual (1–2 kata per tag).
+- Prompt: Prompt AI fotorealistik lengkap untuk reproduksi gambar di Midjourney / Firefly.
 - Model: Model AI yang sesuai (default "Midjourney 6").
-- Primary Concept: Konsep utama komersial.
-- Visual Description: Ringkasan visual singkat.
+- Primary Concept: Konsep utama komersial literal.
+- Visual Description: Ringkasan visual singkat dan 100% objektif.
 
 FORMAT OUTPUT WAJIB STRICT VALID JSON TANPA TEKS LAIN DI LUAR JSON:
 {
-  "title": "Exact descriptive title following Step 2",
-  "keywords": ["kw1", "kw2", ...at least 50-60 keywords in strict tier order...],
+  "title": "Exact descriptive title following anti-hallucination rules without quotes",
+  "keywords": ["kw1", "kw2", ...exactly 49 common literal keywords...],
   "primaryConcept": "Primary concept name",
-  "visualDescription": "Brief summary of visual",
+  "visualDescription": "Brief objective visual summary",
   "prompt": "Detailed AI image prompt recreating subject, lighting, angle, details",
   "model": "Midjourney 6"
 }`;
@@ -149,8 +79,8 @@ FORMAT OUTPUT WAJIB STRICT VALID JSON TANPA TEKS LAIN DI LUAR JSON:
 const SHUTTERSTOCK_SYSTEM_PROMPT = `${MASTER_PROMPT_CORE}
 
 ═══ PLATFORM SPESIFIK: SHUTTERSTOCK ═══
-- Title / Description: 8–15 kata bahasa Inggris deskriptif & bernilai jual tinggi (Formula Step 2).
-- Keywords: Berikan MINIMAL 50–60 kata kunci unik yang hyper-relevan dan akurat sesuai visual, terurut ketat dari Tier 1 ke Tier 4 (Step 3).
+- Title / Description: Deskriptif literal 8–15 kata bahasa Inggris tanpa halusinasi, tanpa tanda kutip.
+- Keywords: Berikan TEPAT 50 kata kunci unik yang hyper-relevan dan akurat sesuai fakta visual (1–2 kata per tag).
 - Categories: Pilih tepat 1 atau 2 kategori yang paling akurat dari daftar resmi Shutterstock:
   "Animals/Wildlife", "The Arts", "Backgrounds/Textures", "Beauty/Fashion", "Buildings/Landmarks", "Business/Finance", "Celebrities", "Education", "Food and Drink", "Healthcare/Medical", "Holidays", "Industrial", "Interiors", "Miscellaneous", "Nature", "Parks/Outdoor", "People", "Religion", "Science", "Signs/Symbols", "Sports/Recreation", "Technology", "Transportation", "Vectors", "Vintage"
 - Editorial: "yes" | "no" (Pilih "yes" jika screenshot game/UI/merek, "no" jika objek stok bebas lisensi)
@@ -158,19 +88,19 @@ const SHUTTERSTOCK_SYSTEM_PROMPT = `${MASTER_PROMPT_CORE}
 - Illustration: "yes" jika vektor/render 3D/ilustrasi, "no" jika foto nyata
 - Prompt: Prompt AI fotorealistik lengkap untuk reproduksi gambar.
 - Model: Model AI (default "Midjourney 6").
-- Primary Concept: Konsep utama komersial.
-- Visual Description: Ringkasan visual singkat.
+- Primary Concept: Konsep utama komersial literal.
+- Visual Description: Ringkasan visual singkat dan 100% objektif.
 
 FORMAT OUTPUT WAJIB STRICT VALID JSON TANPA TEKS LAIN DI LUAR JSON:
 {
-  "title": "Exact descriptive title following Step 2",
-  "keywords": ["kw1", "kw2", ...at least 50-60 keywords in strict tier order...],
+  "title": "Exact descriptive title following anti-hallucination rules without quotes",
+  "keywords": ["kw1", "kw2", ...exactly 50 common literal keywords...],
   "categories": ["The Arts", "Backgrounds/Textures"],
   "editorial": "no",
   "matureContent": "no",
   "illustration": "no",
   "primaryConcept": "Primary concept",
-  "visualDescription": "Brief summary",
+  "visualDescription": "Brief objective summary",
   "prompt": "Detailed AI image prompt recreating subject, lighting, angle, details",
   "model": "Midjourney 6"
 }`;
@@ -178,21 +108,21 @@ FORMAT OUTPUT WAJIB STRICT VALID JSON TANPA TEKS LAIN DI LUAR JSON:
 const MAGNIFIC_SYSTEM_PROMPT = `${MASTER_PROMPT_CORE}
 
 ═══ PLATFORM SPESIFIK: MAGNIFIC CONTRIBUTOR ═══
-- Title: 8–12 kata bahasa Inggris deskriptif & bernilai jual tinggi (Formula Step 2). Dilarang menyertakan tanda kutip tunggal (') atau ganda (").
-- Keywords: Berikan TEPAT 49 kata kunci unik yang hyper-relevan dan akurat sesuai visual, terurut ketat dari Tier 1 ke Tier 4 (Step 3). Tepat 49 kata kunci agar ketika sistem Magnific otomatis menambahkan tag ke-50 ('ai generate'), jumlahnya pas tidak melebihi batas 50. DILARANG menggunakan tanda kutip (') di setiap kata kunci.
-- Prompt: WAJIB. Prompt generative AI yang sangat detail, kaya, dan fotorealistik dalam bahasa Inggris mendeskripsikan subjek, pencahayaan, sudut kamera, tekstur material, warna, dan detail rendering untuk Magnific Contributor. Jika uploader sudah memiliki prompt awal, optimalkan dan pertajam prompt tersebut agar menghasilkan visual terbaik.
+- Title: Deskriptif literal 8–12 kata bahasa Inggris tanpa halusinasi, dilarang tanda kutip (') atau (").
+- Keywords: Berikan TEPAT 49 kata kunci unik yang hyper-relevan dan akurat sesuai fakta visual (1–2 kata per tag, tanpa tanda kutip). Tepat 49 kata kunci agar ketika sistem Magnific otomatis menambahkan tag ke-50 ('ai generate'), jumlahnya pas tidak melebihi batas 50.
+- Prompt: WAJIB. Prompt generative AI yang sangat detail, kaya, dan fotorealistik dalam bahasa Inggris mendeskripsikan subjek, pencahayaan, sudut kamera, tekstur material, warna, dan detail rendering untuk Magnific Contributor.
 - Model: WAJIB "Adobe Firefly" (atau pilih dari ["Adobe Firefly", "Midjourney 6", "Flux", "Stable Diffusion XL", "Midjourney 5", "DALL-E 3"]) (Default "Adobe Firefly").
-- Primary Concept: Konsep utama komersial.
-- Visual Description: Ringkasan visual singkat.
+- Primary Concept: Konsep utama komersial literal.
+- Visual Description: Ringkasan visual singkat dan 100% objektif.
 
 FORMAT OUTPUT WAJIB STRICT VALID JSON TANPA TEKS LAIN DI LUAR JSON:
 {
-  "title": "Exact descriptive title following Step 2 without any quotes",
-  "keywords": ["kw1", "kw2", ...exactly 49 keywords in strict tier order without any quotes...],
+  "title": "Exact descriptive title following anti-hallucination rules without any quotes",
+  "keywords": ["kw1", "kw2", ...exactly 49 common literal keywords without any quotes...],
   "prompt": "Detailed photorealistic generative AI prompt in English describing subject, lighting, angle, colors, texture, camera lens, 8k resolution",
   "model": "Adobe Firefly",
   "primaryConcept": "Primary concept name",
-  "visualDescription": "Brief visual summary"
+  "visualDescription": "Brief objective visual summary"
 }`;
 
 function extractJsonFromText(text: string): string {
@@ -359,8 +289,26 @@ function buildGuaranteedKeywords(
       .toLowerCase()
       .replace(/^[,\-–—\s]+|[,\-–—\s]+$/g, "");
     if (!clean || clean.length < 2 || clean.length > 35) return;
-    // Disallow generic filler/spam words that hurt ranking
-    if (["photo", "image", "picture", "wallpaper", "4k", "8k", "hd", "best", "cool"].includes(clean)) return;
+    // Disallow generic filler, junk prepositions, and spam words
+    const JUNK_TERMS = new Set([
+      "photo", "image", "picture", "wallpaper", "4k", "8k", "hd", "best", "cool",
+      "while", "beside", "wears", "wear", "wearing", "filled", "fill",
+      "holding", "hold", "holds", "standing", "stands", "potted", "having",
+      "using", "uses", "make", "makes", "making", "take", "takes", "taking",
+      "near", "nearby", "against", "between", "behind", "through", "during",
+      "luxury", "boutique", "elegant"
+    ]);
+    if (JUNK_TERMS.has(clean)) return;
+
+    // Strict Gender Consistency based on title context
+    const titleLower = (title || "").toLowerCase();
+    const isMaleScene = /\b(man|male|boy|guy|father|brother|gentleman|businessman)\b/.test(titleLower) &&
+      !/\b(woman|female|girl|lady|mother|sister)\b/.test(titleLower);
+    const isFemaleScene = /\b(woman|female|girl|lady|mother|sister|businesswoman)\b/.test(titleLower) &&
+      !/\b(man|male|boy|guy|father|brother)\b/.test(titleLower);
+
+    if (isMaleScene && ["woman", "female", "girl", "lady", "sister", "mother"].includes(clean)) return;
+    if (isFemaleScene && ["man", "male", "boy", "guy", "brother", "father"].includes(clean)) return;
 
     // Kata kunci jangan susah: jika frasa lebih dari 3 kata, pecah menjadi kata-kata sederhana
     const words = clean.split(/\s+/);
@@ -447,12 +395,11 @@ function buildGuaranteedKeywords(
     if (result.length >= targetCount) return result.slice(0, targetCount);
   }
 
-  // Universal neutral photography terms (safe for all images):
+  // Universal neutral stock terms (safe, simple everyday words for any photo):
   const neutralStockTerms = [
-    "composition", "perspective", "sharp focus", "detailed texture",
-    "vibrant color", "commercial asset", "professional photography",
-    "creative visual", "modern design", "digital asset", "high quality",
-    "focal point", "clean presentation", "contemporary style"
+    "background", "copy space", "isolated", "concept", "clean",
+    "horizontal", "daylight", "indoor", "outdoor", "color image",
+    "focus on foreground", "nobody", "bright", "simple", "modern"
   ];
 
   for (const term of neutralStockTerms) {
@@ -483,6 +430,9 @@ async function generateMetadata(
   let totalUsage = { promptTokens: 0, completionTokens: 0, totalTokens: 0 };
 
   try {
+    const targetKwCount = platform === "shutterstock" ? 50 : 49;
+    const userPromptPayload = `Lakukan analisis visual SUPER KETAT berdasarkan fakta fisik (WYSIWYG). Jangan berhalusinasi. Buat Title deskriptif literal dan ekstrak TEPAT ${targetKwCount} Keyword umum yang relevan. Dilarang menebak profesi spesifik, lokasi bermerek, atau status (seperti luxury/boutique) tanpa bukti visual absolut.${visualHints ? `\nPetunjuk uploader: ${visualHints}` : ""}`;
+
     // ══════════════════════════════════════════════════════════════════
     // STAGE 1: Visual Forensic Perception (Qwen Vision 3.8 / 3.6)
     // Inspects 100% real image pixels with clinical accuracy
@@ -504,7 +454,7 @@ Be concrete, concise, and purely factual.`
         role: "user",
         content: [
           { type: "image_url", image_url: { url: base64DataUrl } },
-          { type: "text", text: visualHints ? `Perform visual forensic inspection. Hints from uploader: ${visualHints}` : "Perform visual forensic inspection of this image." }
+          { type: "text", text: userPromptPayload }
         ]
       }
     ];
@@ -523,9 +473,9 @@ Be concrete, concise, and purely factual.`
     // STAGE 2: 120B Flagship Reasoning Engine (openai/gpt-oss-120b)
     // Applies 120B parameter reasoning with chain-of-thought to formulate 99% accurate metadata & buyer SEO
     // ══════════════════════════════════════════════════════════════════
-    const targetKwCount = platform === "shutterstock" ? 50 : 49;
+    const reasoningUserMessage = `Lakukan analisis visual SUPER KETAT berdasarkan fakta fisik (WYSIWYG). Jangan berhalusinasi. Buat Title deskriptif literal dan ekstrak TEPAT ${targetKwCount} Keyword umum yang relevan. Dilarang menebak profesi spesifik, lokasi bermerek, atau status (seperti luxury/boutique) tanpa bukti visual absolut.
 
-    const reasoningUserMessage = `VISUAL FORENSIC INSPECTION REPORT (EXTRACTED DIRECTLY FROM IMAGE PIXELS):
+VISUAL FORENSIC INSPECTION REPORT (EXTRACTED DIRECTLY FROM IMAGE PIXELS):
 ${visionResult.text}
 
 METADATA CONTEXT & REFERENCE:
@@ -533,16 +483,7 @@ METADATA CONTEXT & REFERENCE:
 ${visualHints ? `- Visual / Uploader Hints: ${visualHints}` : ""}
 ${existingPrompt ? `- Existing User Prompt to Optimize: "${existingPrompt}"` : ""}
 
-CRITICAL RULES (ATURAN METADATA & KATA KUNCI JANGAN SUSAH):
-1. KATA KUNCI HARUS MUDAH & POPULER (HIGH-VOLUME): Use ONLY simple, common, everyday English words that real buyers type into search bars. NEVER use obscure, academic, archaic, or poetic terms!
-2. KEYWORD LENGTH: 1 to 2 words per keyword (maximum 3 words for standard terms). NEVER output long descriptive phrases like "blue-purple dragon creature" — split into short, popular tags: "dragon", "pet", "creature".
-3. STRICTLY NO QUOTE MARKS: Absolutely DO NOT include single quotes (') or double quotes (") anywhere inside keyword strings or title.
-4. First 15 keywords MUST be the literal physical objects visible in the image, using simple, direct words (e.g. if a guitar is in the photo → "guitar", "music", "acoustic guitar", "strings", "instrument", "wood").
-5. 100% VISUAL FIDELITY & ZERO HALLUCINATION.
-6. Title: 8-12 word natural English descriptive commercial title without quotes.
-7. TARGET KEYWORD COUNT: Output EXACTLY ${targetKwCount} keywords.${platform === "magnific" ? " Magnific requires EXACTLY 49 keywords because the platform automatically adds the 50th keyword 'ai generate'." : ""}
-8. PROMPT GENERATIF (MANDATORY): Always provide a detailed, photorealistic generative AI prompt in English (describing subject, lighting, angle, colors, texture, lens, 8k) to reproduce this image in Midjourney 6 / Flux.${existingPrompt ? ` Enhance and optimize the user's prompt: "${existingPrompt}".` : ""}
-9. MODEL: ${platform === "magnific" ? 'WAJIB gunakan "Adobe Firefly" sebagai model default untuk platform Magnific.' : 'Choose the most fitting AI model (default "Midjourney 6").'}
+TARGET KEYWORDS: Output EXACTLY ${targetKwCount} unique keywords.
 Output ONLY raw valid JSON.`;
 
     const reasoningMessages: GroqMessage[] = [
@@ -567,17 +508,11 @@ Output ONLY raw valid JSON.`;
     console.warn("[generateMetadata] Two-stage 120B pipeline error, falling back to direct vision model:", err);
     // Bulletproof Fallback: Direct single-pass vision model
     const targetKwCount = platform === "shutterstock" ? 50 : 49;
-    const textPart = `Analyze the image VISUALLY and generate accurate microstock metadata.
+    const textPart = `Lakukan analisis visual SUPER KETAT berdasarkan fakta fisik (WYSIWYG). Jangan berhalusinasi. Buat Title deskriptif literal dan ekstrak TEPAT ${targetKwCount} Keyword umum yang relevan. Dilarang menebak profesi spesifik, lokasi bermerek, atau status (seperti luxury/boutique) tanpa bukti visual absolut.
 FILENAME (for reference only, do NOT use for keywords): ${filename}
 ${visualHints ? `Visual context/hints: ${visualHints}\n` : ""}${existingPrompt ? `Existing prompt to optimize: ${existingPrompt}\n` : ""}
-CRITICAL RULES:
-1. Keywords MUST come from what you SEE in the image, NOT from the filename text.
-2. First 15 keywords MUST be the literal physical objects visible in the photo.
-3. Keywords MUST be simple everyday words (1-2 words).
-4. STRICTLY NO QUOTES: Do NOT include single quotes (') or double quotes (") anywhere in keywords or title.
-5. TARGET KEYWORDS: Exactly ${targetKwCount} keywords.
-6. PROMPT: Provide a detailed photorealistic AI image prompt to recreate this visual.
-7. Output ONLY raw valid JSON with no markdown fences or extra text.`;
+TARGET KEYWORDS: Exactly ${targetKwCount} keywords.
+Output ONLY raw valid JSON with no markdown fences or extra text.`;
 
     const directMessages: GroqMessage[] = [
       { role: "system", content: promptText },
@@ -649,52 +584,19 @@ CRITICAL RULES:
     finalTitle = check.title.replace(/^['"`\s]+|['"`\s]+$/g, "");
   }
 
-  // ── MACHINE ML OPTIMIZATION PIPELINE ────────────────────────────────────────
-  let mlOptimized;
-  try {
-    mlOptimized = await optimizeMetadataWithAI({
-      title: finalTitle,
-      keywords: finalKeywords,
-      visualDescription: parsed.visualDescription || "",
-      visualHints,
-      existingPrompt,
-      platform,
-      targetModel: platform === "magnific" ? "Adobe Firefly" : (parsed.model || "Midjourney 6"),
-      editorial,
-      matureContent,
-      illustration,
-      filename,
-    });
-  } catch {
-    mlOptimized = optimizeMetadata({
-      title: finalTitle,
-      keywords: finalKeywords,
-      visualDescription: parsed.visualDescription || "",
-      visualHints,
-      existingPrompt,
-      platform,
-      targetModel: platform === "magnific" ? "Adobe Firefly" : (parsed.model || "Midjourney 6"),
-      editorial,
-      matureContent,
-      illustration,
-      filename,
-    });
-  }
-
   return {
     filename,
-    title: mlOptimized.title,
-    keywords: mlOptimized.keywords,
-    categories: mlOptimized.categories.length > 0 ? mlOptimized.categories : categories,
-    editorial: mlOptimized.editorial,
-    matureContent: mlOptimized.matureContent,
-    illustration: mlOptimized.illustration,
-    prompt: mlOptimized.prompt,
-    model: mlOptimized.model,
+    title: finalTitle,
+    keywords: finalKeywords,
+    categories,
+    editorial,
+    matureContent,
+    illustration,
+    prompt: parsed.prompt,
+    model: parsed.model || defaultModel,
     primaryConcept: parsed.primaryConcept,
     visualDescription: parsed.visualDescription,
-    confidenceScore: mlOptimized.confidenceScore,
-    qualityMetrics: mlOptimized.qualityMetrics,
+    confidenceScore: 0.95,
     modelUsed: modelUsed || "openai/gpt-oss-120b",
     stabilized: true,
     attempts: attempt,

@@ -6,6 +6,7 @@ import UserInboxBanner from "@/components/UserInboxBanner";
 import ToastContainer from "@/components/Toast";
 import SystemErrorSentinel from "@/components/SystemErrorSentinel";
 import MaintenanceBanner from "@/components/MaintenanceBanner";
+import GiveawayAutoRunner from "@/components/GiveawayAutoRunner";
 import "./globals.css";
 import "./research-panel.css";
 import "./vector-creator.css";
@@ -94,7 +95,7 @@ export default function RootLayout({
             <ToastContainer />
             <SystemErrorSentinel />
             <MaintenanceBanner />
-            <ToastContainer />
+            <GiveawayAutoRunner />
           </div>
         </FirewallProvider>
       </body>

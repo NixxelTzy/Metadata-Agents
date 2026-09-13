@@ -9,7 +9,7 @@ export async function GET() {
 
   // Background passive check for Sunday giveaway without blocking response
   import("@/lib/giveaway")
-    .then((m) => m.checkAndAutoExecuteIfDue())
+    .then((m) => m.triggerPassiveGiveawayCheck())
     .catch(() => {});
 
   return NextResponse.json({
