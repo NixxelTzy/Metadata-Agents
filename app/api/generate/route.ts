@@ -36,103 +36,111 @@ interface ImagePayload {
   existingPrompt?: string;
 }
 
-const MASTER_PROMPT_CORE = `Anda adalah Spesialis Metadata Microstock Kelas Dunia (Adobe Stock & Shutterstock Top Seller).
-Tugas Anda: Menghasilkan 1 Title dan Keywords yang SANGAT GAMPANG, UMUM, POPULER DICARI OLEH PEMBELI (HIGH SEARCH VOLUME), dan 100% RELEVAN DENGAN FOTO.
+const MASTER_PROMPT_CORE = `You are an elite Microstock Metadata Director and Top-Selling Contributor on Adobe Stock and Shutterstock.
+Your Mission: Produce 1 commercial title and clean, highly searchable keywords that are EASY, POPULAR (HIGH SEARCH VOLUME), 100% ACCURATE TO THE THEME, and COMPLETELY FREE OF WEIRD JARGON OR ODD WORDS.
 
-═══ PEDOMAN KEYWORD GAMPANG & POPULER DICARI ═══
+═══ MANDATORY RULES (ZERO TOLERANCE) ═══
 
-【1】 PRINSIP KATA GAMPANG & UMUM (COMMON & HIGH SEARCH VOLUME):
-   ▸ Gunakan kosakata bahasa Inggris yang PALING GAMPANG DAN SERING DIKETIK PEMBELI di search bar:
-     - GAMPANG & POPULER: "tomato", "tomatoes", "cherry tomato", "greenhouse", "farmer", "vegetable", "harvest", "fresh", "organic", "food", "healthy", "ripe", "red", "plants", "green", "agriculture", "clipboard", "woman" / "beekeeper", "bee", "bees", "honey", "honeycomb", "hive", "beehive", "frame", "veil", "suit", "meadow", "wildflowers", "field", "summer", "sunny", "golden hour".
-     - HINDARI KATA RIBET/AKADEMIS: Jangan gunakan istilah yang jarang diketik orang seperti "ecosystem services", "apiculture", "utility jacket", "produce handling", "data recording", "translucent sheeting". Gunakan kata-kata yang wajar dan gampang dicari!
-   ▸ Panjang keyword: 1 KATA atau MAKSIMAL 2 KATA UMUM (contoh: "fresh tomato", "honey harvest", "organic food").
+【1】 STRICT 100% ENGLISH ONLY (CRITICAL):
+   ▸ ALL OUTPUT (Title, Keywords, Primary Concept, Visual Description, Prompt) MUST BE 100% IN ENGLISH.
+   ▸ NEVER output any Indonesian words (e.g. NEVER output "wanita", "petani", "kebun", "tomat", "lebah", "tanaman", "panen", etc.). Every single word must be correct English.
 
-【2】 4 PILAR KOMPOSISI KEYWORDS (TEPAT [TARGET JUMLAH] KATA KUNCI):
-   1. Subjek & Objek Utama (35%): Kosakata dasar benda fisik (woman, farmer, tomato, tomatoes, cherry tomato, greenhouse, clipboard, gloves, vine / beekeeper, bee, bees, honey, honeycomb, hive, beehive, frame, veil, suit).
-   2. Nilai Jual & Industri (35%): Istilah populer yang dicari industri (agriculture, farming, harvest, vegetable, fresh, food, organic, healthy, produce, crop, grow, growing, cultivation / honey production, pollination, honey harvest, natural, sweet, raw honey).
-   3. Ciri & Kualitas Visual (15%): Warna dan sifat nyata (red, green, ripe, summer, daylight, natural light / yellow, purple, lavender, golden hour, sunlight, warm).
-   4. Lingkungan Nyata (15%): Lokasi dan suasana (indoor, rows, garden, horticulture / meadow, field, wildflowers, flowers, nature, outdoor, countryside, rural).
+【2】 NO WEIRD WORDS OR ODD SPECIFIC LABELS:
+   ▸ DO NOT output weird color shades or clothing terms: BANNED: "khaki", "khakis", "tan", "cream", "off-white", "utility jacket", "chore coat".
+   ▸ DO NOT output anatomical micro-parts: BANNED: "right hand", "left hand", "hand holding", "finger", "hair", "ponytail".
+   ▸ DO NOT output secondary equipment, ground clutter, or metal parts: BANNED: "metal ribs", "horizontal supports", "paper sheet", "white paper", "dark spots", "bucket", "hose", "cable", "wire", "irrigation hoses", "pump unit", "distant hills", "tree line".
+   ▸ DO NOT output camera technical jargon: BANNED: "diffused", "diffused daylight", "eyelevel", "bokeh", "macro".
 
-【3】 DAFTAR HITAM KATA SAMPAH (BLACKLIST ABSOLUT):
-   - Bagian tubuh mikro: "right hand", "left hand", "hand holding", "finger", "hair", "ponytail"
-   - Serpihan/elemen teknis mikro: "metal ribs", "horizontal supports", "paper sheet", "white paper", "dark band", "dark spots", "clip", "wire", "cable", "hose", "bucket"
-   - Kata teknis kamera: "diffused", "diffused daylight", "eyelevel", "bokeh", "macro", "angle", "view"
-   - Spam: "photo", "image", "picture", "4k", "hd", tanda kutip apapun.
+【3】 FOCUS ON HIGH COMMERCIAL VALUE & BUYER SEARCH INTENT (TOP-SELLING KEYWORDS):
+   Microstock buyers search with SHORT, SIMPLE, HIGH-VOLUME SEARCH TERMS.
+   ▸ DO NOT use obscure compound phrases like "capped cells", "stacked boxes", "yield monitoring", "seedling propagation", "cultivated environment".
+   ▸ USE NATURAL, DIRECT, EASY-TO-SEARCH BUYER TERMS:
+     - If TOMATO / GREENHOUSE:
+       "tomato", "tomatoes", "cherry tomato", "cherry tomatoes", "greenhouse", "farmer", "woman", "female farmer", "vegetable", "vegetables", "fresh", "organic", "harvest", "healthy", "food", "ripe", "red", "plants", "green", "agriculture", "farming", "clipboard", "produce", "crop", "growing", "indoor farming", "cultivation", "summer", "daylight", "work gloves", "blue coat", "raw food", "diet", "nutrition", "vitamins", "farm worker", "agronomist", "agronomy", "botany", "glasshouse", "sweet", "delicious", "healthy eating", "local food", "gardening", "plant", "nature", "rural".
+     - If BEEKEEPER / HONEY:
+       "beekeeper", "beekeeping", "bee", "bees", "honey", "honeycomb", "hive", "beehive", "frame", "veil", "suit", "protective suit", "meadow", "wildflowers", "flowers", "field", "summer", "sunny", "golden hour", "honey production", "pollination", "sweet", "natural", "raw honey", "honey harvest", "apiary", "apiculture", "insects", "yellow", "outdoor", "nature", "sunlight", "rural", "organic", "farm", "farming", "agriculture", "countryside", "pure", "golden", "healthy", "worker", "care", "wildlife", "environment".
 
-【4】 STRUKTUR TITLE (8-14 kata natural bahasa Inggris yang menjual):
-   Contoh Greenhouse: "Female Farmer Holding Clipboard and Cherry Tomatoes in Bright Greenhouse"
-   Contoh Beekeeper: "Female Beekeeper in White Protective Suit Holding Honeycomb Frame in Sunny Meadow"
+【4】 4 PILLARS FOR EASY, HIGH-CONVERTING KEYWORDS (1-2 WORDS PER KEYWORD):
+   1. Core Objects & People (40%): What a buyer sees directly (e.g. woman, farmer, tomato, cherry tomato, greenhouse, clipboard, gloves / beekeeper, bee, honey, honeycomb, beehive, frame, veil, suit).
+   2. Commercial Concepts & Uses (35%): How buyers will use the photo (e.g. agriculture, harvest, fresh, organic, vegetable, healthy, food, produce, crop, farming / apiculture, honey production, pollination, honey harvest, raw honey, sweet, natural).
+   3. Observable Attributes & Colors (15%): Direct visible attributes (e.g. red, green, ripe, summer, daylight, bright / yellow, purple, golden hour, sunlight, warm, outdoor).
+   4. Environment & Context (10%): Broad location concepts (e.g. indoor, garden, horticulture, farm, rural / meadow, field, wildflowers, flowers, nature, countryside).
 
-⛔ ATURAN ABSOLUT — FILENAME BIAS ADALAH KESALAHAN FATAL:
-Nama file diabaikan 100%. Analisis HANYA piksel visual gambar yang nyata terlihat.`;
+【5】 COMMERCIAL TITLE (8-14 words):
+   Clean, natural, buyer-friendly English.
+   Example Tomato: "Female Farmer Holding Clipboard and Cherry Tomatoes in Bright Greenhouse"
+   Example Beekeeper: "Female Beekeeper in White Protective Suit Holding Honeycomb Frame in Sunny Meadow"
+
+⛔ ABSOLUTE RULE — FILENAME BIAS:
+Ignore the filename 100%. Analyze ONLY the real visible pixels of the image.`;
 
 const ADOBE_SYSTEM_PROMPT = `${MASTER_PROMPT_CORE}
 
-═══ PLATFORM SPESIFIK: ADOBE STOCK ═══
-- Title: Deskriptif literal 8–12 kata bahasa Inggris tanpa halusinasi, tanpa tanda kutip.
-- Keywords: Berikan TEPAT 49 kata kunci unik yang hyper-relevan dan akurat sesuai fakta visual (1–2 kata per tag).
-- Prompt: Prompt AI fotorealistik lengkap untuk reproduksi gambar di Midjourney / Firefly.
-- Model: Model AI yang sesuai (default "Midjourney 6").
-- Primary Concept: Konsep utama komersial literal.
-- Visual Description: Ringkasan visual singkat dan 100% objektif.
+═══ PLATFORM SPECIFIC: ADOBE STOCK ═══
+- Title: Highly descriptive commercial title (8–14 words) in English without quotes.
+- Keywords: Provide EXACTLY 49 unique, popular, high-search-volume keywords (1–2 words per tag) in English.
+- Prompt: Complete photorealistic AI generative prompt for recreating the image in Midjourney / Firefly in English.
+- Model: Suitable AI model (default "Midjourney 6").
+- Primary Concept: Core commercial concept name in English.
+- Visual Description: Brief, objective visual summary in English.
 
-FORMAT OUTPUT WAJIB STRICT VALID JSON TANPA TEKS LAIN DI LUAR JSON:
+MANDATORY OUTPUT FORMAT: STRICT VALID JSON ONLY:
 {
-  "title": "Exact descriptive title following anti-hallucination rules without quotes",
-  "keywords": ["kw1", "kw2", ...exactly 49 common literal keywords...],
-  "primaryConcept": "Primary concept name",
-  "visualDescription": "Brief objective visual summary",
-  "prompt": "Detailed AI image prompt recreating subject, lighting, angle, details",
+  "title": "Clear commercial title in English without quotes",
+  "keywords": ["kw1", "kw2", ...exactly 49 popular English keywords...],
+  "primaryConcept": "Primary concept in English",
+  "visualDescription": "Brief objective summary in English",
+  "prompt": "Detailed AI image prompt in English",
   "model": "Midjourney 6"
 }`;
 
 const SHUTTERSTOCK_SYSTEM_PROMPT = `${MASTER_PROMPT_CORE}
 
-═══ PLATFORM SPESIFIK: SHUTTERSTOCK ═══
-- Title / Description: Deskriptif literal 8–15 kata bahasa Inggris tanpa halusinasi, tanpa tanda kutip.
-- Keywords: Berikan TEPAT 50 kata kunci unik yang hyper-relevan dan akurat sesuai fakta visual (1–2 kata per tag).
-- Categories: Pilih tepat 1 atau 2 kategori yang paling akurat dari daftar resmi Shutterstock:
+═══ PLATFORM SPECIFIC: SHUTTERSTOCK ═══
+- Title / Description: Commercial descriptive title (8–15 words) in English without quotes.
+- Keywords: Provide EXACTLY 50 unique, popular, high-search-volume keywords (1–2 words per tag) in English.
+- Categories: Choose exactly 1 or 2 most accurate categories from official Shutterstock list:
   "Animals/Wildlife", "The Arts", "Backgrounds/Textures", "Beauty/Fashion", "Buildings/Landmarks", "Business/Finance", "Celebrities", "Education", "Food and Drink", "Healthcare/Medical", "Holidays", "Industrial", "Interiors", "Miscellaneous", "Nature", "Parks/Outdoor", "People", "Religion", "Science", "Signs/Symbols", "Sports/Recreation", "Technology", "Transportation", "Vectors", "Vintage"
-- Editorial: "yes" | "no" (Pilih "yes" jika screenshot game/UI/merek, "no" jika objek stok bebas lisensi)
+- Editorial: "no"
 - Mature Content: "no"
-- Illustration: "yes" jika vektor/render 3D/ilustrasi, "no" jika foto nyata
-- Prompt: Prompt AI fotorealistik lengkap untuk reproduksi gambar.
-- Model: Model AI (default "Midjourney 6").
-- Primary Concept: Konsep utama komersial literal.
-- Visual Description: Ringkasan visual singkat dan 100% objektif.
+- Illustration: "no"
+- Prompt: AI image recreation prompt in English.
+- Model: "Midjourney 6"
+- Primary Concept: Commercial concept in English.
+- Visual Description: Brief summary in English.
 
-FORMAT OUTPUT WAJIB STRICT VALID JSON TANPA TEKS LAIN DI LUAR JSON:
+MANDATORY OUTPUT FORMAT: STRICT VALID JSON ONLY:
 {
-  "title": "Exact descriptive title following anti-hallucination rules without quotes",
-  "keywords": ["kw1", "kw2", ...exactly 50 common literal keywords...],
-  "categories": ["The Arts", "Backgrounds/Textures"],
+  "title": "Clear title in English without quotes",
+  "keywords": ["kw1", "kw2", ...exactly 50 popular English keywords...],
+  "categories": ["Food and Drink", "Nature"],
   "editorial": "no",
   "matureContent": "no",
   "illustration": "no",
-  "primaryConcept": "Primary concept",
-  "visualDescription": "Brief objective summary",
-  "prompt": "Detailed AI image prompt recreating subject, lighting, angle, details",
+  "primaryConcept": "Primary concept in English",
+  "visualDescription": "Brief summary in English",
+  "prompt": "Detailed AI image prompt in English",
   "model": "Midjourney 6"
 }`;
 
 const MAGNIFIC_SYSTEM_PROMPT = `${MASTER_PROMPT_CORE}
 
-═══ PLATFORM SPESIFIK: MAGNIFIC CONTRIBUTOR ═══
-- Title: Deskriptif literal 8–12 kata bahasa Inggris tanpa halusinasi, dilarang tanda kutip (') atau (").
-- Keywords: Berikan TEPAT 49 kata kunci unik yang hyper-relevan dan akurat sesuai fakta visual (1–2 kata per tag, tanpa tanda kutip). Tepat 49 kata kunci agar ketika sistem Magnific otomatis menambahkan tag ke-50 ('ai generate'), jumlahnya pas tidak melebihi batas 50.
-- Prompt: WAJIB. Prompt generative AI yang sangat detail, kaya, dan fotorealistik dalam bahasa Inggris mendeskripsikan subjek, pencahayaan, sudut kamera, tekstur material, warna, dan detail rendering untuk Magnific Contributor.
-- Model: WAJIB "Adobe Firefly" (atau pilih dari ["Adobe Firefly", "Midjourney 6", "Flux", "Stable Diffusion XL", "Midjourney 5", "DALL-E 3"]) (Default "Adobe Firefly").
-- Primary Concept: Konsep utama komersial literal.
-- Visual Description: Ringkasan visual singkat dan 100% objektif.
+═══ PLATFORM SPECIFIC: MAGNIFIC CONTRIBUTOR ═══
+- Title: Commercial descriptive title (8–14 words) in English without any quotes.
+- Keywords: Provide EXACTLY 49 unique, popular keywords (1–2 words per tag) in English without quotes (so platform can append tag 50 'ai generate').
+- Prompt: Rich photorealistic generative AI prompt in English describing subject, lighting, angle, colors, texture, camera lens, 8k resolution.
+- Model: "Adobe Firefly" (default).
+- Primary Concept: Commercial concept in English.
+- Visual Description: Brief summary in English.
 
-FORMAT OUTPUT WAJIB STRICT VALID JSON TANPA TEKS LAIN DI LUAR JSON:
+MANDATORY OUTPUT FORMAT: STRICT VALID JSON ONLY:
 {
-  "title": "Exact descriptive title following anti-hallucination rules without any quotes",
-  "keywords": ["kw1", "kw2", ...exactly 49 common literal keywords without any quotes...],
-  "prompt": "Detailed photorealistic generative AI prompt in English describing subject, lighting, angle, colors, texture, camera lens, 8k resolution",
+  "title": "Clear title in English without quotes",
+  "keywords": ["kw1", "kw2", ...exactly 49 popular English keywords...],
+  "prompt": "Detailed photorealistic prompt in English",
   "model": "Adobe Firefly",
-  "primaryConcept": "Primary concept name",
-  "visualDescription": "Brief objective visual summary"
+  "primaryConcept": "Primary concept in English",
+  "visualDescription": "Brief summary in English"
 }`;
 
 function extractJsonFromText(text: string): string {
@@ -307,15 +315,27 @@ function buildGuaranteedKeywords(
       "using", "uses", "make", "makes", "making", "take", "takes", "taking",
       "near", "nearby", "against", "between", "behind", "through", "during",
       "luxury", "boutique", "elegant",
-      // Ground clutter & tiny props
+      // Ground clutter & secondary equipment
       "bucket", "white bucket", "hose", "black hose", "cable", "wire ties", "metal clip",
       "clip", "pen", "dark band", "dirt path", "dark spots", "hive lid",
+      "irrigation hoses", "irrigation hose", "pump unit", "water pump", "metal stakes", "vertical wires", "arched roof",
+      "distant hills", "tree line", "daylight glow", "sunny horizon", "rural landscape", "distant horizon", "sunlit sky",
+      // Unwanted weird color shades & micro body parts
+      "khaki", "khakis", "tan", "cream", "off white", "off-white", "beige",
+      "utility jacket", "chore coat", "right hand", "left hand", "hand holding", "finger", "hair", "ponytail",
+      "metal ribs", "horizontal supports", "paper sheet", "white paper",
       // Camera technique & empty abstract words
       "diffused", "diffused light", "diffused daylight", "eyelevel", "bokeh", "shallow depth", "macro",
       "soft light", "muted shadows", "landscape", "scene", "atmosphere", "concept", "lifestyle",
       // Speculative industrial stretches
       "packaging", "produce packaging", "nursery", "plant nursery", "farm equipment", "agribusiness",
-      "biodiversity", "produce handling", "market supply"
+      "biodiversity", "produce handling", "market supply",
+      // Strict ban on leaked Indonesian words
+      "wanita", "pria", "petani", "peternak", "kebun", "tomat", "lebah", "tanaman",
+      "rumah", "kaca", "pertanian", "daun", "bunga", "tangan", "merah", "hijau",
+      "putih", "hitam", "paruh", "baya", "seorang", "sarang", "madu", "dan",
+      "dengan", "untuk", "yang", "pada", "dari", "dalam", "bisa", "adalah", "ini",
+      "itu", "secara", "kualitas", "panen", "sayur", "sayuran", "buah", "buah-buahan"
     ]);
     if (JUNK_TERMS.has(clean)) return;
 
@@ -497,19 +517,21 @@ Be factual, concise, and direct.`
     // STAGE 2: 120B Flagship Reasoning Engine (openai/gpt-oss-120b)
     // Applies 120B parameter reasoning with chain-of-thought to formulate 99% accurate metadata & buyer SEO
     // ══════════════════════════════════════════════════════════════════
-    const reasoningUserMessage = `Hasilkan metadata microstock dengan KEYWORDS GAMPANG & POPULER DICARI berdasarkan analisis tema visual berikut:
+    const reasoningUserMessage = `Generate commercial microstock metadata with EASY, POPULAR, AND HIGH-SEARCH-VOLUME KEYWORDS based on this visual theme analysis:
 
-ANALISIS TEMA VISUAL:
+VISUAL THEME ANALYSIS:
 ${visionResult.text}
 
-INSTRUKSI WAJIB:
-- Gunakan kosakata bahasa Inggris yang PALING GAMPANG, UMUM, DAN POPULER DICARI PEMBELI di search bar (contoh: tomato, farmer, greenhouse, fresh, organic, harvest, healthy, red, vegetable, crop, plants / beekeeper, honey, bee, honeycomb, beehive, flowers, meadow, summer, golden hour).
-- JANGAN gunakan istilah rumit, akademis, atau bagian tubuh mikro.
-- HAPUS SEMUA KATA SAMPAH: "right hand", "left hand", "hand holding", "metal ribs", "horizontal supports", "paper sheet", "white paper", "dark spots", "bucket", "hose", "diffused".
-- Berikan TEPAT ${targetKwCount} kata kunci unik (1-2 kata per keyword) bernilai jual tinggi.
+MANDATORY INSTRUCTIONS FOR MAXIMUM SALES & SEARCHABILITY:
+- LANGUAGE: 100% STRICT ENGLISH ONLY. Absolutely NEVER use any Indonesian words (no "wanita", "petani", "kebun", "tomat", "lebah", etc.).
+- EASY & HIGHLY SEARCHABLE BUYER KEYWORDS: Microstock buyers search with everyday simple English words!
+  ▸ Use short, direct, 1-2 word tags (e.g. tomato, tomatoes, cherry tomato, greenhouse, farmer, woman, vegetable, vegetables, fresh, organic, harvest, healthy, food, ripe, red, plant, plants, green, agriculture, farming, clipboard, produce, crop, summer / beekeeper, beekeeping, bee, bees, honey, honeycomb, hive, beehive, frame, veil, suit, meadow, wildflowers, flowers, field, summer, sunny, golden hour, apiary, sweet, natural, raw honey, organic, nature).
+  ▸ NEVER invent complex academic or obscure jargon (do NOT output "capped cells", "stacked boxes", "yield monitoring", "seedling propagation", "cultivated environment", "produce handling", "agricultural facility").
+- BANNED WEIRD WORDS: DO NOT output "khaki", "khakis", "tan", "cream", "off-white", "utility jacket", "right hand", "left hand", "hand holding", "metal ribs", "horizontal supports", "paper sheet", "white paper", "dark spots", "bucket", "hose", "diffused", "irrigation hoses", "pump unit".
+- TARGET: Provide EXACTLY ${targetKwCount} unique keywords (1-2 words per keyword) and 1 commercial title.
 
 METADATA CONTEXT:
-- Filename: ${filename} (ABAIKAN — jangan gunakan filename sebagai sumber keyword!)
+- Filename: ${filename} (IGNORE — do NOT use filename as keyword source!)
 ${visualHints ? `- Uploader hints: ${visualHints}` : ""}
 ${existingPrompt ? `- Existing prompt to optimize: "${existingPrompt}"` : ""}
 
@@ -537,11 +559,11 @@ TARGET: Output STRICT VALID JSON format.`;
     console.warn("[generateMetadata] Two-stage 120B pipeline error, falling back to direct vision model:", err);
     // Bulletproof Fallback: Direct single-pass vision model
     const targetKwCount = platform === "shutterstock" ? 50 : 49;
-    const textPart = `Terapkan prinsip STRICT VISUAL EVIDENCE + COMMERCIAL SEARCH VALUE.
-Berikan 1 Title harfiah dan tepat ${targetKwCount} Keywords (max 1-2 kata).
-DILARANG benda sampah kecil (bucket, hose, wire ties). DILARANG kata teknis kamera (diffused, eyelevel, bokeh).
-Self-check setiap keyword: apakah bernilai komersial tinggi dan nyata terlihat?
-FILENAME (ABAIKAN — jangan gunakan sebagai sumber keyword): ${filename}
+    const textPart = `Apply STRICT COMMERCIAL MICROSTOCK METADATA standards.
+Language: 100% ENGLISH ONLY. Zero Indonesian words.
+Provide 1 commercial title and exactly ${targetKwCount} popular, easy, high-search-volume keywords (max 1-2 words per keyword).
+BANNED: khaki, tan, cream, utility jacket, right hand, left hand, hand holding, metal ribs, horizontal supports, paper sheet, white paper, bucket, hose, diffused.
+FILENAME (IGNORE): ${filename}
 ${visualHints ? `Uploader hints: ${visualHints}\n` : ""}${existingPrompt ? `Existing prompt to optimize: ${existingPrompt}\n` : ""}
 TARGET: Exactly ${targetKwCount} keywords. Output ONLY raw valid JSON with no markdown fences or extra text.`;
 
