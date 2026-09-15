@@ -3,9 +3,24 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ZoomIn, Download, Archive, Eye, EyeOff } from "lucide-react";
 import JSZip from "jszip";
+import {
+  ENGINE_PROFILES,
+  RESOLUTION_PRESETS,
+  DEFAULT_PRESET_INDEX,
+  runUpscalePipeline,
+  calcTargetDimensions,
+  applyBilateralDenoise,
+  applyUnsharpMask,
+  drawScaleStep,
+} from "@/lib/upscale";
+import type {
+  UpscaleEngine,
+  EngineProfile,
+  ResolutionPreset,
+} from "@/lib/upscale";
 
-
-// ─── Types ─────────────────────────────────────────────────────────────────────
+// ─── Local Types ───────────────────────────────────────────────────────────────
+// (MediaFile types stay local since they include browser File/blob state)
 
 interface ImageFile {
   id: string;
@@ -37,8 +52,8 @@ interface VideoFile {
   status: 'idle' | 'processing' | 'success' | 'error';
   processedFrames?: number;
   totalFrames?: number;
-  outputVideoUrl?: string;   // blob URL for .webm download
-  originalVideoUrl?: string; // blob URL for original video (for comparison)
+  outputVideoUrl?: string;
+  originalVideoUrl?: string;
   upscaledWidth?: number;
   upscaledHeight?: number;
   previewOriginalDataUrl?: string;
@@ -47,60 +62,6 @@ interface VideoFile {
 }
 
 type MediaFile = (ImageFile & { type: 'image' }) | VideoFile;
-
-type UpscaleEngine = "ai_super_res" | "bicubic_crisp" | "bilinear_smooth";
-
-interface EngineProfile {
-  label: string;
-  badge: string;
-  description: string;
-  smoothing: "high" | "low";
-  multiPass: boolean;
-  sharpen: number;
-  denoise: number;
-  contrast: number;
-  saturation: number;
-  quality: number;
-}
-
-const ENGINE_PROFILES: Record<UpscaleEngine, EngineProfile> = {
-  ai_super_res: {
-    label: "AI Super Resolution",
-    badge: "MULTI-PASS",
-    description: "Iterative 2× upscaling with bilateral denoise & adaptive unsharp masking",
-    smoothing: "high",
-    multiPass: true,
-    sharpen: 90,
-    denoise: 22,
-    contrast: 1.06,
-    saturation: 1.08,
-    quality: 98,
-  },
-  bicubic_crisp: {
-    label: "Bicubic Crisp",
-    badge: "HIGH-DETAIL",
-    description: "Single-pass cubic resampling with strong sharpening for photography & portraits",
-    smoothing: "high",
-    multiPass: false,
-    sharpen: 110,
-    denoise: 10,
-    contrast: 1.08,
-    saturation: 1.04,
-    quality: 97,
-  },
-  bilinear_smooth: {
-    label: "Bilinear Smooth",
-    badge: "ANTI-ALIAS",
-    description: "Smooth interpolation — ideal for vector art, illustrations, and graphic design",
-    smoothing: "low",
-    multiPass: false,
-    sharpen: 30,
-    denoise: 8,
-    contrast: 1.02,
-    saturation: 1.0,
-    quality: 96,
-  },
-};
 
 // ─── Utilities ─────────────────────────────────────────────────────────────────
 
@@ -250,152 +211,6 @@ function VideoThumbnail({ file }: { file: File }) {
   );
 }
 
-// ─── Image Processing Pipeline ─────────────────────────────────────────────────
-
-function applyBilateralDenoise(
-  ctx: CanvasRenderingContext2D,
-  w: number,
-  h: number,
-  intensity: number
-): void {
-  if (intensity <= 0) return;
-  const imgData = ctx.getImageData(0, 0, w, h);
-  const src = new Uint8ClampedArray(imgData.data);
-  const data = imgData.data;
-  const sigma = (intensity / 100) * 52;
-  const radius = intensity > 55 ? 2 : 1;
-  const twoSigSq = 2 * sigma * sigma;
-
-  for (let y = radius; y < h - radius; y++) {
-    for (let x = radius; x < w - radius; x++) {
-      const ci = (y * w + x) * 4;
-      for (let c = 0; c < 3; c++) {
-        const center = src[ci + c]!;
-        let weightSum = 0;
-        let colorSum = 0;
-        for (let dy = -radius; dy <= radius; dy++) {
-          for (let dx = -radius; dx <= radius; dx++) {
-            const ni = ((y + dy) * w + (x + dx)) * 4 + c;
-            const nb = src[ni]!;
-            const diff = center - nb;
-            const wt = Math.exp(-(diff * diff) / twoSigSq);
-            colorSum += nb * wt;
-            weightSum += wt;
-          }
-        }
-        data[ci + c] = Math.min(255, Math.max(0, Math.round(colorSum / weightSum)));
-      }
-    }
-  }
-  ctx.putImageData(imgData, 0, 0);
-}
-
-function applyUnsharpMask(
-  ctx: CanvasRenderingContext2D,
-  w: number,
-  h: number,
-  amount: number
-): void {
-  if (amount <= 0) return;
-  const imgData = ctx.getImageData(0, 0, w, h);
-  const src = new Uint8ClampedArray(imgData.data);
-  const data = imgData.data;
-  // Increased cap from 0.52 → 0.75 for stronger, non-blurry sharpening
-  const mix = (amount / 100) * 0.75;
-  const cw = 1 + 4 * mix;
-  const ew = -mix;
-
-  for (let y = 1; y < h - 1; y++) {
-    for (let x = 1; x < w - 1; x++) {
-      const ci = (y * w + x) * 4;
-      for (let c = 0; c < 3; c++) {
-        const v =
-          src[ci + c]! * cw +
-          src[((y - 1) * w + x) * 4 + c]! * ew +
-          src[((y + 1) * w + x) * 4 + c]! * ew +
-          src[(y * w + (x - 1)) * 4 + c]! * ew +
-          src[(y * w + (x + 1)) * 4 + c]! * ew;
-        data[ci + c] = Math.min(255, Math.max(0, Math.round(v)));
-      }
-    }
-  }
-  ctx.putImageData(imgData, 0, 0);
-}
-
-function drawScaleStep(
-  src: HTMLImageElement | HTMLCanvasElement,
-  targetW: number,
-  targetH: number,
-  profile: EngineProfile
-): HTMLCanvasElement {
-  const canvas = document.createElement("canvas");
-  canvas.width = targetW;
-  canvas.height = targetH;
-  const ctx = canvas.getContext("2d")!;
-  ctx.imageSmoothingEnabled = true;
-  ctx.imageSmoothingQuality = profile.smoothing === "high" ? "high" : "low";
-  ctx.filter = `contrast(${profile.contrast}) saturate(${profile.saturation})`;
-  ctx.drawImage(src, 0, 0, targetW, targetH);
-  ctx.filter = "none";
-  return canvas;
-}
-
-async function runUpscalePipeline(
-  imgEl: HTMLImageElement,
-  srcW: number,
-  srcH: number,
-  targetW: number,
-  targetH: number,
-  engine: UpscaleEngine,
-  onStep: (msg: string) => void
-): Promise<string> {
-  const profile = ENGINE_PROFILES[engine];
-
-  if (profile.multiPass) {
-    let cur: HTMLImageElement | HTMLCanvasElement = imgEl;
-    let curW = srcW;
-    let curH = srcH;
-    let pass = 1;
-
-    while (curW < targetW * 0.92 || curH < targetH * 0.92) {
-      const nextW = Math.min(Math.round(curW * 2), targetW);
-      const nextH = Math.min(Math.round(curH * 2), targetH);
-      onStep(`Pass ${pass}: ${curW}×${curH} → ${nextW}×${nextH}px`);
-
-      const stepped = drawScaleStep(cur, nextW, nextH, profile);
-      const isIntermediate = nextW < targetW || nextH < targetH;
-
-      if (isIntermediate) {
-        const ctx = stepped.getContext("2d")!;
-        applyBilateralDenoise(ctx, nextW, nextH, Math.round(profile.denoise * 0.55));
-      }
-
-      cur = stepped;
-      curW = nextW;
-      curH = nextH;
-      pass++;
-      await new Promise((r) => setTimeout(r, 0));
-    }
-
-    onStep("Final pass: denoise & unsharp masking...");
-    const final = drawScaleStep(cur, targetW, targetH, profile);
-    const ctx = final.getContext("2d")!;
-    await new Promise((r) => setTimeout(r, 0));
-    applyBilateralDenoise(ctx, targetW, targetH, profile.denoise);
-    await new Promise((r) => setTimeout(r, 0));
-    applyUnsharpMask(ctx, targetW, targetH, profile.sharpen);
-    return final.toDataURL("image/jpeg", profile.quality / 100);
-  } else {
-    onStep(`Upscaling ${srcW}×${srcH} → ${targetW}×${targetH}px...`);
-    const canvas = drawScaleStep(imgEl, targetW, targetH, profile);
-    const ctx = canvas.getContext("2d")!;
-    await new Promise((r) => setTimeout(r, 0));
-    if (profile.denoise > 0) applyBilateralDenoise(ctx, targetW, targetH, profile.denoise);
-    await new Promise((r) => setTimeout(r, 0));
-    if (profile.sharpen > 0) applyUnsharpMask(ctx, targetW, targetH, profile.sharpen);
-    return canvas.toDataURL("image/jpeg", profile.quality / 100);
-  }
-}
 
 /**
  * Extract multiple frames from a video using a SINGLE shared <video> element
@@ -879,30 +694,13 @@ function VideoSliderCompare({
 
 // ─── Main Component ────────────────────────────────────────────────────────────
 
-// ─── Resolution Presets ───────────────────────────────────────────────────────
-
-interface ResolutionPreset {
-  label: string;
-  width: number;
-  height: number;
-  badge: string;
-  desc: string;
-}
-
-const RESOLUTION_PRESETS: ResolutionPreset[] = [
-  { label: "2× Scale",    width: 2000,  height: 2000,  badge: "2×",    desc: "2× original size · aspect ratio preserved" },
-  { label: "2048px",      width: 2048,  height: 2048,  badge: "2K",    desc: "Longer side ≥ 2048px · Stock minimum" },
-  { label: "3000px",      width: 3000,  height: 3000,  badge: "3K",    desc: "Longer side ≥ 3000px · High quality" },
-  { label: "4096px",      width: 4096,  height: 4096,  badge: "4K",    desc: "Longer side ≥ 4096px · Ultra HD" },
-  { label: "6000px",      width: 6000,  height: 6000,  badge: "6K",    desc: "Longer side ≥ 6000px · Pro stock" },
-  { label: "8192px",      width: 8192,  height: 8192,  badge: "8K",    desc: "Longer side ≥ 8192px · Max quality" },
-];
-
 const MAX_UPSCALE_FILES = 180;
 
 export default function ImageUpscaler() {
   const [images, setImages] = useState<MediaFile[]>([]);
-  const [selectedPreset, setSelectedPreset] = useState<ResolutionPreset>(RESOLUTION_PRESETS[1]!);
+  // Default: 3000px (3K) — Adobe Stock & Shutterstock require ≥ 4MP.
+  // A 16:9 image at 2048px is only ~2.4 MP and gets rejected. 3K is safe.
+  const [selectedPreset, setSelectedPreset] = useState<ResolutionPreset>(RESOLUTION_PRESETS[DEFAULT_PRESET_INDEX]!);
   const [engine, setEngine] = useState<UpscaleEngine>("ai_super_res");
   const [loading, setLoading] = useState(false);
   const [progress, setProgress] = useState("");
@@ -1019,18 +817,7 @@ export default function ImageUpscaler() {
           // Preserve original aspect ratio — scale uniformly so the longer
           // side reaches the preset target. Never distort, never downscale.
           const presetLonger = Math.max(selectedPreset.width, selectedPreset.height);
-          const srcLonger = Math.max(srcW, srcH);
-          let targetW: number;
-          let targetH: number;
-          if (presetLonger <= srcLonger) {
-            // Image already >= preset resolution → keep original size
-            targetW = srcW;
-            targetH = srcH;
-          } else {
-            const scaleFactor = presetLonger / srcLonger;
-            targetW = Math.round(srcW * scaleFactor);
-            targetH = Math.round(srcH * scaleFactor);
-          }
+          const { targetW, targetH } = calcTargetDimensions(srcW, srcH, presetLonger, selectedPreset.minPixels);
 
           setProgress(`(${i + 1}/${images.length}) Memproses: ${media.name} (${srcW}×${srcH} → ${targetW}×${targetH})`);
 
@@ -1058,18 +845,8 @@ export default function ImageUpscaler() {
           );
         } else {
           // Video processing — preserve original aspect ratio
-          const vSrcLonger = Math.max(media.width, media.height);
           const vPresetLonger = Math.max(selectedPreset.width, selectedPreset.height);
-          let vTargetW: number;
-          let vTargetH: number;
-          if (vPresetLonger <= vSrcLonger) {
-            vTargetW = media.width;
-            vTargetH = media.height;
-          } else {
-            const vScale = vPresetLonger / vSrcLonger;
-            vTargetW = Math.round(media.width * vScale);
-            vTargetH = Math.round(media.height * vScale);
-          }
+          const { targetW: vTargetW, targetH: vTargetH } = calcTargetDimensions(media.width, media.height, vPresetLonger);
 
           setProgress(`(${i + 1}/${images.length}) Memproses Video: ${media.name} (${media.width}×${media.height} → ${vTargetW}×${vTargetH})`);
           const result = await processVideoFile(

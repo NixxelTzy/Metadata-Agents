@@ -46,9 +46,9 @@ Your Mission: Produce 1 commercial title and clean, highly searchable keywords t
    ▸ NEVER output any Indonesian words (e.g. NEVER output "wanita", "petani", "kebun", "tomat", "lebah", "tanaman", "panen", etc.). Every single word must be correct English.
 
 【2】 NO WEIRD WORDS OR ODD SPECIFIC LABELS:
-   ▸ DO NOT output weird color shades or clothing terms: BANNED: "khaki", "khakis", "tan", "cream", "off-white", "utility jacket", "chore coat".
+   ▸ DO NOT output weird color shades or sub-clothing: BANNED: "khaki", "khakis", "tan", "cream", "off-white", "utility jacket", "chore coat", "plaid shirt", "flannel shirt", "plaid", "flannel".
    ▸ DO NOT output anatomical micro-parts: BANNED: "right hand", "left hand", "hand holding", "finger", "hair", "ponytail".
-   ▸ DO NOT output secondary equipment, ground clutter, or metal parts: BANNED: "metal ribs", "horizontal supports", "paper sheet", "white paper", "dark spots", "bucket", "hose", "cable", "wire", "irrigation hoses", "pump unit", "distant hills", "tree line".
+   ▸ DO NOT output secondary equipment, ground clutter, or distant filler: BANNED: "metal ribs", "horizontal supports", "paper sheet", "white paper", "dark spots", "bucket", "hose", "cable", "wire", "irrigation hoses", "pump unit", "distant hills", "distant trees", "tree line", "agricultural landscape", "agricultural setting", "plant canopy", "dirt pathway", "glass roof".
    ▸ DO NOT output camera technical jargon: BANNED: "diffused", "diffused daylight", "eyelevel", "bokeh", "macro".
 
 【3】 FOCUS ON HIGH COMMERCIAL VALUE & BUYER SEARCH INTENT (TOP-SELLING KEYWORDS):
@@ -317,12 +317,12 @@ function buildGuaranteedKeywords(
       "luxury", "boutique", "elegant",
       // Ground clutter & secondary equipment
       "bucket", "white bucket", "hose", "black hose", "cable", "wire ties", "metal clip",
-      "clip", "pen", "dark band", "dirt path", "dark spots", "hive lid",
-      "irrigation hoses", "irrigation hose", "pump unit", "water pump", "metal stakes", "vertical wires", "arched roof",
-      "distant hills", "tree line", "daylight glow", "sunny horizon", "rural landscape", "distant horizon", "sunlit sky",
+      "clip", "pen", "dark band", "dirt path", "dirt pathway", "dark spots", "hive lid",
+      "irrigation hoses", "irrigation hose", "pump unit", "water pump", "metal stakes", "vertical wires", "arched roof", "glass roof",
+      "distant hills", "distant trees", "tree line", "daylight glow", "sunny horizon", "rural landscape", "distant horizon", "sunlit sky", "agricultural landscape", "agricultural setting", "plant canopy",
       // Unwanted weird color shades & micro body parts
       "khaki", "khakis", "tan", "cream", "off white", "off-white", "beige",
-      "utility jacket", "chore coat", "right hand", "left hand", "hand holding", "finger", "hair", "ponytail",
+      "utility jacket", "chore coat", "plaid shirt", "flannel shirt", "plaid", "flannel", "right hand", "left hand", "hand holding", "finger", "hair", "ponytail",
       "metal ribs", "horizontal supports", "paper sheet", "white paper",
       // Camera technique & empty abstract words
       "diffused", "diffused light", "diffused daylight", "eyelevel", "bokeh", "shallow depth", "macro",
@@ -527,7 +527,7 @@ MANDATORY INSTRUCTIONS FOR MAXIMUM SALES & SEARCHABILITY:
 - EASY & HIGHLY SEARCHABLE BUYER KEYWORDS: Microstock buyers search with everyday simple English words!
   ▸ Use short, direct, 1-2 word tags (e.g. tomato, tomatoes, cherry tomato, greenhouse, farmer, woman, vegetable, vegetables, fresh, organic, harvest, healthy, food, ripe, red, plant, plants, green, agriculture, farming, clipboard, produce, crop, summer / beekeeper, beekeeping, bee, bees, honey, honeycomb, hive, beehive, frame, veil, suit, meadow, wildflowers, flowers, field, summer, sunny, golden hour, apiary, sweet, natural, raw honey, organic, nature).
   ▸ NEVER invent complex academic or obscure jargon (do NOT output "capped cells", "stacked boxes", "yield monitoring", "seedling propagation", "cultivated environment", "produce handling", "agricultural facility").
-- BANNED WEIRD WORDS: DO NOT output "khaki", "khakis", "tan", "cream", "off-white", "utility jacket", "right hand", "left hand", "hand holding", "metal ribs", "horizontal supports", "paper sheet", "white paper", "dark spots", "bucket", "hose", "diffused", "irrigation hoses", "pump unit".
+- BANNED WEIRD WORDS: DO NOT output "khaki", "khakis", "tan", "cream", "off-white", "utility jacket", "chore coat", "plaid", "plaid shirt", "flannel", "flannel shirt", "right hand", "left hand", "hand holding", "metal ribs", "horizontal supports", "paper sheet", "white paper", "dark spots", "bucket", "hose", "diffused", "irrigation hoses", "pump unit", "distant trees", "distant hills", "agricultural landscape", "plant canopy", "dirt pathway", "glass roof".
 - TARGET: Provide EXACTLY ${targetKwCount} unique keywords (1-2 words per keyword) and 1 commercial title.
 
 METADATA CONTEXT:

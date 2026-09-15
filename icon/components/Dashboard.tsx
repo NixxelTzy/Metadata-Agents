@@ -43,6 +43,15 @@ const CREATOR_FEATURES: FeatureCard[] = [
     glow: ICON_GLOW,
   },
   {
+    id: "google-flow",
+    icon: <Sparkles size={24} color="#6366f1" />,
+    title: "Google Flow (Gemini AI)",
+    desc: "Studio kreatif resmi dari Google berbasis Gemini untuk generasi foto, video, dan tool kustom dengan unlimited token tanpa batas.",
+    badge: "⚡ Unlimited",
+    color: "#6366f1",
+    glow: "rgba(99,102,241,0.25)",
+  },
+  {
     id: "feedback",
     icon: <MessageSquare size={24} color={ICON_COLOR} />,
     title: "Laporan & Saran",
@@ -414,10 +423,16 @@ export default function Dashboard({ onNavigate, username, isAdmin = false }: Pro
           <button
             type="button"
             className="quick-btn quick-btn--secondary"
-            onClick={() => onNavigate("watermark")}
+            onClick={() => onNavigate("google-flow")}
+            style={{
+              background: "linear-gradient(135deg, rgba(238,242,255,0.9), rgba(224,231,255,0.8))",
+              border: "1px solid rgba(99,102,241,0.35)",
+              color: "#4338ca",
+              fontWeight: 800
+            }}
           >
-            <Eraser size={15} color="#2563eb" />
-            Hapus Watermark
+            <Sparkles size={15} color="#4f46e5" />
+            Google Flow (Gemini AI)
           </button>
           {!isAdmin && (
             <button
@@ -475,7 +490,7 @@ export default function Dashboard({ onNavigate, username, isAdmin = false }: Pro
           <div className="section-label" style={{ marginBottom: 0 }}>Fitur &amp; Tools Kreator</div>
           <div style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 11, color: "#2563eb", fontWeight: 600 }}>
             <Sparkles size={12} />
-            <span>3 Tools Utama Siap Pakai</span>
+            <span>4 Tools Utama Siap Pakai</span>
           </div>
         </div>
 

@@ -17,6 +17,7 @@ import ServerShutdownPanel from "@/components/ServerShutdownPanel";
 import PremAccessPanel from "@/components/PremAccessPanel";
 import GiveawayPanel from "@/components/GiveawayPanel";
 import PremiumPricingModal from "@/components/PremiumPricingModal";
+import GoogleFlowPanel from "@/components/GoogleFlowPanel";
 import NativeNavBar from "@/components/NativeNavBar";
 import { useRouter } from "next/navigation";
 import {
@@ -28,11 +29,11 @@ import {
 import {
   Tag, ZoomIn, MessageSquare, ShieldCheck, Mail, Lock, Megaphone, Database,
   Radio, Power, Zap, LogOut, Loader2, ArrowLeft, Layers,
-  ChevronRight, Crown, Gift,
+  ChevronRight, Crown, Gift, Sparkles, ExternalLink
 } from "lucide-react";
 
 type Tab =
-  | "dashboard" | "metadata" | "upscale" | "feedback"
+  | "dashboard" | "metadata" | "upscale" | "google-flow" | "feedback"
   | "accounts" | "admin-messages" | "storage" | "messageweb"
   | "closing" | "shutdown" | "monitor" | "prem_access" | "giveaway";
 
@@ -51,6 +52,7 @@ const SZ = 15;
 const TAB_META: TabMeta[] = [
   { id: "metadata",       label: "Metadata Generator",         icon: <Tag size={SZ} /> },
   { id: "upscale",        label: "AI Upscaler",                icon: <ZoomIn size={SZ} /> },
+  { id: "google-flow",    label: "Google Flow (Gemini AI)",    icon: <Sparkles size={SZ} /> },
   { id: "feedback",       label: "Laporan & Saran",            icon: <MessageSquare size={SZ} /> },
   { id: "accounts",       label: "Account Checker",            icon: <ShieldCheck size={SZ} />, isAdmin: true },
   { id: "messageweb",     label: "Message Broadcast",          icon: <Mail size={SZ} />, isAdmin: true },
@@ -595,6 +597,7 @@ export default function Home() {
           : activeTab === "prem_access" && isAdmin ? <PremAccessPanel />
           : activeTab === "giveaway" && isAdmin ? <GiveawayPanel />
           : activeTab === "feedback" ? <FeedbackPanel />
+          : activeTab === "google-flow" ? <GoogleFlowPanel />
           : activeTab === "metadata" ? (
             <ImageUploader
               onTokensUpdated={refreshTokens}
