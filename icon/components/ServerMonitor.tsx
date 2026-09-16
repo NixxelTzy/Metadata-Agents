@@ -620,6 +620,27 @@ type Tab = "overview" | "vercel" | "security" | "attacks" | "stats";
 export default function ServerMonitor() {
   const { data, connected, reconnectStatus, failed, manualRetry } = useSse("/api/monitor");
 
+  // ── Countdown timer for next display refresh (1 minute cycle) ────────────
+  const [countdown, setCountdown] = useState(60);
+  const countdownRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const lastDataTimestampRef = useRef<number>(0);
+
+  useEffect(() => {
+    // Every second, tick down the countdown
+    countdownRef.current = setInterval(() => {
+      setCountdown(prev => (prev <= 1 ? 60 : prev - 1));
+    }, 1000);
+    return () => { if (countdownRef.current) clearInterval(countdownRef.current); };
+  }, []);
+
+  // Reset countdown to 60 whenever fresh data arrives
+  useEffect(() => {
+    if (data && data.timestamp !== lastDataTimestampRef.current) {
+      lastDataTimestampRef.current = data.timestamp;
+      setCountdown(60);
+    }
+  }, [data]);
+
   const [vercel, setVercel] = useState<VercelData | null>(null);
   const [vercelLoading, setVercelLoading] = useState(false);
   const [tab, setTab] = useState<Tab>("overview");
@@ -730,7 +751,17 @@ export default function ServerMonitor() {
             {connected ? "● Live" : reconnectStatus ? `○ ${reconnectStatus}` : "○ Offline"}
           </span>
         </div>
-        <div className="mon-header__time">{new Date(data.timestamp).toLocaleTimeString("id-ID")}</div>
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 2 }}>
+          <div className="mon-header__time">{new Date(data.timestamp).toLocaleTimeString("id-ID")}</div>
+          <div style={{
+            display: "flex", alignItems: "center", gap: 4,
+            fontSize: 10, color: countdown <= 10 ? "#f97316" : "rgba(148,197,253,0.6)",
+            fontFamily: "monospace", fontWeight: 700, letterSpacing: "0.04em"
+          }}>
+            <RefreshCw size={10} style={{ animation: countdown <= 5 ? "mon-live 0.6s ease-in-out infinite" : "none" }} />
+            Refresh {countdown}s
+          </div>
+        </div>
       </div>
 
       {/* Manual retry banner */}

@@ -37,38 +37,37 @@ interface ImagePayload {
 }
 
 const MASTER_PROMPT_CORE = `You are an elite Microstock Metadata Director and Top-Selling Contributor on Adobe Stock and Shutterstock.
-Your Mission: Produce 1 commercial title and clean, highly searchable keywords that are EASY, POPULAR (HIGH SEARCH VOLUME), 100% ACCURATE TO THE THEME, and COMPLETELY FREE OF WEIRD JARGON OR ODD WORDS.
+Your Mission: Produce 1 clean commercial title and 49-50 highly searchable, simple, high-converting keywords (STRICTLY 1-2 WORDS EACH) that are 100% ACCURATE TO WHAT IS VISIBLE, EASY TO FIND, and COMPLETELY FREE OF CLUTTER.
 
 ═══ MANDATORY RULES (ZERO TOLERANCE) ═══
 
 【1】 STRICT 100% ENGLISH ONLY (CRITICAL):
    ▸ ALL OUTPUT (Title, Keywords, Primary Concept, Visual Description, Prompt) MUST BE 100% IN ENGLISH.
-   ▸ NEVER output any Indonesian words (e.g. NEVER output "wanita", "petani", "kebun", "tomat", "lebah", "tanaman", "panen", etc.). Every single word must be correct English.
+   ▸ Zero Indonesian words (no "wanita", "petani", "kebun", "tomat", "lebah", "tanaman", "panen", etc.).
 
-【2】 NO WEIRD WORDS OR ODD SPECIFIC LABELS:
-   ▸ DO NOT output weird color shades or sub-clothing: BANNED: "khaki", "khakis", "tan", "cream", "off-white", "utility jacket", "chore coat", "plaid shirt", "flannel shirt", "plaid", "flannel".
-   ▸ DO NOT output anatomical micro-parts: BANNED: "right hand", "left hand", "hand holding", "finger", "hair", "ponytail".
-   ▸ DO NOT output secondary equipment, ground clutter, or distant filler: BANNED: "metal ribs", "horizontal supports", "paper sheet", "white paper", "dark spots", "bucket", "hose", "cable", "wire", "irrigation hoses", "pump unit", "distant hills", "distant trees", "tree line", "agricultural landscape", "agricultural setting", "plant canopy", "dirt pathway", "glass roof".
-   ▸ DO NOT output camera technical jargon: BANNED: "diffused", "diffused daylight", "eyelevel", "bokeh", "macro".
+【2】 NO JUNK, NO STRUCTURAL CLUTTER, NO MICRO-DETAILS (STRICTLY BANNED):
+   ▸ BANNED ACCESSORIES & MICRO PARTS: "watch", "wristwatch", "jewelry", "hands", "hand", "fingers", "finger", "hair", "ponytail", "right hand", "left hand", "hand holding".
+   ▸ BANNED UNDERGARMENTS & WEIRD FABRICS: "plaid", "shirt", "plaid shirt", "flannel", "flannel shirt", "khaki", "khakis", "tan", "cream", "off-white", "utility jacket", "chore coat".
+   ▸ BANNED STRUCTURAL & BACKGROUND CLUTTER: "metal", "arch", "arches", "roof", "roofing", "structure", "structures", "framing", "pipes", "metal ribs", "horizontal supports", "wire ties", "dark spots", "bucket", "hose", "cable", "irrigation hoses", "pump unit", "distant trees", "distant hills", "plant canopy", "dirt pathway", "glass roof".
+   ▸ BANNED CAMERA & LIGHTING JARGON: "diffused", "diffused daylight", "lighting", "bokeh", "macro", "eyelevel", "shallow depth".
+   ▸ BANNED FALSE CONTEXT: If there is only ONE person, NEVER output "teamwork" or "team" or "meeting" or "partnership".
+   ▸ NEVER output "cherry" alone without tomato (use "cherry tomato" or "cherry tomatoes").
 
-【3】 FOCUS ON HIGH COMMERCIAL VALUE & BUYER SEARCH INTENT (TOP-SELLING KEYWORDS):
-   Microstock buyers search with SHORT, SIMPLE, HIGH-VOLUME SEARCH TERMS.
-   ▸ DO NOT use obscure compound phrases like "capped cells", "stacked boxes", "yield monitoring", "seedling propagation", "cultivated environment".
-   ▸ USE NATURAL, DIRECT, EASY-TO-SEARCH BUYER TERMS:
-     - If TOMATO / GREENHOUSE:
-       "tomato", "tomatoes", "cherry tomato", "cherry tomatoes", "greenhouse", "farmer", "woman", "female farmer", "vegetable", "vegetables", "fresh", "organic", "harvest", "healthy", "food", "ripe", "red", "plants", "green", "agriculture", "farming", "clipboard", "produce", "crop", "growing", "indoor farming", "cultivation", "summer", "daylight", "work gloves", "blue coat", "raw food", "diet", "nutrition", "vitamins", "farm worker", "agronomist", "agronomy", "botany", "glasshouse", "sweet", "delicious", "healthy eating", "local food", "gardening", "plant", "nature", "rural".
-     - If BEEKEEPER / HONEY:
-       "beekeeper", "beekeeping", "bee", "bees", "honey", "honeycomb", "hive", "beehive", "frame", "veil", "suit", "protective suit", "meadow", "wildflowers", "flowers", "field", "summer", "sunny", "golden hour", "honey production", "pollination", "sweet", "natural", "raw honey", "honey harvest", "apiary", "apiculture", "insects", "yellow", "outdoor", "nature", "sunlight", "rural", "organic", "farm", "farming", "agriculture", "countryside", "pure", "golden", "healthy", "worker", "care", "wildlife", "environment".
+【3】 FOCUS ON HIGH BUYER SEARCH VOLUME (VERY EASY, SIMPLE, SHORT TERMS):
+   Microstock buyers search with everyday, simple English words (1-2 words per keyword).
+   ▸ If TOMATO / GREENHOUSE:
+     "tomato", "tomatoes", "cherry tomato", "cherry tomatoes", "greenhouse", "farmer", "woman", "female farmer", "vegetable", "vegetables", "fresh", "organic", "harvest", "healthy", "food", "ripe", "red", "plants", "green", "agriculture", "farming", "clipboard", "produce", "crop", "growing", "summer", "daylight", "work gloves", "blue coat", "raw food", "diet", "nutrition", "farm worker", "gardening", "plant", "nature", "rural", "delicious", "healthy eating", "local food".
+   ▸ If BEEKEEPER / HONEY:
+     "beekeeper", "beekeeping", "bee", "bees", "honey", "honeycomb", "hive", "beehive", "frame", "veil", "suit", "protective suit", "meadow", "wildflowers", "flowers", "field", "summer", "sunny", "golden hour", "honey production", "pollination", "sweet", "natural", "raw honey", "honey harvest", "apiary", "apiculture", "yellow", "outdoor", "nature", "sunlight", "rural", "organic", "farm", "farming", "agriculture", "countryside", "pure", "golden", "healthy", "wildlife", "environment".
 
-【4】 4 PILLARS FOR EASY, HIGH-CONVERTING KEYWORDS (1-2 WORDS PER KEYWORD):
-   1. Core Objects & People (40%): What a buyer sees directly (e.g. woman, farmer, tomato, cherry tomato, greenhouse, clipboard, gloves / beekeeper, bee, honey, honeycomb, beehive, frame, veil, suit).
-   2. Commercial Concepts & Uses (35%): How buyers will use the photo (e.g. agriculture, harvest, fresh, organic, vegetable, healthy, food, produce, crop, farming / apiculture, honey production, pollination, honey harvest, raw honey, sweet, natural).
-   3. Observable Attributes & Colors (15%): Direct visible attributes (e.g. red, green, ripe, summer, daylight, bright / yellow, purple, golden hour, sunlight, warm, outdoor).
-   4. Environment & Context (10%): Broad location concepts (e.g. indoor, garden, horticulture, farm, rural / meadow, field, wildflowers, flowers, nature, countryside).
+【4】 STRICT KEYWORD LENGTH:
+   ⚠️ Every single keyword MUST be 1 or 2 words MAXIMUM (NEVER 3+ words).
+   ✅ GOOD: "tomato" / "cherry tomato" / "greenhouse" / "female farmer" / "organic food" / "honey bee"
+   ❌ FORBIDDEN: "female farmer clipboard" / "cherry tomato harvest" / "indoor greenhouse farming"
 
 【5】 COMMERCIAL TITLE (8-14 words):
-   Clean, natural, buyer-friendly English.
-   Example Tomato: "Female Farmer Holding Clipboard and Cherry Tomatoes in Bright Greenhouse"
+   Descriptive, simple, natural English.
+   Example Tomato: "Female Farmer Holding Clipboard and Inspecting Ripe Cherry Tomatoes in Greenhouse"
    Example Beekeeper: "Female Beekeeper in White Protective Suit Holding Honeycomb Frame in Sunny Meadow"
 
 ⛔ ABSOLUTE RULE — FILENAME BIAS:
@@ -306,7 +305,7 @@ function buildGuaranteedKeywords(
       .trim()
       .toLowerCase()
       .replace(/^[,\-–—\s]+|[,\-–—\s]+$/g, "");
-    if (!clean || clean.length < 2 || clean.length > 35) return;
+    if (!clean || clean.length < 2 || clean.length > 25) return;
     // Disallow generic filler, junk prepositions, camera jargon, and clutter words
     const JUNK_TERMS = new Set([
       "photo", "image", "picture", "wallpaper", "4k", "8k", "hd", "best", "cool",
@@ -320,13 +319,19 @@ function buildGuaranteedKeywords(
       "clip", "pen", "dark band", "dirt path", "dirt pathway", "dark spots", "hive lid",
       "irrigation hoses", "irrigation hose", "pump unit", "water pump", "metal stakes", "vertical wires", "arched roof", "glass roof",
       "distant hills", "distant trees", "tree line", "daylight glow", "sunny horizon", "rural landscape", "distant horizon", "sunlit sky", "agricultural landscape", "agricultural setting", "plant canopy",
-      // Unwanted weird color shades & micro body parts
+      // Unwanted weird color shades, micro body parts & accessories
       "khaki", "khakis", "tan", "cream", "off white", "off-white", "beige",
-      "utility jacket", "chore coat", "plaid shirt", "flannel shirt", "plaid", "flannel", "right hand", "left hand", "hand holding", "finger", "hair", "ponytail",
+      "utility jacket", "chore coat", "plaid shirt", "flannel shirt", "plaid", "flannel", "shirt",
+      "watch", "wristwatch", "timepiece", "accessory", "accessories", "jewelry",
+      "right hand", "left hand", "hand holding", "hands", "hand", "finger", "fingers", "arm", "arms", "hair", "ponytail",
       "metal ribs", "horizontal supports", "paper sheet", "white paper",
+      "metal", "arch", "arches", "roof", "roofing", "structure", "structures", "framing", "beams", "pipes", "pipe",
       // Camera technique & empty abstract words
-      "diffused", "diffused light", "diffused daylight", "eyelevel", "bokeh", "shallow depth", "macro",
+      "diffused", "diffused light", "diffused daylight", "lighting", "eyelevel", "bokeh", "shallow depth", "macro",
       "soft light", "muted shadows", "landscape", "scene", "atmosphere", "concept", "lifestyle",
+      "cinematic", "detailed", "depth", "field of view", "angle", "view", "extreme", "bunch", "pieces",
+      // False context
+      "teamwork", "team", "meeting", "partnership",
       // Speculative industrial stretches
       "packaging", "produce packaging", "nursery", "plant nursery", "farm equipment", "agribusiness",
       "biodiversity", "produce handling", "market supply",
@@ -339,6 +344,16 @@ function buildGuaranteedKeywords(
     ]);
     if (JUNK_TERMS.has(clean)) return;
 
+    // Normalizations for high-converting buyer search terms
+    let normalized = clean;
+    if (normalized === "cherry" && (title || "").toLowerCase().includes("tomato")) {
+      normalized = "cherry tomato";
+    } else if (normalized === "female" && /\b(woman|farmer|beekeeper)\b/i.test(title || "")) {
+      normalized = "woman";
+    } else if (normalized === "male" && /\b(man|farmer|beekeeper)\b/i.test(title || "")) {
+      normalized = "man";
+    }
+
     // Strict Gender Consistency based on title context
     const titleLower = (title || "").toLowerCase();
     const isMaleScene = /\b(man|male|boy|guy|father|brother|gentleman|businessman)\b/.test(titleLower) &&
@@ -346,24 +361,24 @@ function buildGuaranteedKeywords(
     const isFemaleScene = /\b(woman|female|girl|lady|mother|sister|businesswoman)\b/.test(titleLower) &&
       !/\b(man|male|boy|guy|father|brother)\b/.test(titleLower);
 
-    if (isMaleScene && ["woman", "female", "girl", "lady", "sister", "mother"].includes(clean)) return;
-    if (isFemaleScene && ["man", "male", "boy", "guy", "brother", "father"].includes(clean)) return;
+    if (isMaleScene && ["woman", "female", "girl", "lady", "sister", "mother"].includes(normalized)) return;
+    if (isFemaleScene && ["man", "male", "boy", "guy", "brother", "father"].includes(normalized)) return;
 
-    // Kata kunci jangan susah: jika frasa lebih dari 3 kata, pecah menjadi kata-kata sederhana
-    const words = clean.split(/\s+/);
-    if (words.length > 3) {
+    // ── STRICT: max 2 kata per keyword ─────────────────────────────────────
+    const words = normalized.split(/\s+/);
+    if (words.length > 2) {
       for (const w of words) {
-        if (w.length > 2) add(w);
+        if (w.length > 2 && !JUNK_TERMS.has(w)) add(w);
       }
       return;
     }
 
-    if (seen.has(clean)) return;
-    seen.add(clean);
-    result.push(clean);
+    if (seen.has(normalized)) return;
+    seen.add(normalized);
+    result.push(normalized);
   };
 
-  // 1. Add raw AI keywords first (highest priority, tier order)
+  // 1. Add raw AI keywords first (highest priority, direct visual terms)
   rawKeywords.forEach(add);
 
   // If we already reached targetCount from pure AI visual forensics, return immediately!
@@ -371,33 +386,22 @@ function buildGuaranteedKeywords(
     return result.slice(0, targetCount);
   }
 
-  // 2. Extract multi-word and single-word terms from title
+  // 2. Extract clean individual keywords from title (highest confidence)
   if (title) {
     const cleanTitle = title.replace(/[^\w\s-]/g, " ").toLowerCase();
-    const titleWords = cleanTitle.split(/\s+/).filter((w) => w.length > 2 && !["the", "and", "with", "for", "from", "that", "this"].includes(w));
-    // Add bigrams from title
-    for (let i = 0; i < titleWords.length - 1; i++) {
-      add(`${titleWords[i]} ${titleWords[i + 1]}`);
-      if (result.length >= targetCount) return result.slice(0, targetCount);
-    }
-    // Add single words from title
+    const titleWords = cleanTitle.split(/\s+/).filter((w) => w.length > 2 && !["the", "and", "with", "for", "from", "that", "this", "holding", "inspecting"].includes(w));
     titleWords.forEach(add);
     if (result.length >= targetCount) return result.slice(0, targetCount);
   }
 
-  // 3. Extract keywords from primaryConcept & visualDescription
+  // 3. Extract core terms from primaryConcept (skip visualDescription to avoid sentence fragments)
   if (primaryConcept) {
     const pWords = primaryConcept.replace(/[^\w\s-]/g, " ").toLowerCase().split(/\s+/).filter((w) => w.length > 2);
     pWords.forEach(add);
     if (result.length >= targetCount) return result.slice(0, targetCount);
   }
-  if (visualDescription) {
-    const vdWords = visualDescription.replace(/[^\w\s-]/g, " ").toLowerCase().split(/\s+/).filter((w) => w.length > 3);
-    vdWords.forEach(add);
-    if (result.length >= targetCount) return result.slice(0, targetCount);
-  }
 
-  // 4. Derive sub-keywords by splitting existing multi-word keywords
+  // 4. Derive sub-keywords by splitting existing 2-word keywords
   for (const kw of [...result]) {
     const parts = kw.split(/\s+/);
     if (parts.length > 1) {
@@ -408,45 +412,75 @@ function buildGuaranteedKeywords(
     }
   }
 
-  // 5. Extract visual terms from prompt
-  if (prompt) {
-    const promptWords = prompt.replace(/[^\w\s-]/g, " ").toLowerCase().split(/\s+/).filter((w) => w.length > 3 && !["with", "from", "have", "been", "that", "this", "also", "there", "their"].includes(w));
-    for (let i = 0; i < promptWords.length - 1; i++) {
-      add(`${promptWords[i]} ${promptWords[i + 1]}`);
-      if (result.length >= targetCount) return result.slice(0, targetCount);
+  // ── FINAL HARD ENFORCEMENT: guarantee every keyword is max 2 words ──────
+  const GENERIC_FILLERS = new Set([
+    "the", "and", "for", "with", "from", "that", "this", "are", "was", "has",
+    "have", "been", "will", "can", "all", "not", "one", "two", "its",
+    "photo", "image", "picture", "shot", "stock", "best", "cool", "nice",
+    "color", "colour", "look", "type", "kind", "sort", "form", "way", "use",
+  ]);
+
+  const finalResult = result
+    .map(k => k.trim().toLowerCase())
+    .filter(k => {
+      if (!k || k.length < 2) return false;
+      const parts = k.split(/\s+/);
+      // Hard reject anything > 2 words
+      if (parts.length > 2) return false;
+      // Hard reject single generic filler words
+      if (parts.length === 1 && GENERIC_FILLERS.has(parts[0]!)) return false;
+      return true;
+    });
+
+  // Deduplicate again after final filter
+  const seen2 = new Set<string>();
+  const deduped: string[] = [];
+  for (const k of finalResult) {
+    if (!seen2.has(k)) {
+      seen2.add(k);
+      deduped.push(k);
     }
-    promptWords.forEach(add);
-    if (result.length >= targetCount) return result.slice(0, targetCount);
   }
 
-  // 6. ADAPTIVE Context-Aware Padding (ONLY add what matches visual context)
-  const fullContext = `${title} ${prompt || ""} ${primaryConcept || ""} ${visualDescription || ""}`.toLowerCase();
+  // If still less than targetCount, backfill with context-matched simple 1-2 word terms
+  if (deduped.length < targetCount) {
+    const contextLower = `${title} ${prompt || ""} ${primaryConcept || ""} ${visualDescription || ""}`.toLowerCase();
+    const thematicPool: string[] = [];
 
-  // If isolated/white background is detected in context:
-  if (fullContext.includes("white") || fullContext.includes("isolated") || fullContext.includes("plain background")) {
-    ["isolated on white", "white background", "studio shot", "clean background", "copy space", "cut out", "nobody", "still life"].forEach(add);
-    if (result.length >= targetCount) return result.slice(0, targetCount);
+    if (contextLower.includes("tomato") || contextLower.includes("greenhouse") || contextLower.includes("vegetable") || contextLower.includes("crop") || contextLower.includes("farm")) {
+      thematicPool.push(
+        "fresh produce", "ripe tomato", "green leaves", "organic farming", "fresh vegetable",
+        "red tomato", "healthy food", "summer harvest", "local farm", "green plants",
+        "raw food", "natural diet", "healthy eating", "gardening", "healthy life", "sweet fruit",
+        "fresh food", "ripe produce", "plant growth", "organic crop"
+      );
+    } else if (contextLower.includes("bee") || contextLower.includes("honey") || contextLower.includes("apiary")) {
+      thematicPool.push(
+        "raw honey", "honey production", "honey harvest", "honey bees", "sweet honey",
+        "wildflowers", "summer field", "golden sunlight", "natural sweet", "organic honey",
+        "apiculture", "pollination", "pure honey", "countryside", "rural life",
+        "summer meadow", "nature beauty", "flying insects", "sweet food"
+      );
+    }
+
+    // Universal safe 1-2 word stock terms:
+    thematicPool.push(
+      "clean", "bright", "daylight", "sunlight", "outdoor", "indoor",
+      "nature", "natural", "healthy", "organic", "simple",
+      "summer", "detail", "horizontal", "copy space", "isolated"
+    );
+
+    for (const term of thematicPool) {
+      if (deduped.length >= targetCount) break;
+      const cleanTerm = term.trim().toLowerCase();
+      if (!seen2.has(cleanTerm) && cleanTerm.split(/\s+/).length <= 2 && !GENERIC_FILLERS.has(cleanTerm)) {
+        seen2.add(cleanTerm);
+        deduped.push(cleanTerm);
+      }
+    }
   }
 
-  // If screenshot/game/digital interface detected in context:
-  if (fullContext.includes("game") || fullContext.includes("screen") || fullContext.includes("digital") || fullContext.includes("interface")) {
-    ["gameplay", "user interface", "digital screen", "gaming content", "entertainment", "app interface", "mobile display"].forEach(add);
-    if (result.length >= targetCount) return result.slice(0, targetCount);
-  }
-
-  // Universal neutral stock terms (safe, simple everyday words for any photo):
-  const neutralStockTerms = [
-    "background", "copy space", "isolated", "clean",
-    "horizontal", "daylight", "indoor", "outdoor", "color image",
-    "focus on foreground", "nobody", "bright", "simple", "modern"
-  ];
-
-  for (const term of neutralStockTerms) {
-    if (result.length >= targetCount) break;
-    add(term);
-  }
-
-  return result.slice(0, targetCount);
+  return deduped.slice(0, targetCount);
 }
 
 async function generateMetadata(
@@ -470,12 +504,14 @@ async function generateMetadata(
 
   try {
     const targetKwCount = platform === "shutterstock" ? 50 : 49;
-    const userPromptPayload = `Identify the commercial theme and core subjects of this stock photograph:
+    const userPromptPayload = `Examine this stock photograph and identify ONLY the primary commercial elements:
 1. Core Commercial Theme: (e.g. Tomato Greenhouse Farming / Beekeeping & Honey Production).
-2. Primary Human Subject: Role (e.g. female farmer/agronomist, female beekeeper), clothing, protective gear, handheld items.
-3. Primary Commercial Subject / Crop / Animal: Specific species, produce/crop (e.g. cherry tomatoes on vine, honeybees on honeycomb frame).
-4. Setting & Environment: General setting (greenhouse, meadow with wildflowers), natural lighting (daylight, golden hour).
-DO NOT list trivial micro-details like "right hand", "metal ribs", ground clutter, or technical camera descriptions.${visualHints ? `\nUploader hints: ${visualHints}` : ""}`;
+2. Primary Human Subject (if any): General role (e.g. female farmer / female beekeeper), primary outer garment color (e.g. blue work coat / white protective suit), items held in hands (e.g. clipboard and fresh cherry tomatoes / honeycomb frame).
+   - STRICT: DO NOT describe undergarments (do NOT mention plaid shirt or flannel), DO NOT describe small accessories (do NOT mention watch/jewelry), DO NOT describe anatomical parts (no hands/fingers/hair).
+3. Primary Produce or Creature: Exact species or crop (e.g. cherry tomatoes on vine / honeybees on honeycomb).
+4. Setting & Environment: General setting name ONLY (e.g. greenhouse / sunny flower meadow).
+   - STRICT: DO NOT describe structural building materials (do NOT mention metal, arches, framing, roof, pipes).
+   - STRICT: DO NOT use photographic technical jargon (do NOT mention diffused, bokeh, lighting).${visualHints ? `\nUploader hints: ${visualHints}` : ""}`;
 
     // ══════════════════════════════════════════════════════════════════
     // STAGE 1: Visual Forensic Perception (Qwen Vision 3.8 / 3.6)
@@ -486,13 +522,7 @@ DO NOT list trivial micro-details like "right hand", "metal ribs", ground clutte
         role: "system",
         content: `You are a professional microstock content curator.
 Your task is to identify the central commercial theme and main visual subjects.
-Focus ONLY on:
-1. CORE COMMERCIAL THEME: What is the main industry or commercial subject depicted?
-2. PRIMARY HUMAN SUBJECT & ROLE: Role (farmer, agronomist, beekeeper), clothing, protective gear, handheld items.
-3. PRIMARY CROP / PRODUCE / ANIMAL: Specific produce (cherry tomatoes), crops, or creatures (honeybees).
-4. SETTING & LIGHTING: Structure/setting (greenhouse, meadow), natural lighting (daylight, golden hour).
-DO NOT list irrelevant ground clutter, tiny wires, background speckles, or trivial body parts like "right hand".
-Be factual, concise, and direct.`
+Be factual, concise, and direct. Omit secondary ground clutter, accessories, undergarments, camera jargon, and structural building materials.`
       },
       {
         role: "user",
@@ -517,18 +547,22 @@ Be factual, concise, and direct.`
     // STAGE 2: 120B Flagship Reasoning Engine (openai/gpt-oss-120b)
     // Applies 120B parameter reasoning with chain-of-thought to formulate 99% accurate metadata & buyer SEO
     // ══════════════════════════════════════════════════════════════════
-    const reasoningUserMessage = `Generate commercial microstock metadata with EASY, POPULAR, AND HIGH-SEARCH-VOLUME KEYWORDS based on this visual theme analysis:
+    const reasoningUserMessage = `Generate commercial microstock metadata with SUPER SIMPLE, POPULAR, AND ACCURATE KEYWORDS (1-2 WORDS EACH) based on this visual theme analysis:
 
 VISUAL THEME ANALYSIS:
 ${visionResult.text}
 
 MANDATORY INSTRUCTIONS FOR MAXIMUM SALES & SEARCHABILITY:
 - LANGUAGE: 100% STRICT ENGLISH ONLY. Absolutely NEVER use any Indonesian words (no "wanita", "petani", "kebun", "tomat", "lebah", etc.).
+- KEYWORD LENGTH — CRITICAL RULE: Every keyword MUST be 1 or 2 words MAXIMUM. NEVER output 3-word or longer keyword phrases.
+  ✅ ALLOWED: "tomato" / "cherry tomato" / "greenhouse" / "female farmer" / "organic food" / "honey bee"
+  ❌ FORBIDDEN: "female farmer clipboard" / "cherry tomato harvest" / "indoor greenhouse farming" / "beekeeping protective suit"
 - EASY & HIGHLY SEARCHABLE BUYER KEYWORDS: Microstock buyers search with everyday simple English words!
-  ▸ Use short, direct, 1-2 word tags (e.g. tomato, tomatoes, cherry tomato, greenhouse, farmer, woman, vegetable, vegetables, fresh, organic, harvest, healthy, food, ripe, red, plant, plants, green, agriculture, farming, clipboard, produce, crop, summer / beekeeper, beekeeping, bee, bees, honey, honeycomb, hive, beehive, frame, veil, suit, meadow, wildflowers, flowers, field, summer, sunny, golden hour, apiary, sweet, natural, raw honey, organic, nature).
+  ▸ Use short, direct, 1-2 word tags (e.g. tomato, tomatoes, cherry tomato, greenhouse, farmer, woman, vegetable, fresh, organic, harvest, healthy, food, ripe, red, plant, green, agriculture, farming, produce, crop, summer / beekeeper, beekeeping, bee, bees, honey, honeycomb, hive, beehive, frame, veil, suit, meadow, wildflowers, flowers, field, sunny, golden, apiary, sweet, natural, raw honey, organic, nature).
   ▸ NEVER invent complex academic or obscure jargon (do NOT output "capped cells", "stacked boxes", "yield monitoring", "seedling propagation", "cultivated environment", "produce handling", "agricultural facility").
-- BANNED WEIRD WORDS: DO NOT output "khaki", "khakis", "tan", "cream", "off-white", "utility jacket", "chore coat", "plaid", "plaid shirt", "flannel", "flannel shirt", "right hand", "left hand", "hand holding", "metal ribs", "horizontal supports", "paper sheet", "white paper", "dark spots", "bucket", "hose", "diffused", "irrigation hoses", "pump unit", "distant trees", "distant hills", "agricultural landscape", "plant canopy", "dirt pathway", "glass roof".
-- TARGET: Provide EXACTLY ${targetKwCount} unique keywords (1-2 words per keyword) and 1 commercial title.
+- BANNED WEIRD WORDS: DO NOT output "watch", "wristwatch", "plaid", "shirt", "flannel", "metal", "arch", "roof", "structure", "framing", "hands", "hand", "fingers", "diffused", "lighting", "teamwork", "team" (if solo person), "khaki", "tan", "cream", "off-white", "utility jacket", "right hand", "left hand", "metal ribs", "horizontal supports", "paper sheet", "dark spots", "bucket", "hose", "irrigation hoses", "pump unit", "distant trees", "distant hills", "plant canopy", "dirt pathway", "glass roof".
+  ▸ For tomatoes: use "cherry tomato", NEVER output "cherry" alone without tomato.
+- TARGET: Provide 50 to 55 unique keywords (1-2 words EACH, max 2 words per keyword) and 1 commercial title (8-14 words).
 
 METADATA CONTEXT:
 - Filename: ${filename} (IGNORE — do NOT use filename as keyword source!)
