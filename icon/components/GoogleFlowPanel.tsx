@@ -22,13 +22,14 @@ export default function GoogleFlowPanel() {
   };
 
   return (
-    <div style={{
-      maxWidth: 1000,
-      margin: "0 auto",
-      padding: "24px 18px 80px",
-      fontFamily: "inherit"
-    }}>
+    <div className="flow-root">
       <style>{`
+        .flow-root {
+          max-width: 1000px;
+          margin: 0 auto;
+          padding: 24px 18px 80px;
+          font-family: inherit;
+        }
         @keyframes flowGlow {
           0%, 100% { transform: translateY(0); box-shadow: 0 10px 30px rgba(59,130,246,0.15); }
           50% { transform: translateY(-3px); box-shadow: 0 16px 40px rgba(99,102,241,0.25); }
@@ -97,6 +98,13 @@ export default function GoogleFlowPanel() {
           transform: translateY(-3px);
           border-color: rgba(59, 130, 246, 0.7);
           box-shadow: 0 10px 24px rgba(59, 130, 246, 0.12);
+        }
+
+        @media (max-width: 640px) {
+          .flow-root { padding: 16px 12px 60px !important; }
+          .flow-hero-card { padding: 20px 16px !important; border-radius: 16px !important; }
+          .flow-btn-primary { width: 100% !important; justify-content: center !important; }
+          .flow-feature-box { padding: 14px !important; border-radius: 14px !important; }
         }
       `}</style>
 

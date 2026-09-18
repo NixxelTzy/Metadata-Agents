@@ -4,7 +4,7 @@ import { callGroq, type GroqMessage, REASONING_MODEL } from "@/lib/groq";
 import { inspect, getClientIp, recordIpError } from "@/lib/security/core";
 import { validateAndSanitize } from "@/lib/stock-compliance";
 import { verifyToken } from "@/lib/auth";
-import { appendActivityEvent } from "@/lib/db";
+import { appendActivityEvent, recordPhotoProcessing, appendPhotoToUserHistory } from "@/lib/db";
 
 export const runtime = "nodejs"; // Required for Redis (security core)
 export const maxDuration = 60; // Vercel Hobby max = 60s
@@ -53,12 +53,13 @@ Your Mission: Produce 1 clean commercial title and 49-50 highly searchable, simp
    ▸ BANNED FALSE CONTEXT: If there is only ONE person, NEVER output "teamwork" or "team" or "meeting" or "partnership".
    ▸ NEVER output "cherry" alone without tomato (use "cherry tomato" or "cherry tomatoes").
 
-【3】 FOCUS ON HIGH BUYER SEARCH VOLUME (VERY EASY, SIMPLE, SHORT TERMS):
-   Microstock buyers search with everyday, simple English words (1-2 words per keyword).
+【3】 FOCUS ON HIGH BUYER SEARCH VOLUME (VERY EASY, SIMPLE, COMMON TERMS):
+   Microstock buyers search with everyday, simple, common English words (1-2 words per keyword).
+   NO rare academic, scientific, or Latin terms (e.g. NEVER use "apiculture", "solanaceae", "botanical specimen").
    ▸ If TOMATO / GREENHOUSE:
      "tomato", "tomatoes", "cherry tomato", "cherry tomatoes", "greenhouse", "farmer", "woman", "female farmer", "vegetable", "vegetables", "fresh", "organic", "harvest", "healthy", "food", "ripe", "red", "plants", "green", "agriculture", "farming", "clipboard", "produce", "crop", "growing", "summer", "daylight", "work gloves", "blue coat", "raw food", "diet", "nutrition", "farm worker", "gardening", "plant", "nature", "rural", "delicious", "healthy eating", "local food".
    ▸ If BEEKEEPER / HONEY:
-     "beekeeper", "beekeeping", "bee", "bees", "honey", "honeycomb", "hive", "beehive", "frame", "veil", "suit", "protective suit", "meadow", "wildflowers", "flowers", "field", "summer", "sunny", "golden hour", "honey production", "pollination", "sweet", "natural", "raw honey", "honey harvest", "apiary", "apiculture", "yellow", "outdoor", "nature", "sunlight", "rural", "organic", "farm", "farming", "agriculture", "countryside", "pure", "golden", "healthy", "wildlife", "environment".
+     "beekeeper", "beekeeping", "bee", "bees", "honey", "honeycomb", "hive", "beehive", "frame", "veil", "suit", "protective suit", "meadow", "wildflowers", "flowers", "field", "summer", "sunny", "golden hour", "honey production", "pollination", "sweet", "natural", "raw honey", "honey harvest", "apiary", "bee farm", "yellow", "outdoor", "nature", "sunlight", "rural", "organic", "farm", "farming", "agriculture", "countryside", "pure", "golden", "healthy", "wildlife", "environment".
 
 【4】 STRICT KEYWORD LENGTH:
    ⚠️ Every single keyword MUST be 1 or 2 words MAXIMUM (NEVER 3+ words).
@@ -458,7 +459,7 @@ function buildGuaranteedKeywords(
       thematicPool.push(
         "raw honey", "honey production", "honey harvest", "honey bees", "sweet honey",
         "wildflowers", "summer field", "golden sunlight", "natural sweet", "organic honey",
-        "apiculture", "pollination", "pure honey", "countryside", "rural life",
+        "bee farm", "pollination", "pure honey", "countryside", "rural life",
         "summer meadow", "nature beauty", "flying insects", "sweet food"
       );
     }
@@ -557,9 +558,9 @@ MANDATORY INSTRUCTIONS FOR MAXIMUM SALES & SEARCHABILITY:
 - KEYWORD LENGTH — CRITICAL RULE: Every keyword MUST be 1 or 2 words MAXIMUM. NEVER output 3-word or longer keyword phrases.
   ✅ ALLOWED: "tomato" / "cherry tomato" / "greenhouse" / "female farmer" / "organic food" / "honey bee"
   ❌ FORBIDDEN: "female farmer clipboard" / "cherry tomato harvest" / "indoor greenhouse farming" / "beekeeping protective suit"
-- EASY & HIGHLY SEARCHABLE BUYER KEYWORDS: Microstock buyers search with everyday simple English words!
-  ▸ Use short, direct, 1-2 word tags (e.g. tomato, tomatoes, cherry tomato, greenhouse, farmer, woman, vegetable, fresh, organic, harvest, healthy, food, ripe, red, plant, green, agriculture, farming, produce, crop, summer / beekeeper, beekeeping, bee, bees, honey, honeycomb, hive, beehive, frame, veil, suit, meadow, wildflowers, flowers, field, sunny, golden, apiary, sweet, natural, raw honey, organic, nature).
-  ▸ NEVER invent complex academic or obscure jargon (do NOT output "capped cells", "stacked boxes", "yield monitoring", "seedling propagation", "cultivated environment", "produce handling", "agricultural facility").
+- EASY, COMMON & HIGHLY SEARCHABLE BUYER KEYWORDS: Microstock buyers search with everyday, simple, common English words!
+  ▸ Use short, direct, 1-2 word tags (e.g. tomato, tomatoes, cherry tomato, greenhouse, farmer, woman, vegetable, fresh, organic, harvest, healthy, food, ripe, red, plant, green, agriculture, farming, produce, crop, summer / beekeeper, beekeeping, bee, bees, honey, honeycomb, hive, beehive, frame, veil, suit, meadow, wildflowers, flowers, field, sunny, golden, bee farm, sweet, natural, raw honey, organic, nature).
+  ▸ NEVER use rare academic, scientific, or Latin jargon (do NOT output "apiculture", "agronomy", "botany", "solanaceae", "capped cells", "stacked boxes", "yield monitoring", "seedling propagation", "cultivated environment", "produce handling", "agricultural facility").
 - BANNED WEIRD WORDS: DO NOT output "watch", "wristwatch", "plaid", "shirt", "flannel", "metal", "arch", "roof", "structure", "framing", "hands", "hand", "fingers", "diffused", "lighting", "teamwork", "team" (if solo person), "khaki", "tan", "cream", "off-white", "utility jacket", "right hand", "left hand", "metal ribs", "horizontal supports", "paper sheet", "dark spots", "bucket", "hose", "irrigation hoses", "pump unit", "distant trees", "distant hills", "plant canopy", "dirt pathway", "glass roof".
   ▸ For tomatoes: use "cherry tomato", NEVER output "cherry" alone without tomato.
 - TARGET: Provide 50 to 55 unique keywords (1-2 words EACH, max 2 words per keyword) and 1 commercial title (8-14 words).
@@ -694,32 +695,37 @@ TARGET: Exactly ${targetKwCount} keywords. Output ONLY raw valid JSON with no ma
 const DELAY_BETWEEN_IMAGES_MS = 1500; // 1.5s between images prevents Groq rate limits
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
-async function generateMetadataWithRetry(
+export async function generateMetadataWithRetry(
   dataUrl: string,
   filename: string,
   visualHints?: string,
   platform: "adobe_stock" | "shutterstock" | "magnific" = "adobe_stock",
   complianceGuard: boolean = false,
-  existingPrompt?: string
+  existingPrompt?: string,
+  maxAttempts: number = 4
 ): Promise<MetadataResult> {
-  const MAX_ATTEMPTS = 3;
-  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+  let lastError: any = null;
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     try {
       const result = await generateMetadata(dataUrl, filename, visualHints, platform, complianceGuard, attempt, existingPrompt);
-      return result;
+      if (result && result.title && result.keywords && result.keywords.length > 0) {
+        return result;
+      }
+      throw new Error("Hasil metadata kosong atau tidak lengkap dari model AI");
     } catch (err) {
-      const msg = err instanceof Error ? err.message : "";
-      // If rate limited and more attempts left, wait before retrying
-      if ((msg.includes("429") || msg.includes("rate limit") || msg.includes("Rate limit")) && attempt < MAX_ATTEMPTS) {
-        const waitMs = attempt * 2000; // 2s, 4s
-        console.warn(`[generate] Groq 429 on attempt ${attempt}. Waiting ${waitMs}ms...`);
+      lastError = err;
+      const msg = err instanceof Error ? err.message : String(err);
+      console.warn(`[generateMetadataWithRetry] Foto "${filename}" gagal pada percobaan ${attempt}/${maxAttempts}: ${msg}`);
+
+      if (attempt < maxAttempts) {
+        const isRateLimit = msg.includes("429") || msg.toLowerCase().includes("rate limit");
+        const waitMs = isRateLimit ? attempt * 2500 : Math.min(attempt * 1500, 4500);
         await sleep(waitMs);
         continue;
       }
-      throw err;
     }
   }
-  throw new Error("Max retries reached");
+  throw lastError || new Error(`Gagal memproses metadata "${filename}" setelah ${maxAttempts} percobaan`);
 }
 
 
@@ -796,13 +802,45 @@ export async function POST(request: NextRequest) {
       if (stabilized && i < images.length - 1) await sleep(DELAY_BETWEEN_IMAGES_MS);
     }
 
-    // ── Log activity for authenticated user ──
+    // ── Log activity, record photo processing & persist to DB history ──
     try {
       const authCookieVal = request.cookies.get("auth_token")?.value;
       if (authCookieVal) {
         const tokenPayload = verifyToken(authCookieVal);
         if (tokenPayload) {
-          const successCount = results.filter((r) => !r.error).length;
+          const successResults = results.filter((r) => !r.error && r.title);
+          const successCount = successResults.length;
+
+          if (successCount > 0) {
+            // 1. Immediately increment photo counter & leaderboard on server
+            void recordPhotoProcessing(
+              tokenPayload.userId,
+              tokenPayload.username || "Kreator",
+              successCount
+            );
+
+            // 2. Immediately append to user's history in Redis
+            const activeSessionId = body.sessionId || `session-${new Date().toISOString().slice(0, 10)}`;
+            for (const item of successResults) {
+              void appendPhotoToUserHistory(
+                tokenPayload.userId,
+                activeSessionId,
+                platform,
+                {
+                  filename: item.filename,
+                  title: item.title,
+                  keywords: item.keywords,
+                  categories: item.categories,
+                  prompt: item.prompt,
+                  model: item.model,
+                  editorial: item.editorial,
+                  matureContent: item.matureContent,
+                  illustration: item.illustration,
+                }
+              );
+            }
+          }
+
           void appendActivityEvent(
             tokenPayload.userId,
             tokenPayload.email,
@@ -812,7 +850,9 @@ export async function POST(request: NextRequest) {
           );
         }
       }
-    } catch { /* non-critical */ }
+    } catch (err) {
+      console.error("[generate] Failed to persist to Redis:", err);
+    }
 
     return NextResponse.json({ results, stabilized, totalUsage: {
       promptTokens: results.reduce((s, r) => s + (r.usage?.promptTokens || 0), 0),

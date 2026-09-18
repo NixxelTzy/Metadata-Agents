@@ -1,13 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Tag, ZoomIn, Eraser, Search, Sparkles, Bot,
   Clapperboard, MessageSquare, ArrowRight, Zap,
   TrendingUp, Clock, Shield, Star, ChevronRight,
   ImageIcon, FileText, Layers, Power, Radio,
   ShieldCheck, Mail, Lock, Megaphone, Database,
-  ShieldAlert, UserCheck, Crown, Gift
+  ShieldAlert, UserCheck, Crown, Gift, Trophy, Flame
 } from "lucide-react";
 
 interface FeatureCard {
@@ -35,9 +35,27 @@ const CREATOR_FEATURES: FeatureCard[] = [
     glow: ICON_GLOW,
   },
   {
+    id: "history",
+    icon: <Clock size={24} color="#10b981" />,
+    title: "Riwayat & Background Cloud",
+    desc: "Hasil proses metadata otomatis tersimpan permanen di database cloud. Buka kapan saja dan unduh ulang CSV.",
+    badge: "Cloud DB",
+    color: "#10b981",
+    glow: "rgba(16,185,129,0.25)",
+  },
+  {
+    id: "leaderboard",
+    icon: <Trophy size={24} color="#f59e0b" />,
+    title: "Leaderboard & Stats Live",
+    desc: "Pantau counter total foto diproses hari ini dan peringkat kontributor teraktif komunitas microstock.",
+    badge: "Live Rank",
+    color: "#f59e0b",
+    glow: "rgba(245,158,11,0.25)",
+  },
+  {
     id: "upscale",
     icon: <ZoomIn size={24} color={ICON_COLOR} />,
-    title: "AI Upscaler",
+    title: "AI Upscaler (2K / 4K / 8K)",
     desc: "Tingkatkan resolusi gambar hingga 4× tanpa kehilangan detail. Cocok untuk foto stok, ilustrasi, dan aset digital.",
     color: ICON_COLOR,
     glow: ICON_GLOW,
@@ -169,19 +187,30 @@ interface Props {
 
 export default function Dashboard({ onNavigate, username, isAdmin = false }: Props) {
   const [hovered, setHovered] = useState<string | null>(null);
+  const [todayPhotos, setTodayPhotos] = useState<number>(0);
+
+  useEffect(() => {
+    fetch("/api/stats")
+      .then((r) => r.json())
+      .then((data) => {
+        if (data && typeof data.todayCount === "number") setTodayPhotos(data.todayCount);
+      })
+      .catch(() => {});
+  }, []);
 
   const hour = new Date().getHours();
   const greeting = hour < 12 ? "Selamat pagi" : hour < 17 ? "Selamat siang" : "Selamat malam";
 
   return (
-    <div style={{
-      minHeight: "100%",
-      padding: "24px 18px 60px",
-      maxWidth: 1100,
-      margin: "0 auto",
-      fontFamily: "var(--font)",
-    }}>
+    <div className="dash-root">
       <style>{`
+        .dash-root {
+          min-height: 100%;
+          padding: 24px 18px 60px;
+          max-width: 1100px;
+          margin: 0 auto;
+          font-family: var(--font);
+        }
         @keyframes dashFadeUp {
           from { opacity: 0; transform: translateY(14px); }
           to   { opacity: 1; transform: translateY(0); }
@@ -334,27 +363,61 @@ export default function Dashboard({ onNavigate, username, isAdmin = false }: Pro
         }
 
         @media (max-width: 640px) {
-          .dash-grid { grid-template-columns: 1fr !important; }
-          .dash-stats-grid { grid-template-columns: 1fr 1fr !important; }
-          .dash-hero-actions { flex-direction: column; }
-          .dash-hero-actions .quick-btn { width: 100%; justify-content: center; }
+          .dash-root { padding: 16px 12px 60px !important; }
+          .dash-hero { margin-bottom: 22px !important; }
+          .dash-grid { grid-template-columns: 1fr !important; gap: 10px !important; }
+          .feat-card { padding: 16px 14px !important; border-radius: 14px !important; gap: 10px !important; }
+          .feat-icon-wrap { width: 40px !important; height: 40px !important; border-radius: 10px !important; }
+          .dash-stats-grid { grid-template-columns: 1fr 1fr !important; gap: 8px !important; }
+          .stat-card { padding: 10px 12px !important; gap: 8px !important; border-radius: 12px !important; }
+          .dash-hero-actions { flex-direction: column; gap: 8px !important; }
+          .dash-hero-actions .quick-btn { width: 100%; justify-content: center; padding: 12px !important; }
+        }
+        @media (max-width: 360px) {
+          .dash-stats-grid { grid-template-columns: 1fr !important; }
         }
       `}</style>
 
       {/* ── Hero ── */}
       <div className="dash-hero" style={{ marginBottom: 32 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
-          <div style={{
-            width: 38, height: 38, borderRadius: 12,
-            background: "linear-gradient(135deg,#3b82f6,#2563eb)",
-            display: "flex", alignItems: "center", justifyContent: "center",
-            boxShadow: "0 4px 16px rgba(59,130,246,0.35)",
-          }}>
-            <Layers size={19} color="#ffffff" />
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 10, marginBottom: 12 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <div style={{
+              width: 38, height: 38, borderRadius: 12,
+              background: "linear-gradient(135deg,#3b82f6,#2563eb)",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              boxShadow: "0 4px 16px rgba(59,130,246,0.35)",
+            }}>
+              <Layers size={19} color="#ffffff" />
+            </div>
+            <div>
+              <div style={{ fontSize: 12, color: "#2563eb", fontWeight: 700 }}>Stock AI Studio</div>
+              <div style={{ fontSize: 10, color: "#64748b" }}>Creative Suite &amp; Microstock Toolkit</div>
+            </div>
           </div>
-          <div>
-            <div style={{ fontSize: 12, color: "#2563eb", fontWeight: 700 }}>Stock AI Studio</div>
-            <div style={{ fontSize: 10, color: "#64748b" }}>Creative Suite & Microstock Toolkit</div>
+
+          {/* Live Photo Counter Badge */}
+          <div
+            onClick={() => onNavigate("leaderboard")}
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 7,
+              padding: "6px 14px",
+              borderRadius: 999,
+              background: "linear-gradient(135deg, rgba(220,252,231,0.95), rgba(187,247,208,0.8))",
+              border: "1px solid rgba(134,239,172,0.9)",
+              cursor: "pointer",
+              boxShadow: "0 2px 10px rgba(22,163,74,0.12)",
+              transition: "transform 0.15s ease"
+            }}
+            title="Klik untuk lihat Leaderboard & Statistik Lengkap"
+          >
+            <Flame size={14} color="#16a34a" />
+            <span style={{ fontSize: 11.5, fontWeight: 800, color: "#15803d" }}>
+              Total Foto Hari Ini: <strong>{todayPhotos.toLocaleString("id-ID")}</strong>
+            </span>
+            <ChevronRight size={13} color="#16a34a" />
           </div>
         </div>
 
@@ -411,6 +474,22 @@ export default function Dashboard({ onNavigate, username, isAdmin = false }: Pro
             <Tag size={15} />
             Mulai Metadata
             <ArrowRight size={15} />
+          </button>
+          <button
+            type="button"
+            className="quick-btn quick-btn--secondary"
+            onClick={() => onNavigate("history")}
+          >
+            <Clock size={15} color="#10b981" />
+            Riwayat Cloud
+          </button>
+          <button
+            type="button"
+            className="quick-btn quick-btn--secondary"
+            onClick={() => onNavigate("leaderboard")}
+          >
+            <Trophy size={15} color="#f59e0b" />
+            Leaderboard
           </button>
           <button
             type="button"

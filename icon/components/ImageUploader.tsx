@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { MAX_IMAGES, compressImage, extractImageHints, extractVideoFrame } from "@/lib/utils";
 import type { MetadataResult } from "@/app/api/generate/route";
 import { addUsage, isTokenLimitReached, openPremiumModal, isUserAdminOrPremium } from "@/lib/tokenStore";
@@ -55,8 +55,85 @@ export default function ImageUploader({ onTokensUpdated, userEmail, userRole, is
   const [copiedPromptIdx, setCopiedPromptIdx] = useState<number | null>(null);
   // Speed Boost AI Mode: 3 continuous workers, individual vision forensic analysis, zero lag
   const [autoSpeedMode, setAutoSpeedMode] = useState(true);
+  // Auto-Restart Failed Photos Mode: otomatis mencoba ulang foto yang gagal
+  const [autoRestartFailed, setAutoRestartFailed] = useState(true);
   const [retryingIndices, setRetryingIndices] = useState<Set<number>>(new Set());
   const inputRef = useRef<HTMLInputElement>(null);
+  const sessionIdRef = useRef<string>("");
+  const pollingIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const pollJobProgress = useCallback((jobId: string) => {
+    if (pollingIntervalRef.current) clearInterval(pollingIntervalRef.current);
+
+    pollingIntervalRef.current = setInterval(async () => {
+      try {
+        const res = await fetch(`/api/metadata/job?id=${jobId}`);
+        const data = await res.json();
+        if (data.success && data.job) {
+          const job = data.job;
+          if (Array.isArray(job.results) && job.results.length > 0) {
+            setResults(job.results);
+            try {
+              localStorage.setItem("stock_last_results", JSON.stringify(job.results));
+            } catch {}
+          }
+          setProgress(`⚡ Background AI: Memproses ${job.progress}/${job.total} file (${Math.round((job.progress / (job.total || 1)) * 100)}%)...`);
+
+          if (job.status === "completed" || job.progress >= job.total) {
+            if (pollingIntervalRef.current) clearInterval(pollingIntervalRef.current);
+            setLoading(false);
+
+            const hasFailed = Array.isArray(job.results) && job.results.some((r: any) => r && (r.error || !r.title));
+            if (hasFailed && autoRestartFailed) {
+              const failedCount = job.results.filter((r: any) => r && (r.error || !r.title)).length;
+              setProgress(`🔄 Auto-Restart aktif: Memulihkan ${failedCount} foto yang gagal...`);
+              showToast({
+                type: "info",
+                title: "Auto-Restart Berjalan",
+                message: `Mendeteksi ${failedCount} foto belum lengkap. Sistem otomatis me-restart proses...`,
+              });
+              setTimeout(() => {
+                void retryAllFailed();
+              }, 1200);
+            } else {
+              setProgress(`✅ Selesai! ${job.results.length}/${job.total} file berhasil diproses di background server.`);
+              localStorage.removeItem("active_metadata_job_id");
+              showToast({
+                type: "success",
+                title: "Selesai!",
+                message: `${job.results.length} foto selesai diproses di background server.`,
+              });
+            }
+          }
+        }
+      } catch (err) {
+        console.error("pollJobProgress error:", err);
+      }
+    }, 2500);
+  }, []);
+
+  useEffect(() => {
+    try {
+      const activeJobId = localStorage.getItem("active_metadata_job_id");
+      if (activeJobId) {
+        setLoading(true);
+        setProgress("Menghubungkan ke background job di server...");
+        pollJobProgress(activeJobId);
+      } else {
+        const cached = localStorage.getItem("stock_last_results");
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            setResults(parsed);
+          }
+        }
+      }
+    } catch {}
+
+    return () => {
+      if (pollingIntervalRef.current) clearInterval(pollingIntervalRef.current);
+    };
+  }, [pollJobProgress]);
 
   const handleGlobalModelChange = (model: string) => {
     setGlobalMagnificModel(model);
@@ -155,10 +232,16 @@ export default function ImageUploader({ onTokensUpdated, userEmail, userRole, is
   };
 
   const clearAll = () => {
+    if (pollingIntervalRef.current) clearInterval(pollingIntervalRef.current);
     setImages([]);
     setResults([]);
     setError("");
     setProgress("");
+    setLoading(false);
+    try {
+      localStorage.removeItem("stock_last_results");
+      localStorage.removeItem("active_metadata_job_id");
+    } catch {}
   };
 
 
@@ -191,6 +274,7 @@ export default function ImageUploader({ onTokensUpdated, userEmail, userRole, is
             visualHints: visualHintsToSend,
             existingPrompt: existingPrompt || undefined
           }],
+          sessionId: sessionIdRef.current,
           stabilized: true,
           platform,
           complianceGuard,
@@ -342,78 +426,54 @@ export default function ImageUploader({ onTokensUpdated, userEmail, userRole, is
       return;
     }
 
+    const jobId = `job-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+    localStorage.setItem("active_metadata_job_id", jobId);
+    sessionIdRef.current = jobId;
+
     setLoading(true);
     setError("");
     setResults([]);
 
-    const collected: MetadataResult[] = new Array(images.length).fill(null);
-
-    const processOne = async (i: number): Promise<void> => {
-      const res = await processSingleImage(i);
-      collected[i] = res;
-    };
-
     try {
-      // ── High-Speed Multi-Worker Mode (Active by default, or when autoSpeedMode is true) ──
-      // Runs a continuous worker queue of 3 concurrent workers across all platforms.
-      // Live updates: as soon as ANY photo completes, it appears on screen instantly.
-      // Every photo is still analyzed individually for 100% visual microstock accuracy.
-      const useSpeedBoost = autoSpeedMode || images.length > 5;
+      setProgress(`Mendaftarkan ${images.length} file ke background queue server...`);
 
-      if (useSpeedBoost) {
-        let currentIndex = 0;
-        let completedCount = 0;
-        const CONCURRENCY = Math.min(3, images.length);
+      const queueImages = images.map((img) => ({
+        filename: img.file.name,
+        dataUrl: img.preview,
+        visualHints: [
+          img.visualHints,
+          img.customHints ? `User hints: ${img.customHints}` : "",
+          magnificPrompts[img.id] ? `Existing prompt: ${magnificPrompts[img.id]}` : ""
+        ].filter(Boolean).join(" | "),
+        existingPrompt: magnificPrompts[img.id] || undefined
+      }));
 
-        const worker = async () => {
-          while (currentIndex < images.length) {
-            const idx = currentIndex++;
-            await processOne(idx);
-            completedCount++;
+      // Submit all images directly to server background queue in one call
+      const res = await fetch("/api/metadata/queue", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          jobId,
+          images: queueImages,
+          platform,
+          complianceGuard,
+        }),
+      });
 
-            // Real-time live UI update
-            setResults([...collected.map((r) => r ?? { filename: "", title: "", keywords: [], stabilized: true })]);
-            setProgress(`⚡ Speed Boost AI: Memproses ${completedCount}/${images.length} file (${Math.round((completedCount / images.length) * 100)}%)...`);
-
-            if (response_was_ratelimit(collected[idx])) {
-              await sleep(2500); // Brief pause on 429
-            } else {
-              await sleep(250); // Gentle 250ms spacing to maintain high throughput
-            }
-          }
-        };
-
-        // Launch staggered workers
-        const workers: Promise<void>[] = [];
-        for (let w = 0; w < CONCURRENCY; w++) {
-          workers.push(worker());
-          if (w < CONCURRENCY - 1) await sleep(250);
-        }
-
-        await Promise.all(workers);
-        const success = collected.filter((r) => r && !r.error).length;
-        setProgress(`✅ Selesai! ${success}/${images.length} file berhasil diproses.`);
-
-      } else {
-        // ── Single Sequential Mode (If user turns off Speed Boost) ──
-        for (let i = 0; i < images.length; i++) {
-          setProgress(`Memproses file ${i + 1}/${images.length}...`);
-          await processOne(i);
-          setResults([...collected.map((r) => r ?? { filename: "", title: "", keywords: [], stabilized: true })]);
-          if (response_was_ratelimit(collected[i])) {
-            await sleep(3500);
-          } else if (i < images.length - 1) {
-            await sleep(600);
-          }
-        }
-        const success = collected.filter((r) => r && !r.error).length;
-        setProgress(`✅ Selesai! ${success}/${images.length} file berhasil diproses.`);
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.error || `Gagal mendaftarkan antrian (${res.status})`);
       }
+
+      setProgress(`⚡ Background AI server aktif! Memproses ${images.length} file secara mandiri...`);
+      // Start polling to stream real-time progress to screen
+      pollJobProgress(jobId);
+
     } catch (err) {
-      console.error("Generate error:", err);
-      setError(err instanceof Error ? err.message : "Terjadi kesalahan saat memproses");
-    } finally {
+      console.error("Generate queue error:", err);
+      setError(err instanceof Error ? err.message : "Terjadi kesalahan saat memulai antrian");
       setLoading(false);
+      localStorage.removeItem("active_metadata_job_id");
     }
   };
 
@@ -588,7 +648,93 @@ export default function ImageUploader({ onTokensUpdated, userEmail, userRole, is
   const hasGeneratedResults = results.length > 0 && results.some((r) => !r.error && r.title);
 
   return (
-    <div style={{ maxWidth: 1060, margin: "0 auto", padding: "24px 20px 60px", fontFamily: "var(--font)" }}>
+    <div className="uploader-root">
+      <style>{`
+        .uploader-root {
+          max-width: 1060px;
+          margin: 0 auto;
+          padding: 24px 20px 60px;
+          font-family: var(--font);
+        }
+        .uploader-platform-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+          gap: 12px;
+        }
+        .uploader-platform-btn {
+          padding: 16px 18px;
+          border-radius: 16px;
+          backdrop-filter: blur(16px);
+          -webkit-backdrop-filter: blur(16px);
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          cursor: pointer;
+          transition: all 0.18s ease;
+          text-align: left;
+        }
+        .uploader-dropzone {
+          border-radius: 20px;
+          padding: 44px 24px;
+          text-align: center;
+          background: rgba(255, 255, 255, 0.7);
+          backdrop-filter: blur(16px);
+          -webkit-backdrop-filter: blur(16px);
+          box-shadow: 0 4px 20px rgba(59, 130, 246, 0.06);
+          cursor: pointer;
+          transition: all 0.2s cubic-bezier(0.16,1,0.3,1);
+          margin-bottom: 24px;
+          position: relative;
+        }
+        .uploader-result-card {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+          gap: 20px;
+          padding: 22px;
+          background: rgba(255, 255, 255, 0.8);
+          border: 1px solid rgba(147, 197, 253, 0.5);
+          border-radius: 18px;
+          backdrop-filter: blur(16px);
+          -webkit-backdrop-filter: blur(16px);
+          box-shadow: 0 6px 24px rgba(59, 130, 246, 0.07);
+          position: relative;
+        }
+        .uploader-right-col {
+          display: flex;
+          flex-direction: column;
+          gap: 12px;
+          padding-left: 14px;
+          border-left: 1px solid rgba(147, 197, 253, 0.4);
+        }
+
+        @media (max-width: 640px) {
+          .uploader-root { padding: 14px 10px 50px !important; }
+          .uploader-platform-grid { grid-template-columns: 1fr !important; gap: 8px !important; }
+          .uploader-platform-btn { padding: 12px 14px !important; }
+          .uploader-dropzone { padding: 26px 14px !important; border-radius: 16px !important; }
+          .uploader-result-card {
+            grid-template-columns: 1fr !important;
+            padding: 14px 12px !important;
+            border-radius: 16px !important;
+            gap: 14px !important;
+          }
+          .uploader-right-col {
+            border-left: none !important;
+            border-top: 1px solid rgba(147, 197, 253, 0.4) !important;
+            padding-left: 0 !important;
+            padding-top: 14px !important;
+          }
+          .uploader-export-bar {
+            flex-direction: column !important;
+            align-items: stretch !important;
+            gap: 10px !important;
+          }
+          .uploader-export-bar > * {
+            width: 100% !important;
+            justify-content: center !important;
+          }
+        }
+      `}</style>
       {/* ── Hero Header ── */}
       <div style={{ marginBottom: 28 }}>
         <div style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "4px 12px", background: "rgba(219, 234, 254, 0.8)", border: "1px solid rgba(147, 197, 253, 0.6)", borderRadius: 999, fontSize: 11, fontWeight: 800, color: "#1e40af", marginBottom: 12 }}>
@@ -608,7 +754,7 @@ export default function ImageUploader({ onTokensUpdated, userEmail, userRole, is
         <div style={{ fontSize: 11, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.08em", color: "#1e40af", marginBottom: 10 }}>
           Pilih Target Platform
         </div>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 12 }}>
+        <div className="uploader-platform-grid">
           {/* Adobe Stock */}
           <button
             type="button"
@@ -807,27 +953,59 @@ export default function ImageUploader({ onTokensUpdated, userEmail, userRole, is
             {autoSpeedMode ? "⚡ 3 Worker Aktif" : "Sekuensial (1-by-1)"}
           </div>
         </div>
+
+        {/* Auto-Restart Foto Gagal (Self-Healing Mode) */}
+        <div style={{
+          marginTop: 10,
+          padding: "12px 18px",
+          background: autoRestartFailed ? "rgba(238, 242, 255, 0.85)" : "rgba(241, 245, 249, 0.8)",
+          border: autoRestartFailed ? "1px solid rgba(199, 210, 254, 0.9)" : "1px solid rgba(203, 213, 225, 0.7)",
+          borderRadius: 14,
+          backdropFilter: "blur(10px)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          flexWrap: "wrap",
+          gap: 10,
+        }}>
+          <label style={{ display: "flex", alignItems: "flex-start", gap: 10, cursor: "pointer", flex: 1 }}>
+            <input
+              type="checkbox"
+              checked={autoRestartFailed}
+              onChange={(e) => setAutoRestartFailed(e.target.checked)}
+              disabled={loading}
+              style={{ marginTop: 3, accentColor: "#4f46e5", width: 16, height: 16 }}
+            />
+            <div>
+              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                <span style={{ fontSize: 13, fontWeight: 800, color: "#0f172a" }}>
+                  🔄 Auto-Restart Foto Gagal (Self-Healing Recovery)
+                </span>
+                <span style={{ fontSize: 10, fontWeight: 800, color: "#4338ca", background: "rgba(224,231,255,0.95)", padding: "1px 7px", borderRadius: 999, border: "1px solid rgba(199,210,254,0.8)" }}>
+                  Auto-Retry Aktif
+                </span>
+              </div>
+              <div style={{ fontSize: 11, color: "#475569", marginTop: 2, fontWeight: 500, lineHeight: 1.5 }}>
+                Jika ada foto yang gagal akibat lonjakan rate limit atau kendala jaringan, sistem secara otomatis me-restart proses foto tersebut hingga berhasil 100% tanpa perlu klik manual.
+              </div>
+            </div>
+          </label>
+          <div style={{ fontSize: 11.5, color: autoRestartFailed ? "#4338ca" : "#64748b", fontWeight: 800, whiteSpace: "nowrap" }}>
+            {autoRestartFailed ? "🔄 Pemulihan Otomatis" : "Nonaktif"}
+          </div>
+        </div>
       </div>
 
       {/* ── Dropzone Area ── */}
       <section
+        className={`uploader-dropzone${dragOver ? " drag-over" : ""}`}
         onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
         onDragLeave={() => setDragOver(false)}
         onDrop={handleDrop}
         onClick={() => inputRef.current?.click()}
         style={{
           border: dragOver ? "2px dashed #2563eb" : "2px dashed rgba(147, 197, 253, 0.75)",
-          borderRadius: 20,
-          padding: "44px 24px",
-          textAlign: "center",
           background: dragOver ? "rgba(219, 234, 254, 0.8)" : "rgba(255, 255, 255, 0.7)",
-          backdropFilter: "blur(16px)",
-          WebkitBackdropFilter: "blur(16px)",
-          boxShadow: dragOver ? "0 0 30px rgba(59, 130, 246, 0.25)" : "0 4px 20px rgba(59, 130, 246, 0.06)",
-          cursor: "pointer",
-          transition: "all 0.2s cubic-bezier(0.16,1,0.3,1)",
-          marginBottom: 24,
-          position: "relative"
         }}
       >
         <input
@@ -1037,7 +1215,7 @@ export default function ImageUploader({ onTokensUpdated, userEmail, userRole, is
               </div>
             </div>
 
-            <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+            <div className="uploader-export-bar" style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
               <div style={{ display: "flex", alignItems: "center", gap: 6, background: "rgba(255, 255, 255, 0.8)", padding: "5px 12px", borderRadius: 10, border: "1px solid rgba(147, 197, 253, 0.5)" }}>
                 <span style={{ fontSize: 11.5, color: "#64748b", fontWeight: 600 }}>Format Ekstensi CSV:</span>
                 <select
@@ -1210,19 +1388,7 @@ export default function ImageUploader({ onTokensUpdated, userEmail, userRole, is
               return (
                 <div
                   key={`${result.filename}-${i}`}
-                  style={{
-                    display: "grid",
-                    gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
-                    gap: 20,
-                    padding: "22px",
-                    background: "rgba(255, 255, 255, 0.8)",
-                    border: "1px solid rgba(147, 197, 253, 0.5)",
-                    borderRadius: 18,
-                    backdropFilter: "blur(16px)",
-                    WebkitBackdropFilter: "blur(16px)",
-                    boxShadow: "0 6px 24px rgba(59, 130, 246, 0.07)",
-                    position: "relative"
-                  }}
+                  className="uploader-result-card"
                 >
                   {/* Left Column: Thumbnail + Copy Meta */}
                   <div style={{ display: "flex", flexDirection: "column", gap: 12, alignItems: "center" }}>
@@ -1368,7 +1534,7 @@ export default function ImageUploader({ onTokensUpdated, userEmail, userRole, is
                   </div>
 
                   {/* Right Column: Platform-Specific Controls */}
-                  <div style={{ display: "flex", flexDirection: "column", gap: 12, paddingLeft: 12, borderLeft: "1px solid rgba(147, 197, 253, 0.4)" }}>
+                  <div className="uploader-right-col">
                     {platform === "shutterstock" ? (
                       <>
                         <label style={{ fontSize: 11, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.08em", color: "#1e40af" }}>

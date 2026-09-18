@@ -17,6 +17,8 @@ import ServerShutdownPanel from "@/components/ServerShutdownPanel";
 import PremAccessPanel from "@/components/PremAccessPanel";
 import GiveawayPanel from "@/components/GiveawayPanel";
 import PremiumPricingModal from "@/components/PremiumPricingModal";
+import MetadataHistoryPanel from "@/components/MetadataHistoryPanel";
+import LeaderboardPanel from "@/components/LeaderboardPanel";
 import GoogleFlowPanel from "@/components/GoogleFlowPanel";
 import NativeNavBar from "@/components/NativeNavBar";
 import { useRouter } from "next/navigation";
@@ -29,11 +31,11 @@ import {
 import {
   Tag, ZoomIn, MessageSquare, ShieldCheck, Mail, Lock, Megaphone, Database,
   Radio, Power, Zap, LogOut, Loader2, ArrowLeft, Layers,
-  ChevronRight, Crown, Gift, Sparkles, ExternalLink
+  ChevronRight, Crown, Gift, Sparkles, ExternalLink, Moon, Sun, Clock, Trophy
 } from "lucide-react";
 
 type Tab =
-  | "dashboard" | "metadata" | "upscale" | "google-flow" | "feedback"
+  | "dashboard" | "metadata" | "history" | "leaderboard" | "upscale" | "google-flow" | "feedback"
   | "accounts" | "admin-messages" | "storage" | "messageweb"
   | "closing" | "shutdown" | "monitor" | "prem_access" | "giveaway";
 
@@ -51,6 +53,8 @@ const SZ = 15;
 
 const TAB_META: TabMeta[] = [
   { id: "metadata",       label: "Metadata Generator",         icon: <Tag size={SZ} /> },
+  { id: "history",        label: "Riwayat & Background",       icon: <Clock size={SZ} /> },
+  { id: "leaderboard",    label: "Leaderboard & Stats",        icon: <Trophy size={SZ} /> },
   { id: "upscale",        label: "AI Upscaler",                icon: <ZoomIn size={SZ} /> },
   { id: "google-flow",    label: "Google Flow (Gemini AI)",    icon: <Sparkles size={SZ} /> },
   { id: "feedback",       label: "Laporan & Saran",            icon: <MessageSquare size={SZ} /> },
@@ -84,6 +88,33 @@ export default function Home() {
   const dropRef = useRef<HTMLDivElement>(null);
   const heartbeatRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const [closingMap, setClosingMap] = useState<Record<string, ClosingEntry>>({});
+  const [darkMode, setDarkMode] = useState(false);
+
+  useEffect(() => {
+    try {
+      const savedTheme = localStorage.getItem("app_theme");
+      if (savedTheme === "dark") {
+        setDarkMode(true);
+        document.documentElement.classList.add("dark");
+      }
+    } catch {}
+  }, []);
+
+  const toggleTheme = () => {
+    setDarkMode((prev) => {
+      const next = !prev;
+      try {
+        if (next) {
+          document.documentElement.classList.add("dark");
+          localStorage.setItem("app_theme", "dark");
+        } else {
+          document.documentElement.classList.remove("dark");
+          localStorage.setItem("app_theme", "light");
+        }
+      } catch {}
+      return next;
+    });
+  };
 
   const isAdmin = user?.email === ADMIN_EMAIL || user?.role === "admin";
   const isPremium = user?.role === "premium";
@@ -320,6 +351,53 @@ export default function Home() {
           animation: pulse-dot 2s ease-in-out infinite;
         }
 
+        .theme-btn {
+          width: 32px; height: 32px; border-radius: 9px;
+          background: rgba(219, 234, 254, 0.6);
+          border: 1px solid rgba(147, 197, 253, 0.5);
+          display: flex; align-items: center; justify-content: center;
+          cursor: pointer; transition: all 0.2s;
+        }
+        .theme-btn:hover {
+          transform: translateY(-1px);
+          background: rgba(191, 219, 254, 0.85);
+          border-color: rgba(59, 130, 246, 0.5);
+        }
+        .app-root.theme-dark {
+          background: linear-gradient(135deg, #090d16 0%, #0f172a 50%, #1e1b4b 100%) !important;
+          color: #f1f5f9 !important;
+        }
+        .app-root.theme-dark::before {
+          background:
+            radial-gradient(ellipse 70% 50% at 15% 0%, rgba(59,130,246,0.12) 0%, transparent 65%),
+            radial-gradient(ellipse 50% 40% at 85% 100%, rgba(99,102,241,0.1) 0%, transparent 60%),
+            radial-gradient(ellipse 40% 60% at 50% 50%, rgba(15,23,42,0.85) 0%, transparent 80%) !important;
+        }
+        .app-root.theme-dark .app-header {
+          background: rgba(15, 23, 42, 0.88) !important;
+          border-bottom-color: rgba(51, 65, 85, 0.6) !important;
+          box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4) !important;
+        }
+        .app-root.theme-dark .hdr-brand-name {
+          color: #f8fafc !important;
+        }
+        .app-root.theme-dark .hdr-platform-name {
+          color: #f8fafc !important;
+        }
+        .app-root.theme-dark .profile-drop {
+          background: rgba(15, 23, 42, 0.96) !important;
+          border-color: rgba(51, 65, 85, 0.7) !important;
+          color: #f8fafc !important;
+          box-shadow: 0 20px 48px rgba(0, 0, 0, 0.5) !important;
+        }
+        .app-root.theme-dark .pd-name {
+          color: #f8fafc !important;
+        }
+        .app-root.theme-dark .theme-btn {
+          background: rgba(30, 41, 59, 0.8) !important;
+          border-color: rgba(71, 85, 105, 0.6) !important;
+        }
+
         .avatar-btn {
           width: 32px; height: 32px; border-radius: 9px;
           background: linear-gradient(135deg, #3b82f6, #2563eb);
@@ -421,21 +499,32 @@ export default function Home() {
         .app-main > * { animation: fadeUp 0.3s cubic-bezier(0.16,1,0.3,1); }
 
         /* ══ RESPONSIVE ══ */
+        @media (max-width: 640px) {
+          .profile-drop {
+            width: calc(100vw - 20px) !important;
+            right: 10px !important;
+            top: 58px !important;
+            max-width: 360px !important;
+          }
+        }
         @media (max-width: 480px) {
-          .app-header { padding: 0 10px; gap: 8px; }
-          .hdr-back { padding: 5px 9px; font-size: 11px; gap: 4px; }
+          .app-header { padding: 0 10px; gap: 6px; height: 52px; }
+          .app-main { padding-top: 52px; }
+          .hdr-back { padding: 5px 8px; font-size: 11px; gap: 4px; }
           .hdr-brand-sub { display: none; }
-          .token-pill { padding: 4px 8px; font-size: 10.5px; }
+          .token-pill { padding: 4px 7px; font-size: 10px; }
           .hdr-platform-name { font-size: 12px; }
+          .hdr-platform-icon { width: 26px; height: 26px; }
         }
         @media (max-width: 360px) {
           .hdr-back-label { display: none; }
+          .token-pill { font-size: 9.5px; padding: 3px 6px; }
         }
 
 
       `}</style>
 
-      <div className="app-root">
+      <div className={`app-root${darkMode ? " theme-dark" : ""}`}>
         <UserInboxBanner />
         <PremiumPricingModal userEmail={user?.email} username={user?.username} />
 
@@ -471,6 +560,16 @@ export default function Home() {
           )}
 
           <div className="hdr-right">
+            {/* Dark / Light Mode Toggle */}
+            <button
+              type="button"
+              className="theme-btn"
+              onClick={toggleTheme}
+              title={darkMode ? "Ganti ke Mode Terang (Light Mode)" : "Ganti ke Mode Gelap (Dark Mode)"}
+            >
+              {darkMode ? <Sun size={15} color="#f59e0b" /> : <Moon size={15} color="#475569" />}
+            </button>
+
             {/* Clickable token pill -> opens Premium Modal */}
             <div
               className="token-pill"
@@ -597,6 +696,8 @@ export default function Home() {
           : activeTab === "prem_access" && isAdmin ? <PremAccessPanel />
           : activeTab === "giveaway" && isAdmin ? <GiveawayPanel />
           : activeTab === "feedback" ? <FeedbackPanel />
+          : activeTab === "history" ? <MetadataHistoryPanel onNavigate={(t: string) => handleTabChange(t as Tab)} />
+          : activeTab === "leaderboard" ? <LeaderboardPanel onNavigate={(t: string) => handleTabChange(t as Tab)} />
           : activeTab === "google-flow" ? <GoogleFlowPanel />
           : activeTab === "metadata" ? (
             <ImageUploader
