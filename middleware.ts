@@ -53,6 +53,7 @@ const PUBLIC_PATHS = [
   "/api/auth/verify-otp",
   "/api/auth/logout",
   "/api/health",
+  "/api/stats",
 ];
 
 // ─── Rate Limiting Config (per-IP sliding window — in-memory per Edge instance)
@@ -86,6 +87,7 @@ const HEAVY_API_PREFIXES = [
   "/api/research",
   "/api/vector",
   "/api/remotion",
+  "/api/metadata",
 ];
 
 // ─── Cleanup stale rate limit entries every ~500 requests ────────────────────

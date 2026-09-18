@@ -417,3 +417,265 @@ export async function getAllOnlineUsers(): Promise<Record<string, { feature: str
   return result;
 }
 
+// ── Leaderboard & Global Counter ─────────────────────────────────────────────
+
+export interface LeaderboardEntry {
+  username: string;
+  photoCount: number;
+}
+
+export async function recordPhotoProcessing(
+  userId: string,
+  username: string,
+  count: number
+): Promise<void> {
+  try {
+    const today = new Date().toISOString().slice(0, 10);
+    await Promise.all([
+      redis.incrby(`stats:photos:${today}`, count),
+      redis.incrby("stats:photos:total", count),
+      redis.zincrby("leaderboard:contributors", count, username || "Kreator"),
+    ]);
+  } catch (err) {
+    console.error("recordPhotoProcessing error:", err);
+  }
+}
+
+export async function getGlobalPhotoStats(): Promise<{
+  todayCount: number;
+  totalCount: number;
+  leaderboard: LeaderboardEntry[];
+}> {
+  try {
+    const today = new Date().toISOString().slice(0, 10);
+    const [todayRaw, totalRaw, lbRaw] = await Promise.all([
+      redis.get<number>(`stats:photos:${today}`).catch(() => 0),
+      redis.get<number>("stats:photos:total").catch(() => 0),
+      redis.zrange("leaderboard:contributors", 0, 9, { rev: true, withScores: true }).catch(() => []),
+    ]);
+
+    const leaderboard: LeaderboardEntry[] = [];
+    if (Array.isArray(lbRaw)) {
+      for (let i = 0; i < lbRaw.length; i += 2) {
+        if (typeof lbRaw[i] === "string" && lbRaw[i + 1] !== undefined) {
+          leaderboard.push({
+            username: lbRaw[i] as string,
+            photoCount: Number(lbRaw[i + 1]) || 0,
+          });
+        } else if (typeof lbRaw[i] === "object" && lbRaw[i] !== null && "member" in (lbRaw[i] as any)) {
+          const item = lbRaw[i] as any;
+          leaderboard.push({
+            username: item.member,
+            photoCount: Number(item.score) || 0,
+          });
+        }
+      }
+    }
+
+    return {
+      todayCount: Number(todayRaw) || 0,
+      totalCount: Number(totalRaw) || 0,
+      leaderboard,
+    };
+  } catch (err) {
+    console.error("getGlobalPhotoStats error:", err);
+    return { todayCount: 0, totalCount: 0, leaderboard: [] };
+  }
+}
+
+// ── Metadata Background Jobs & History ───────────────────────────────────────
+
+export interface MetadataJobItem {
+  filename: string;
+  title?: string;
+  keywords?: string[];
+  categories?: string[];
+  prompt?: string;
+  model?: string;
+  editorial?: string;
+  matureContent?: string;
+  illustration?: string;
+  error?: string;
+}
+
+export interface MetadataJob {
+  id: string;
+  userId: string;
+  username: string;
+  platform: string;
+  status: "pending" | "processing" | "completed" | "failed";
+  progress: number;
+  total: number;
+  results: MetadataJobItem[];
+  createdAt: string;
+  updatedAt: string;
+  error?: string;
+}
+
+export interface MetadataHistoryEntry {
+  id: string;
+  jobId?: string;
+  platform: string;
+  photoCount: number;
+  createdAt: string;
+  items: MetadataJobItem[];
+}
+
+export async function saveMetadataJob(job: MetadataJob): Promise<void> {
+  try {
+    job.updatedAt = new Date().toISOString();
+    await redis.set(`job:metadata:${job.id}`, job, { ex: 86400 * 7 }); // 7 days TTL
+    await redis.sadd(`jobs:user:${job.userId}`, job.id);
+  } catch (err) {
+    console.error("saveMetadataJob error:", err);
+  }
+}
+
+export async function getMetadataJob(jobId: string): Promise<MetadataJob | null> {
+  try {
+    return await redis.get<MetadataJob>(`job:metadata:${jobId}`);
+  } catch (err) {
+    console.error("getMetadataJob error:", err);
+    return null;
+  }
+}
+
+export async function saveUserMetadataHistory(
+  userId: string,
+  entry: MetadataHistoryEntry
+): Promise<void> {
+  try {
+    const key = `history:metadata:${userId}`;
+    await redis.lpush(key, JSON.stringify(entry));
+    await redis.ltrim(key, 0, 49); // Keep latest 50 history entries
+    await redis.expire(key, 86400 * 90); // 90 days TTL
+  } catch (err) {
+    console.error("saveUserMetadataHistory error:", err);
+  }
+}
+
+export async function appendPhotoToUserHistory(
+  userId: string,
+  sessionId: string,
+  platform: string,
+  item: MetadataJobItem
+): Promise<void> {
+  try {
+    const key = `history:metadata:${userId}`;
+    const raw = await redis.lrange(key, 0, 0);
+    let topEntry: MetadataHistoryEntry | null = null;
+    if (raw && raw.length > 0) {
+      topEntry = typeof raw[0] === "string" ? JSON.parse(raw[0]) : raw[0];
+    }
+
+    if (topEntry && topEntry.id === sessionId) {
+      topEntry.items.push(item);
+      topEntry.photoCount = topEntry.items.length;
+      await redis.lset(key, 0, JSON.stringify(topEntry));
+    } else {
+      const newEntry: MetadataHistoryEntry = {
+        id: sessionId,
+        platform,
+        photoCount: 1,
+        createdAt: new Date().toISOString(),
+        items: [item],
+      };
+      await redis.lpush(key, JSON.stringify(newEntry));
+      await redis.ltrim(key, 0, 49);
+      await redis.expire(key, 86400 * 90);
+    }
+  } catch (err) {
+    console.error("appendPhotoToUserHistory error:", err);
+  }
+}
+
+export async function syncJobToUserHistory(
+  userId: string,
+  jobId: string,
+  platform: string,
+  results: MetadataJobItem[]
+): Promise<void> {
+  try {
+    const key = `history:metadata:${userId}`;
+    const raw = await redis.lrange(key, 0, 49);
+    let foundIdx = -1;
+    let entries: MetadataHistoryEntry[] = [];
+
+    if (raw && raw.length > 0) {
+      entries = raw.map((item) => (typeof item === "string" ? JSON.parse(item) : item));
+      foundIdx = entries.findIndex((e) => e.id === jobId || e.jobId === jobId);
+    }
+
+    const validItems = results.filter((r) => r && (r.title || r.filename));
+    if (foundIdx !== -1 && entries[foundIdx]) {
+      entries[foundIdx]!.items = validItems;
+      entries[foundIdx]!.photoCount = validItems.length;
+      await redis.lset(key, foundIdx, JSON.stringify(entries[foundIdx]));
+    } else {
+      const newEntry: MetadataHistoryEntry = {
+        id: jobId,
+        jobId,
+        platform,
+        photoCount: validItems.length,
+        createdAt: new Date().toISOString(),
+        items: validItems,
+      };
+      await redis.lpush(key, JSON.stringify(newEntry));
+      await redis.ltrim(key, 0, 99);
+      await redis.expire(key, 86400 * 90);
+    }
+  } catch (err) {
+    console.error("syncJobToUserHistory error:", err);
+  }
+}
+
+export async function getUserMetadataHistory(
+  userId: string,
+  limit = 100
+): Promise<MetadataHistoryEntry[]> {
+  try {
+    const key = `history:metadata:${userId}`;
+    const raw = await redis.lrange(key, 0, limit - 1);
+    if (!raw || raw.length === 0) return [];
+    const parsed = raw.map((item) => (typeof item === "string" ? JSON.parse(item) : item));
+
+    // Deduplicate by entry id / jobId to prevent duplicate cards
+    const seen = new Set<string>();
+    const deduped: MetadataHistoryEntry[] = [];
+    for (const entry of parsed) {
+      const idKey = entry.id || entry.jobId;
+      if (idKey && !seen.has(idKey)) {
+        seen.add(idKey);
+        deduped.push(entry);
+      } else if (!idKey) {
+        deduped.push(entry);
+      }
+    }
+    return deduped;
+  } catch (err) {
+    console.error("getUserMetadataHistory error:", err);
+    return [];
+  }
+}
+
+export async function deleteUserMetadataHistory(
+  userId: string,
+  entryId: string
+): Promise<void> {
+  try {
+    const key = `history:metadata:${userId}`;
+    const raw = await redis.lrange(key, 0, -1);
+    const filtered = raw
+      .map((item) => (typeof item === "string" ? JSON.parse(item) : item))
+      .filter((e: MetadataHistoryEntry) => e.id !== entryId);
+    await redis.del(key);
+    for (let i = filtered.length - 1; i >= 0; i--) {
+      await redis.lpush(key, JSON.stringify(filtered[i]));
+    }
+    await redis.expire(key, 86400 * 90);
+  } catch (err) {
+    console.error("deleteUserMetadataHistory error:", err);
+  }
+}
+
+

@@ -196,6 +196,22 @@ export async function evaluateSundayGiveawayEligibility(): Promise<SundayEligibi
 //  CONFIG CRUD
 // ══════════════════════════════════════════════════════
 
+function isNetworkError(err: any): boolean {
+  if (!err) return false;
+  const str = String(err.message || err.cause || err);
+  return (
+    err.code === "ENOTFOUND" ||
+    err?.cause?.code === "ENOTFOUND" ||
+    err.code === "ECONNREFUSED" ||
+    err?.cause?.code === "ECONNREFUSED" ||
+    err.code === "ETIMEDOUT" ||
+    err.name === "TimeoutError" ||
+    str.includes("getaddrinfo") ||
+    str.includes("fetch failed") ||
+    str.includes("network")
+  );
+}
+
 export async function getGiveawayConfig(): Promise<GiveawayConfig> {
   try {
     const raw = await redis.get<GiveawayConfig>(REDIS_KEY_GIVEAWAY_CONFIG);
@@ -211,7 +227,11 @@ export async function getGiveawayConfig(): Promise<GiveawayConfig> {
       };
     }
   } catch (err) {
-    console.error("[Giveaway] Error reading config:", err);
+    if (isNetworkError(err)) {
+      console.warn("[Giveaway] Redis temporarily unreachable (DNS/Network timeout).");
+    } else {
+      console.error("[Giveaway] Error reading config:", err);
+    }
   }
 
   return {
@@ -521,7 +541,11 @@ export async function checkAndAutoExecuteIfDue(): Promise<{
       throw drawErr;
     }
   } catch (err) {
-    console.error("[GiveawayAuto] Error auto-execute check:", err);
+    if (isNetworkError(err)) {
+      console.warn("[GiveawayAuto] Redis temporarily unreachable (DNS/Network timeout).");
+    } else {
+      console.error("[GiveawayAuto] Error auto-execute check:", err);
+    }
     return { executed: false, reason: err instanceof Error ? err.message : String(err) };
   }
 }
@@ -557,7 +581,9 @@ export async function triggerPassiveGiveawayCheck(): Promise<void> {
       console.log("[GiveawayPassive] ✅ Giveaway otomatis sukses dieksekusi via passive traffic trigger!");
     }
   } catch (err) {
-    console.error("[GiveawayPassive] Passive check execution error:", err);
+    if (!isNetworkError(err)) {
+      console.error("[GiveawayPassive] Passive check execution error:", err);
+    }
   }
 }
 
@@ -580,7 +606,11 @@ export function startGiveawayAutonomousDaemon(): void {
 
   // Pemeriksaan saat server pertama kali hidup
   setTimeout(() => {
-    checkAndAutoExecuteIfDue().catch((e) => console.error("[GiveawayDaemon] Startup check error:", e));
+    checkAndAutoExecuteIfDue().catch((e) => {
+      if (!isNetworkError(e)) {
+        console.error("[GiveawayDaemon] Startup check error:", e);
+      }
+    });
   }, 5000);
 
   // Pemeriksaan berulang setiap 60 detik
@@ -588,7 +618,9 @@ export function startGiveawayAutonomousDaemon(): void {
     try {
       await checkAndAutoExecuteIfDue();
     } catch (err) {
-      console.error("[GiveawayDaemon] Interval tick error:", err);
+      if (!isNetworkError(err)) {
+        console.error("[GiveawayDaemon] Interval tick error:", err);
+      }
     }
   }, 60_000);
 

@@ -200,10 +200,17 @@ export function analyzeRequest(params: {
   }
 
   // ── Signal 11: Loopback IP di production ─────────────────────────────────
-  // (bukan false positive karena ini environment check)
-  if (process.env.NODE_ENV === "production" &&
-      (ip === "::1" || ip === "127.0.0.1" || ip === "0.0.0.0")) {
-    signals.push({ name: "loopback_prod", score: 40, reason: `IP loopback di production` });
+  // Hanya jika benar-benar di-deploy di cloud production (Vercel/Railway/Render) dan host bukan localhost
+  const host = headers.get("host") ?? "";
+  const isLocalHost = host.includes("localhost") || host.includes("127.0.0.1");
+  const isCloudProd = Boolean(
+    process.env.VERCEL ||
+    process.env.RENDER ||
+    process.env.RAILWAY_ENVIRONMENT ||
+    process.env.FLY_APP_NAME
+  );
+  if (isCloudProd && !isLocalHost && (ip === "::1" || ip === "127.0.0.1" || ip === "0.0.0.0")) {
+    signals.push({ name: "loopback_prod", score: 40, reason: `IP loopback di cloud production` });
   }
 
   // ─── AI Score Aggregation ─────────────────────────────────────────────────
