@@ -1,0 +1,12 @@
+{
+  "crons": [
+    {
+      "path": "/api/cron/giveaway",
+      "schedule": "0 3 * * *"
+    },
+    {
+      "path": "/api/firewall/ai-tick",
+      "schedule": "0 2 * * *"
+    }
+  ]
+}

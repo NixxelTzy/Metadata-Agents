@@ -1,0 +1,23 @@
+name: Autonomous Sunday Giveaway Scheduler
+
+on:
+  schedule:
+    # 03:00 UTC = 10:00 WIB (Asia/Jakarta, UTC+7) every Sunday
+    - cron: '0 3 * * 0'
+    # 03:15 UTC = 10:15 WIB fallback check
+    - cron: '15 3 * * 0'
+  workflow_dispatch: # Memungkinkan trigger manual langsung dari tombol "Run workflow" di GitHub Actions
+
+jobs:
+  execute-giveaway:
+    name: Trigger Sunday Giveaway Draw
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger Giveaway Cron Endpoint
+        run: |
+          TARGET_URL="${{ secrets.APP_URL }}"
+          if [ -z "$TARGET_URL" ]; then
+            TARGET_URL="https://stock-metadata-ai.vercel.app"
+          fi
+          echo "Pinging $TARGET_URL/api/cron/giveaway ..."
+          curl -sS -f -X GET "$TARGET_URL/api/cron/giveaway" || curl -sS -X GET "$TARGET_URL/api/cron/giveaway"

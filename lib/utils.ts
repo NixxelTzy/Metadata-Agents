@@ -1,0 +1,194 @@
+export const MAX_IMAGES = 180;
+
+
+export function compressImage(file: File, maxWidth = 800, quality = 0.75): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement("canvas");
+        let { width, height } = img;
+
+        if (width > maxWidth) {
+          height = Math.round((height * maxWidth) / width);
+          width = maxWidth;
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+
+        const ctx = canvas.getContext("2d");
+        if (!ctx) {
+          reject(new Error("Canvas tidak tersedia"));
+          return;
+        }
+
+        ctx.drawImage(img, 0, 0, width, height);
+        resolve(canvas.toDataURL("image/jpeg", quality));
+      };
+
+      img.onerror = () => reject(new Error(`Gagal memuat: ${file.name}`));
+      img.src = e.target?.result as string;
+    };
+
+    reader.onerror = () => reject(new Error(`Gagal membaca: ${file.name}`));
+    reader.readAsDataURL(file);
+  });
+}
+
+export function copyToClipboard(text: string): Promise<void> {
+  return navigator.clipboard.writeText(text);
+}
+
+export function formatKeywords(keywords: string[]): string {
+  return keywords.join(", ");
+}
+
+export function exportToCsv(results: Array<{ filename: string; title: string; keywords: string[] }>): void {
+  // Header sesuai format Adobe Stock bulk upload
+  const header = ["Filename", "Title", "Keywords", "Category", "Releases"];
+
+  const rows = results.map((r) => {
+    const filename = `"${r.filename.replace(/[\r\n]+/g, " ").replace(/"/g, '""')}"`;
+    const title = `"${r.title.replace(/[\r\n]+/g, " ").replace(/"/g, '""')}"`;
+    const keywords = `"${r.keywords.map(k => k.trim()).join(", ").replace(/[\r\n]+/g, " ").replace(/"/g, '""')}"`;
+    return [filename, title, keywords, `""`, `""`].join(",");
+  });
+
+  const csv = [header.join(","), ...rows].join("\r\n") + "\r\n";
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "adobe-stock-metadata.csv";
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+export function extractImageHints(dataUrl: string): Promise<string> {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement("canvas");
+      const size = 50;
+      canvas.width = size;
+      canvas.height = size;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) {
+        resolve(`Dimensions: ${img.width}x${img.height}px`);
+        return;
+      }
+
+      ctx.drawImage(img, 0, 0, size, size);
+      const data = ctx.getImageData(0, 0, size, size).data;
+      const colorMap = new Map<string, number>();
+
+      for (let i = 0; i < data.length; i += 4) {
+        const r = Math.round(data[i] / 32) * 32;
+        const g = Math.round(data[i + 1] / 32) * 32;
+        const b = Math.round(data[i + 2] / 32) * 32;
+        const key = `${r},${g},${b}`;
+        colorMap.set(key, (colorMap.get(key) ?? 0) + 1);
+      }
+
+      const topColors = [...colorMap.entries()]
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 5)
+        .map(([rgb]) => `rgb(${rgb})`);
+
+      const aspect =
+        img.width > img.height * 1.2
+          ? "horizontal"
+          : img.height > img.width * 1.2
+            ? "vertical"
+            : "square";
+
+      resolve(
+        `Dimensions: ${img.width}x${img.height}px (${aspect})`
+      );
+    };
+    img.onerror = () => resolve("");
+    img.src = dataUrl;
+  });
+}
+
+export function extractVideoFrame(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const video = document.createElement("video");
+    video.preload = "auto";
+    video.muted = true;
+    video.playsInline = true;
+
+    const url = URL.createObjectURL(file);
+    video.src = url;
+    video.crossOrigin = "anonymous";
+
+    let timeoutId: ReturnType<typeof setTimeout> | null = setTimeout(() => {
+      cleanup();
+      reject(new Error(`Timeout saat ekstraksi frame video: ${file.name}`));
+    }, 12000);
+
+    const cleanup = () => {
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+        timeoutId = null;
+      }
+      URL.revokeObjectURL(url);
+    };
+
+    const processFrame = () => {
+      try {
+        const canvas = document.createElement("canvas");
+        const maxWidth = 1200;
+        let width = video.videoWidth || 640;
+        let height = video.videoHeight || 360;
+
+        if (width > maxWidth) {
+          height = Math.round((height * maxWidth) / width);
+          width = maxWidth;
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+
+        const ctx = canvas.getContext("2d");
+        if (!ctx) {
+          cleanup();
+          reject(new Error("Canvas context tidak tersedia"));
+          return;
+        }
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        const dataUrl = canvas.toDataURL("image/jpeg", 0.82);
+        cleanup();
+        resolve(dataUrl);
+      } catch (err) {
+        cleanup();
+        reject(err);
+      }
+    };
+
+    video.onloadedmetadata = () => {
+      const duration = video.duration;
+      const seekTime = Number.isFinite(duration) && duration > 0 ? Math.min(1.0, duration / 2) : 0.1;
+      video.currentTime = seekTime;
+    };
+
+    video.onseeked = () => {
+      processFrame();
+    };
+
+    // Fallback if seeked does not trigger or video is ready immediately
+    video.onloadeddata = () => {
+      if (video.readyState >= 2 && video.currentTime === 0) {
+        video.currentTime = 0.1;
+      }
+    };
+
+    video.onerror = () => {
+      cleanup();
+      reject(new Error(`Gagal memproses video: ${file.name}`));
+    };
+  });
+}
