@@ -7,12 +7,30 @@
 import { Redis } from "@upstash/redis";
 import { getRedisConfig, getRedisConfig2 } from "@/lib/config";
 
-const { url, token } = getRedisConfig();
-const redis = new Redis({ url, token });
+// Lazy Redis clients — diinisialisasi saat pertama kali digunakan, bukan saat module di-import.
+// Ini mencegah build error di Vercel ketika env vars belum tersedia saat bundling.
+let _redis: Redis | null = null;
+let _redis2: Redis | null = null;
 
-// Redis #2 Client (untuk Storage / Feedback / dll)
-const config2 = getRedisConfig2();
-const redis2 = new Redis({ url: config2.url, token: config2.token });
+function getRedis(): Redis {
+  if (!_redis) {
+    const { url, token } = getRedisConfig();
+    _redis = new Redis({ url: url || "https://placeholder.upstash.io", token: token || "placeholder" });
+  }
+  return _redis;
+}
+
+function getRedis2(): Redis {
+  if (!_redis2) {
+    const config2 = getRedisConfig2();
+    _redis2 = new Redis({ url: config2.url || "https://placeholder.upstash.io", token: config2.token || "placeholder" });
+  }
+  return _redis2;
+}
+
+// Shorthand aliases untuk kompatibilitas kode di bawah
+const redis = new Proxy({} as Redis, { get: (_, prop) => (getRedis() as any)[prop] });
+const redis2 = new Proxy({} as Redis, { get: (_, prop) => (getRedis2() as any)[prop] });
 
 // ── User ──────────────────────────────────────────────────────────────────────
 
