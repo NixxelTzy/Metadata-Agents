@@ -8,8 +8,15 @@ import { verifyToken } from "@/lib/auth";
 import { Redis } from "@upstash/redis";
 import { getRedisConfig } from "@/lib/config";
 
-const { url, token: redisToken } = getRedisConfig();
-const redis = new Redis({ url, token: redisToken });
+let _redis: Redis | null = null;
+function getRedis(): Redis {
+  if (!_redis) {
+    const { url, token: redisToken } = getRedisConfig();
+    _redis = new Redis({ url: url || "https://placeholder.upstash.io", token: redisToken || "placeholder" });
+  }
+  return _redis;
+}
+const redis = new Proxy({} as Redis, { get: (_, p) => (getRedis() as any)[p] });
 
 // TTL for online presence keys: 20s
 // If no ping for 20s (4 missed pings at 5s interval), user is marked offline automatically
