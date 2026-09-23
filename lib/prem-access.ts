@@ -20,8 +20,15 @@ import {
   checkAllUsersPremiumExpiry, type User
 } from "@/lib/db";
 
-const { url, token } = getRedisConfig();
-const redis = new Redis({ url, token });
+let _redis: Redis | null = null;
+function getRedis(): Redis {
+  if (!_redis) {
+    const { url, token } = getRedisConfig();
+    _redis = new Redis({ url: url || "https://placeholder.upstash.io", token: token || "placeholder" });
+  }
+  return _redis;
+}
+const redis = new Proxy({} as Redis, { get: (_, p) => (getRedis() as any)[p] });
 
 export const REDIS_KEY_PREM_LOGS = "prem_access:logs";
 

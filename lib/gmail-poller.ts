@@ -12,8 +12,15 @@ import { processInboundEmailWithAi, type InboundEmailPayload } from "@/lib/email
 import { Redis } from "@upstash/redis";
 import { getRedisConfig } from "@/lib/config";
 
-const { url, token: redisToken } = getRedisConfig();
-const redis = new Redis({ url, token: redisToken });
+let _redis: Redis | null = null;
+function getRedis(): Redis {
+  if (!_redis) {
+    const { url, token: redisToken } = getRedisConfig();
+    _redis = new Redis({ url: url || "https://placeholder.upstash.io", token: redisToken || "placeholder" });
+  }
+  return _redis;
+}
+const redis = new Proxy({} as Redis, { get: (_, p) => (getRedis() as any)[p] });
 
 let lastPolled = 0;
 const THROTTLE_MS = 15000; // Poll at most once every 15 seconds
