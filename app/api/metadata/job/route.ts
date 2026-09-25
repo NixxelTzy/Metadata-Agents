@@ -77,6 +77,8 @@ export async function DELETE(request: NextRequest) {
     return NextResponse.json({ error: "Gagal membatalkan job" }, { status: 500 });
   }
 }
+
+export async function POST(request: NextRequest) {
   const token = request.cookies.get("auth_token")?.value;
   if (!token) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
