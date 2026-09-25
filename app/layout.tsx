@@ -1,7 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
-import FirewallProvider from "@/components/FirewallProvider";
 import UserInboxBanner from "@/components/UserInboxBanner";
 import ToastContainer from "@/components/Toast";
 import SystemErrorSentinel from "@/components/SystemErrorSentinel";
@@ -87,7 +86,6 @@ export default function RootLayout({
   return (
     <html lang="id" className={inter.variable}>
       <body>
-        <FirewallProvider>
           <div className="app">
             {children}
             <Analytics />
@@ -97,7 +95,6 @@ export default function RootLayout({
             <MaintenanceBanner />
             <GiveawayAutoRunner />
           </div>
-        </FirewallProvider>
       </body>
     </html>
   );
