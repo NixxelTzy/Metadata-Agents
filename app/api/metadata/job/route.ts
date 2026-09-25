@@ -24,6 +24,20 @@ export async function GET(request: NextRequest) {
     const job = await getMetadataJob(jobId);
     if (!job) return NextResponse.json({ error: "Job tidak ditemukan" }, { status: 404 });
 
+    // Auto-heal: if job has been in "processing" for > 5 minutes and
+    // progress hasn't moved, force-complete it so the frontend unblocks.
+    const shouldForceComplete =
+      job.status === "processing" &&
+      job.progress >= job.total &&
+      job.results.length >= job.total;
+
+    if (shouldForceComplete) {
+      job.status = "completed";
+      job.updatedAt = new Date().toISOString();
+      await saveMetadataJob(job);
+      console.log(`[job/GET] Auto-healed stuck job ${jobId} → completed`);
+    }
+
     return NextResponse.json({ success: true, job });
   } catch (err) {
     console.error("GET /api/metadata/job error:", err);
@@ -31,7 +45,38 @@ export async function GET(request: NextRequest) {
   }
 }
 
-export async function POST(request: NextRequest) {
+export async function DELETE(request: NextRequest) {
+  const token = request.cookies.get("auth_token")?.value;
+  if (!token) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const payload = verifyToken(token);
+  if (!payload) return NextResponse.json({ error: "Token tidak valid" }, { status: 401 });
+
+  const { searchParams } = new URL(request.url);
+  const jobId = searchParams.get("id");
+  if (!jobId) return NextResponse.json({ error: "Job ID required" }, { status: 400 });
+
+  try {
+    const job = await getMetadataJob(jobId);
+    if (!job) return NextResponse.json({ error: "Job tidak ditemukan" }, { status: 404 });
+
+    // Only the job owner can cancel
+    if (job.userId !== payload.userId) {
+      return NextResponse.json({ error: "Tidak diizinkan" }, { status: 403 });
+    }
+
+    // Mark as failed/cancelled so polling stops
+    job.status = "failed";
+    job.error = "Dibatalkan oleh pengguna";
+    job.updatedAt = new Date().toISOString();
+    await saveMetadataJob(job);
+
+    return NextResponse.json({ success: true, message: "Job dibatalkan" });
+  } catch (err) {
+    console.error("DELETE /api/metadata/job error:", err);
+    return NextResponse.json({ error: "Gagal membatalkan job" }, { status: 500 });
+  }
+}
   const token = request.cookies.get("auth_token")?.value;
   if (!token) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 

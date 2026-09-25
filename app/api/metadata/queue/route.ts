@@ -31,8 +31,20 @@ async function runJobWorker(
   complianceGuard: boolean,
   images: QueueImage[]
 ) {
+  // In-process guard (prevents double-start within same serverless instance)
   if (activeJobWorkers.has(jobId)) return;
   activeJobWorkers.add(jobId);
+
+  // Redis-level guard: if job is already completed or being processed, skip
+  try {
+    const existingCheck = await getMetadataJob(jobId);
+    if (existingCheck?.status === "completed") {
+      activeJobWorkers.delete(jobId);
+      return;
+    }
+  } catch {
+    // Redis check failed — proceed anyway
+  }
 
   try {
     // Array with exact fixed slot for every single image index to prevent any race condition
@@ -57,9 +69,11 @@ async function runJobWorker(
         if (job) {
           job.results = completed;
           job.progress = completed.length;
+          // Mark completed as soon as all items are processed — don't wait for final block
           if (job.progress >= job.total) {
             job.status = "completed";
           }
+          job.updatedAt = new Date().toISOString();
           await saveMetadataJob(job);
         }
         await syncJobToUserHistory(userId, jobId, platform, completed);

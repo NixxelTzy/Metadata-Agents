@@ -62,12 +62,50 @@ export default function ImageUploader({ onTokensUpdated, userEmail, userRole, is
   const sessionIdRef = useRef<string>("");
   const pollingIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
+  const pollingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastProgressRef = useRef<number>(-1);
+  const staleCountRef = useRef<number>(0);
+  // Use a ref to hold retryAllFailed so pollJobProgress doesn't capture a stale closure
+  const retryAllFailedRef = useRef<() => Promise<void>>(async () => {});
+
+  const cancelActiveJob = async () => {
+    const activeJobId = localStorage.getItem("active_metadata_job_id");
+    if (!activeJobId) return;
+    try {
+      await fetch(`/api/metadata/job?id=${activeJobId}`, { method: "DELETE" });
+    } catch {}
+    if (pollingIntervalRef.current) clearInterval(pollingIntervalRef.current);
+    if (pollingTimeoutRef.current) clearTimeout(pollingTimeoutRef.current);
+    pollingIntervalRef.current = null;
+    pollingTimeoutRef.current = null;
+    localStorage.removeItem("active_metadata_job_id");
+    setLoading(false);
+    setProgress("❌ Job dibatalkan.");
+    lastProgressRef.current = -1;
+    staleCountRef.current = 0;
+  };
+
   const pollJobProgress = useCallback((jobId: string) => {
     if (pollingIntervalRef.current) clearInterval(pollingIntervalRef.current);
+    if (pollingTimeoutRef.current) clearTimeout(pollingTimeoutRef.current);
+    lastProgressRef.current = -1;
+    staleCountRef.current = 0;
+
+    // Hard timeout: stop polling after 10 minutes to prevent infinite stuck state
+    pollingTimeoutRef.current = setTimeout(() => {
+      if (pollingIntervalRef.current) {
+        clearInterval(pollingIntervalRef.current);
+        pollingIntervalRef.current = null;
+      }
+      setLoading(false);
+      setProgress("⚠️ Waktu habis. Job mungkin masih berjalan di server. Coba refresh halaman.");
+      localStorage.removeItem("active_metadata_job_id");
+    }, 10 * 60 * 1000);
 
     pollingIntervalRef.current = setInterval(async () => {
       try {
         const res = await fetch(`/api/metadata/job?id=${jobId}`);
+        if (!res.ok) return; // skip on network error, will retry next tick
         const data = await res.json();
         if (data.success && data.job) {
           const job = data.job;
@@ -79,9 +117,40 @@ export default function ImageUploader({ onTokensUpdated, userEmail, userRole, is
           }
           setProgress(`⚡ Background AI: Memproses ${job.progress}/${job.total} file (${Math.round((job.progress / (job.total || 1)) * 100)}%)...`);
 
-          if (job.status === "completed" || job.progress >= job.total) {
+          // Stale detection: if progress hasn't moved in 20 consecutive polls (50s), force stop
+          if (job.progress === lastProgressRef.current) {
+            staleCountRef.current += 1;
+            if (staleCountRef.current >= 20) {
+              console.warn(`[pollJobProgress] Job ${jobId} stale for 50s, force-stopping polling`);
+              if (pollingIntervalRef.current) clearInterval(pollingIntervalRef.current);
+              if (pollingTimeoutRef.current) clearTimeout(pollingTimeoutRef.current);
+              pollingIntervalRef.current = null;
+              pollingTimeoutRef.current = null;
+              setLoading(false);
+              // If we have partial results, show them
+              if (Array.isArray(job.results) && job.results.length > 0) {
+                setProgress(`⚠️ Progress terhenti. Menampilkan ${job.results.length} hasil yang ada.`);
+                localStorage.removeItem("active_metadata_job_id");
+              } else {
+                setProgress("⚠️ Job tidak merespons. Silakan coba ulang.");
+                localStorage.removeItem("active_metadata_job_id");
+              }
+              return;
+            }
+          } else {
+            lastProgressRef.current = job.progress;
+            staleCountRef.current = 0;
+          }
+
+          const isDone = job.status === "completed" || job.status === "failed" || job.progress >= job.total;
+          if (isDone) {
             if (pollingIntervalRef.current) clearInterval(pollingIntervalRef.current);
+            if (pollingTimeoutRef.current) clearTimeout(pollingTimeoutRef.current);
+            pollingIntervalRef.current = null;
+            pollingTimeoutRef.current = null;
             setLoading(false);
+            lastProgressRef.current = -1;
+            staleCountRef.current = 0;
 
             const hasFailed = Array.isArray(job.results) && job.results.some((r: any) => r && (r.error || !r.title));
             if (hasFailed && autoRestartFailed) {
@@ -93,7 +162,7 @@ export default function ImageUploader({ onTokensUpdated, userEmail, userRole, is
                 message: `Mendeteksi ${failedCount} foto belum lengkap. Sistem otomatis me-restart proses...`,
               });
               setTimeout(() => {
-                void retryAllFailed();
+                void retryAllFailedRef.current();
               }, 1200);
             } else {
               setProgress(`✅ Selesai! ${job.results.length}/${job.total} file berhasil diproses di background server.`);
@@ -110,7 +179,7 @@ export default function ImageUploader({ onTokensUpdated, userEmail, userRole, is
         console.error("pollJobProgress error:", err);
       }
     }, 2500);
-  }, []);
+  }, [autoRestartFailed]);
 
   useEffect(() => {
     try {
@@ -132,6 +201,7 @@ export default function ImageUploader({ onTokensUpdated, userEmail, userRole, is
 
     return () => {
       if (pollingIntervalRef.current) clearInterval(pollingIntervalRef.current);
+      if (pollingTimeoutRef.current) clearTimeout(pollingTimeoutRef.current);
     };
   }, [pollJobProgress]);
 
@@ -233,6 +303,11 @@ export default function ImageUploader({ onTokensUpdated, userEmail, userRole, is
 
   const clearAll = () => {
     if (pollingIntervalRef.current) clearInterval(pollingIntervalRef.current);
+    if (pollingTimeoutRef.current) clearTimeout(pollingTimeoutRef.current);
+    pollingIntervalRef.current = null;
+    pollingTimeoutRef.current = null;
+    lastProgressRef.current = -1;
+    staleCountRef.current = 0;
     setImages([]);
     setResults([]);
     setError("");
@@ -404,6 +479,9 @@ export default function ImageUploader({ onTokensUpdated, userEmail, userRole, is
       await sleep(300);
     }
   };
+
+  // Keep ref in sync so pollJobProgress always calls the latest version
+  retryAllFailedRef.current = retryAllFailed;
 
   const generate = async () => {
     if (images.length === 0) return;
@@ -1191,7 +1269,27 @@ export default function ImageUploader({ onTokensUpdated, userEmail, userRole, is
       {progress && !error && (
         <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "14px 18px", background: "rgba(219, 234, 254, 0.8)", border: "1px solid rgba(147, 197, 253, 0.7)", borderRadius: 14, color: "#1e40af", fontSize: 13, fontWeight: 700, marginBottom: 20 }}>
           <Info size={18} color="#2563eb" />
-          <span>{progress}</span>
+          <span style={{ flex: 1 }}>{progress}</span>
+          {loading && (
+            <button
+              type="button"
+              onClick={() => void cancelActiveJob()}
+              style={{
+                marginLeft: "auto",
+                padding: "5px 14px",
+                background: "rgba(239,68,68,0.12)",
+                border: "1px solid rgba(239,68,68,0.4)",
+                borderRadius: 8,
+                color: "#dc2626",
+                fontSize: 12,
+                fontWeight: 700,
+                cursor: "pointer",
+                whiteSpace: "nowrap",
+              }}
+            >
+              ✕ Batalkan
+            </button>
+          )}
         </div>
       )}
       {error && (
