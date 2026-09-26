@@ -71,6 +71,8 @@ export default function ImageUploader({ onTokensUpdated, userEmail, userRole, is
   const cancelActiveJob = async () => {
     const activeJobId = localStorage.getItem("active_metadata_job_id");
     if (!activeJobId) return;
+    // Remove from localStorage first — the generate loop checks this each iteration
+    localStorage.removeItem("active_metadata_job_id");
     try {
       await fetch(`/api/metadata/job?id=${activeJobId}`, { method: "DELETE" });
     } catch {}
@@ -78,7 +80,6 @@ export default function ImageUploader({ onTokensUpdated, userEmail, userRole, is
     if (pollingTimeoutRef.current) clearTimeout(pollingTimeoutRef.current);
     pollingIntervalRef.current = null;
     pollingTimeoutRef.current = null;
-    localStorage.removeItem("active_metadata_job_id");
     setLoading(false);
     setProgress("❌ Job dibatalkan.");
     lastProgressRef.current = -1;
@@ -183,18 +184,15 @@ export default function ImageUploader({ onTokensUpdated, userEmail, userRole, is
 
   useEffect(() => {
     try {
-      const activeJobId = localStorage.getItem("active_metadata_job_id");
-      if (activeJobId) {
-        setLoading(true);
-        setProgress("Menghubungkan ke background job di server...");
-        pollJobProgress(activeJobId);
-      } else {
-        const cached = localStorage.getItem("stock_last_results");
-        if (cached) {
-          const parsed = JSON.parse(cached);
-          if (Array.isArray(parsed) && parsed.length > 0) {
-            setResults(parsed);
-          }
+      // On mount: if there's an orphaned job ID from a previous session,
+      // just clear it — the new architecture processes inline, not via polling
+      localStorage.removeItem("active_metadata_job_id");
+
+      const cached = localStorage.getItem("stock_last_results");
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          setResults(parsed);
         }
       }
     } catch {}
@@ -512,40 +510,109 @@ export default function ImageUploader({ onTokensUpdated, userEmail, userRole, is
     setError("");
     setResults([]);
 
+    const queueImages = images.map((img) => ({
+      filename: img.file.name,
+      dataUrl: img.preview,
+      visualHints: [
+        img.visualHints,
+        img.customHints ? `User hints: ${img.customHints}` : "",
+        magnificPrompts[img.id] ? `Existing prompt: ${magnificPrompts[img.id]}` : ""
+      ].filter(Boolean).join(" | "),
+      existingPrompt: magnificPrompts[img.id] || undefined,
+    }));
+
     try {
-      setProgress(`Mendaftarkan ${images.length} file ke background queue server...`);
-
-      const queueImages = images.map((img) => ({
-        filename: img.file.name,
-        dataUrl: img.preview,
-        visualHints: [
-          img.visualHints,
-          img.customHints ? `User hints: ${img.customHints}` : "",
-          magnificPrompts[img.id] ? `Existing prompt: ${magnificPrompts[img.id]}` : ""
-        ].filter(Boolean).join(" | "),
-        existingPrompt: magnificPrompts[img.id] || undefined
-      }));
-
-      // Submit all images directly to server background queue in one call
-      const res = await fetch("/api/metadata/queue", {
+      // ── STEP 1: Init job slot in Redis ────────────────────────────────
+      setProgress(`Mendaftarkan ${images.length} file ke server...`);
+      const initRes = await fetch("/api/metadata/queue", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          mode: "init",
           jobId,
           images: queueImages,
           platform,
           complianceGuard,
         }),
       });
-
-      if (!res.ok) {
-        const errData = await res.json().catch(() => ({}));
-        throw new Error(errData.error || `Gagal mendaftarkan antrian (${res.status})`);
+      if (!initRes.ok) {
+        const errData = await initRes.json().catch(() => ({}));
+        throw new Error(errData.error || `Gagal mendaftarkan job (${initRes.status})`);
       }
 
-      setProgress(`⚡ Background AI server aktif! Memproses ${images.length} file secara mandiri...`);
-      // Start polling to stream real-time progress to screen
-      pollJobProgress(jobId);
+      setProgress(`⚡ AI Memproses 0/${images.length} file (0%)...`);
+
+      // ── STEP 2: Process each image sequentially (1 per API call) ──────
+      // Each call fits within Vercel 60s limit.
+      // We track results locally AND in Redis via the server.
+      const localResults: MetadataResult[] = new Array(images.length).fill(null);
+
+      for (let i = 0; i < queueImages.length; i++) {
+        // Check if user cancelled
+        const activeId = localStorage.getItem("active_metadata_job_id");
+        if (!activeId || activeId !== jobId) break;
+
+        setProgress(`⚡ AI Memproses ${i}/${images.length} file (${Math.round((i / images.length) * 100)}%)...`);
+
+        try {
+          const processRes = await fetch("/api/metadata/queue", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              mode: "process",
+              jobId,
+              image: queueImages[i],
+              imageIndex: i,
+              platform,
+              complianceGuard,
+            }),
+          });
+
+          if (processRes.ok) {
+            const processData = await processRes.json();
+            if (processData.result) {
+              localResults[i] = processData.result as MetadataResult;
+              // Update results incrementally so user sees progress
+              setResults([...localResults].filter(Boolean) as MetadataResult[]);
+              try {
+                localStorage.setItem("stock_last_results", JSON.stringify(
+                  localResults.filter(Boolean)
+                ));
+              } catch {}
+            }
+          }
+        } catch (imgErr) {
+          console.error(`[generate] Error processing image ${i}:`, imgErr);
+          localResults[i] = {
+            filename: queueImages[i]!.filename,
+            title: "",
+            keywords: [],
+            error: imgErr instanceof Error ? imgErr.message : "Gagal memproses",
+          } as MetadataResult;
+          setResults([...localResults].filter(Boolean) as MetadataResult[]);
+        }
+
+        // Small pause between images to avoid rate limits
+        if (i < queueImages.length - 1) {
+          await new Promise((r) => setTimeout(r, 400));
+        }
+      }
+
+      // ── STEP 3: Done ──────────────────────────────────────────────────
+      const finalResults = localResults.filter(Boolean) as MetadataResult[];
+      setResults(finalResults);
+      setLoading(false);
+      localStorage.removeItem("active_metadata_job_id");
+
+      const failedCount = finalResults.filter((r) => r.error || !r.title).length;
+      const successCount = finalResults.length - failedCount;
+
+      setProgress(`✅ Selesai! ${successCount}/${images.length} file berhasil diproses.`);
+      showToast({
+        type: successCount === images.length ? "success" : "warning",
+        title: "Selesai!",
+        message: `${successCount} foto selesai${failedCount > 0 ? `, ${failedCount} gagal` : ""}.`,
+      });
 
     } catch (err) {
       console.error("Generate queue error:", err);

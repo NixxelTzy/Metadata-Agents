@@ -12,7 +12,7 @@ import { generateMetadataWithRetry } from "@/app/api/generate/route";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-export const maxDuration = 300; // Allow long background execution
+export const maxDuration = 60; // Vercel Hobby max = 60s per invocation
 
 interface QueueImage {
   filename: string;
@@ -21,190 +21,23 @@ interface QueueImage {
   existingPrompt?: string;
 }
 
-const activeJobWorkers = new Set<string>();
-
-async function runJobWorker(
-  jobId: string,
-  userId: string,
-  username: string,
-  platform: "adobe_stock" | "shutterstock" | "magnific",
-  complianceGuard: boolean,
-  images: QueueImage[]
-) {
-  // In-process guard (prevents double-start within same serverless instance)
-  if (activeJobWorkers.has(jobId)) return;
-  activeJobWorkers.add(jobId);
-
-  // Redis-level guard: if job is already completed or being processed, skip
-  try {
-    const existingCheck = await getMetadataJob(jobId);
-    if (existingCheck?.status === "completed") {
-      activeJobWorkers.delete(jobId);
-      return;
-    }
-  } catch {
-    // Redis check failed — proceed anyway
-  }
-
-  try {
-    // Array with exact fixed slot for every single image index to prevent any race condition
-    const jobResults: (MetadataJobItem | null)[] = new Array(images.length).fill(null);
-
-    // If job already had previous results in Redis, restore them
-    const existingJob = await getMetadataJob(jobId);
-    if (existingJob && Array.isArray(existingJob.results)) {
-      existingJob.results.forEach((item, i) => {
-        if (i < jobResults.length && item) {
-          jobResults[i] = item;
-        }
-      });
-    }
-
-    // Serialized Redis sync chain to completely prevent race conditions between workers
-    let syncQueue = Promise.resolve();
-    const safeSync = () => {
-      syncQueue = syncQueue.then(async () => {
-        const completed = jobResults.filter((r): r is MetadataJobItem => r !== null);
-        const job = await getMetadataJob(jobId);
-        if (job) {
-          job.results = completed;
-          job.progress = completed.length;
-          // Mark completed as soon as all items are processed — don't wait for final block
-          if (job.progress >= job.total) {
-            job.status = "completed";
-          }
-          job.updatedAt = new Date().toISOString();
-          await saveMetadataJob(job);
-        }
-        await syncJobToUserHistory(userId, jobId, platform, completed);
-      }).catch((err) => {
-        console.error("[QueueWorker] Redis sync error:", err);
-      });
-      return syncQueue;
-    };
-
-    // 3 concurrent workers in parallel on the server
-    const CONCURRENCY = Math.min(3, images.length);
-    let nextIndex = 0;
-
-    const worker = async () => {
-      while (true) {
-        const idx = nextIndex++;
-        if (idx >= images.length) break;
-        const img = images[idx];
-        if (!img) break;
-
-        // If already completed previously, skip
-        if (jobResults[idx] !== null) continue;
-
-        try {
-          const res = await generateMetadataWithRetry(
-            img.dataUrl,
-            img.filename,
-            img.visualHints,
-            platform,
-            complianceGuard,
-            img.existingPrompt
-          );
-
-          // Assign to fixed slot (100% thread-safe in JS single-threaded event loop)
-          jobResults[idx] = res;
-
-          // Safe serialized sync to Redis
-          await safeSync();
-
-          // Increment Leaderboard & Daily Counter in Redis
-          await recordPhotoProcessing(userId, username || "Kreator", 1);
-        } catch (err) {
-          console.error(`[QueueWorker] Failed to process ${img.filename}:`, err);
-          jobResults[idx] = {
-            filename: img.filename,
-            title: "",
-            keywords: [],
-            error: err instanceof Error ? err.message : "Gagal memproses gambar",
-          };
-
-          await safeSync();
-        }
-
-        // Gentle pause to avoid rate limits
-        await new Promise((r) => setTimeout(r, 350));
-      }
-    };
-
-    // Run workers concurrently
-    await Promise.all(Array.from({ length: CONCURRENCY }, () => worker()));
-
-    // ── AUTO-RESTART PASS FOR FAILED PHOTOS ──────────────────────────────
-    // Jika ada foto yang mengalami kegagalan (error / title kosong), sistem
-    // otomatis me-restart proses untuk foto yang gagal tersebut hingga 3 siklus pemulihan!
-    const MAX_AUTO_RESTART_PASSES = 3;
-    for (let pass = 1; pass <= MAX_AUTO_RESTART_PASSES; pass++) {
-      const failedIndices = jobResults
-        .map((res, idx) => ({ res, idx }))
-        .filter(({ res }) => !res || Boolean(res.error) || !res.title)
-        .map(({ idx }) => idx);
-
-      if (failedIndices.length === 0) {
-        console.log(`[QueueWorker] ✨ Semua ${images.length} foto sukses 100%! Auto-restart tidak diperlukan.`);
-        break;
-      }
-
-      console.log(`[QueueWorker] 🔄 Auto-restart pass #${pass}: Me-restart ${failedIndices.length} foto yang gagal...`);
-      // Jeda 2 detik agar koneksi / rate limit cooldown
-      await new Promise((r) => setTimeout(r, 2000 * pass));
-
-      for (const idx of failedIndices) {
-        const img = images[idx];
-        if (!img) continue;
-
-        try {
-          console.log(`[QueueWorker] 🔁 Auto-restarting foto [${idx + 1}/${images.length}]: "${img.filename}"...`);
-          const recovered = await generateMetadataWithRetry(
-            img.dataUrl,
-            img.filename,
-            img.visualHints,
-            platform,
-            complianceGuard,
-            img.existingPrompt,
-            4
-          );
-
-          if (recovered && recovered.title && !recovered.error) {
-            jobResults[idx] = recovered;
-            console.log(`[QueueWorker] ✅ Berhasil auto-restart foto "${img.filename}"!`);
-            await safeSync();
-            await recordPhotoProcessing(userId, username || "Kreator", 1);
-          }
-        } catch (retryErr) {
-          console.warn(`[QueueWorker] Percobaan auto-restart foto "${img.filename}" pada pass #${pass} gagal:`, retryErr);
-        }
-
-        await new Promise((r) => setTimeout(r, 500));
-      }
-    }
-
-    // Wait for all sync operations to finish
-    await syncQueue;
-
-    // Final mark as completed
-    const finalCompleted = jobResults.filter((r): r is MetadataJobItem => r !== null);
-    const finalJob = await getMetadataJob(jobId);
-    if (finalJob) {
-      finalJob.results = finalCompleted;
-      finalJob.progress = finalCompleted.length;
-      finalJob.status = "completed";
-      await saveMetadataJob(finalJob);
-    }
-    await syncJobToUserHistory(userId, jobId, platform, finalCompleted);
-
-  } catch (workerErr) {
-    console.error("[QueueWorker] Fatal error:", workerErr);
-  } finally {
-    activeJobWorkers.delete(jobId);
-  }
-}
-
+/**
+ * POST /api/metadata/queue
+ *
+ * Two modes controlled by `mode` field in body:
+ *
+ * mode = "init"  (called once at start)
+ *   → Creates job record in Redis, returns jobId.
+ *   → Does NOT process images (avoids timeout on large batches).
+ *
+ * mode = "process" (called once PER IMAGE by frontend loop)
+ *   → Processes exactly 1 image by index, saves result to Redis.
+ *   → Frontend polls /api/metadata/job for progress.
+ *   → Fits within 60s Vercel Hobby limit per invocation.
+ *
+ * This replaces the old fire-and-forget background worker pattern
+ * which was killed by Vercel immediately after response was sent.
+ */
 export async function POST(request: NextRequest) {
   const token = request.cookies.get("auth_token")?.value;
   if (!token) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -214,24 +47,32 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = (await request.json()) as {
+      mode?: "init" | "process";
       jobId?: string;
-      images: QueueImage[];
+      images?: QueueImage[];
+      image?: QueueImage;      // single image for process mode
+      imageIndex?: number;     // index in the job for process mode
       platform?: "adobe_stock" | "shutterstock" | "magnific";
       complianceGuard?: boolean;
     };
 
-    if (!Array.isArray(body.images) || body.images.length === 0) {
-      return NextResponse.json({ error: "Daftar foto tidak boleh kosong" }, { status: 400 });
-    }
-
-    const platform = body.platform === "shutterstock" ? "shutterstock" : body.platform === "magnific" ? "magnific" : "adobe_stock";
-    const jobId = body.jobId || `job-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+    const platform = body.platform === "shutterstock"
+      ? "shutterstock"
+      : body.platform === "magnific"
+      ? "magnific"
+      : "adobe_stock";
     const complianceGuard = body.complianceGuard === true;
 
-    // Create or update job with exact total
-    let job = await getMetadataJob(jobId);
-    if (!job) {
-      job = {
+    // ── MODE: INIT ─────────────────────────────────────────────────────────
+    // Called once at start. Creates the job slot in Redis.
+    if (!body.mode || body.mode === "init") {
+      if (!Array.isArray(body.images) || body.images.length === 0) {
+        return NextResponse.json({ error: "Daftar foto tidak boleh kosong" }, { status: 400 });
+      }
+
+      const jobId = body.jobId || `job-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+
+      const newJob: MetadataJob = {
         id: jobId,
         userId: payload.userId,
         username: payload.username || "Kreator",
@@ -243,23 +84,102 @@ export async function POST(request: NextRequest) {
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       };
-      await saveMetadataJob(job);
-    } else {
-      job.total = body.images.length;
-      await saveMetadataJob(job);
+      await saveMetadataJob(newJob);
+
+      return NextResponse.json({
+        success: true,
+        jobId,
+        status: "processing",
+        total: body.images.length,
+        mode: "init",
+      });
     }
 
-    // Launch concurrent background workers with ALL images
-    void runJobWorker(jobId, payload.userId, payload.username || "Kreator", platform, complianceGuard, body.images);
+    // ── MODE: PROCESS ──────────────────────────────────────────────────────
+    // Called once per image. Processes image and saves result to Redis.
+    if (body.mode === "process") {
+      const { jobId, image, imageIndex } = body;
 
-    return NextResponse.json({
-      success: true,
-      jobId,
-      status: "processing",
-      total: body.images.length,
-    });
+      if (!jobId || !image || imageIndex === undefined) {
+        return NextResponse.json({ error: "jobId, image, dan imageIndex wajib diisi" }, { status: 400 });
+      }
+
+      const job = await getMetadataJob(jobId);
+      if (!job) {
+        return NextResponse.json({ error: "Job tidak ditemukan" }, { status: 404 });
+      }
+
+      // Guard: don't reprocess if already done
+      const existing = job.results[imageIndex];
+      if (existing && existing.title && !existing.error) {
+        return NextResponse.json({ success: true, skipped: true, result: existing });
+      }
+
+      let result: MetadataJobItem;
+      try {
+        result = await generateMetadataWithRetry(
+          image.dataUrl,
+          image.filename,
+          image.visualHints,
+          platform,
+          complianceGuard,
+          image.existingPrompt
+        );
+      } catch (err) {
+        result = {
+          filename: image.filename,
+          title: "",
+          keywords: [],
+          error: err instanceof Error ? err.message : "Gagal memproses gambar",
+        };
+      }
+
+      // Save result at correct index
+      const updatedJob = await getMetadataJob(jobId);
+      if (updatedJob) {
+        // Ensure results array is large enough
+        while (updatedJob.results.length <= imageIndex) {
+          updatedJob.results.push({ filename: "", title: "", keywords: [] });
+        }
+        updatedJob.results[imageIndex] = result;
+
+        // Count real completed (non-placeholder) items
+        const realCompleted = updatedJob.results.filter(
+          (r) => r && r.filename && (r.title || r.error)
+        ).length;
+        updatedJob.progress = realCompleted;
+
+        if (updatedJob.progress >= updatedJob.total) {
+          updatedJob.status = "completed";
+        }
+        updatedJob.updatedAt = new Date().toISOString();
+        await saveMetadataJob(updatedJob);
+
+        // Sync to history when complete
+        if (updatedJob.status === "completed") {
+          const finalResults = updatedJob.results.filter(
+            (r): r is MetadataJobItem => r && r.filename !== ""
+          );
+          await syncJobToUserHistory(payload.userId, jobId, platform, finalResults);
+        }
+      }
+
+      // Record processing count on success
+      if (result.title && !result.error) {
+        await recordPhotoProcessing(payload.userId, payload.username || "Kreator", 1);
+      }
+
+      return NextResponse.json({
+        success: true,
+        result,
+        progress: (await getMetadataJob(jobId))?.progress ?? imageIndex + 1,
+        total: job.total,
+      });
+    }
+
+    return NextResponse.json({ error: "Mode tidak valid. Gunakan 'init' atau 'process'." }, { status: 400 });
   } catch (err) {
     console.error("POST /api/metadata/queue error:", err);
-    return NextResponse.json({ error: "Gagal memasukkan ke antrian server" }, { status: 500 });
+    return NextResponse.json({ error: "Gagal memproses antrian" }, { status: 500 });
   }
 }
