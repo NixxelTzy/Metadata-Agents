@@ -6,7 +6,8 @@ import {
   MessageSquare, RefreshCw, Ban, Users, Inbox, FileEdit,
   ClipboardList, Eye, AlertTriangle, Activity, Wrench, Folder,
   BarChart2, Search, Info, CheckCircle2, Trash2, Key, LogOut,
-  Upload, Zap, Mail, Clock, ShieldAlert, Send, Megaphone
+  Upload, Zap, Mail, Clock, ShieldAlert, Send, Megaphone,
+  UserCheck, UserPlus, Globe, X, Sparkles
 } from "lucide-react";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -1677,30 +1678,56 @@ function SmartMessagePanel() {
   const [loadingMsgs, setLoadingMsgs] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
+  const QUICK_TEMPLATES = [
+    {
+      label: "✨ Update Fitur",
+      title: "🚀 Pembaruan Sistem Baru!",
+      body: "Sistem metadata kini lebih cerdas & cepat dengan fitur pemrosesan latar belakang tanpa putus.",
+    },
+    {
+      label: "📢 Pengumuman",
+      title: "📢 Pengumuman Penting Kreator",
+      body: "Pastikan memeriksa riwayat metadata Anda secara berkala untuk mengekspor data CSV terbaru.",
+    },
+    {
+      label: "💡 Tips Stock",
+      title: "💡 Tips Sukses Adobe Stock",
+      body: "Gunakan 40-50 kata kunci relevan dan hindari nama brand agar metadata langsung disetujui kurator.",
+    },
+    {
+      label: "🛠️ Maintenance",
+      title: "🛠️ Pemeliharaan Server Rutin",
+      body: "Sistem server beroperasi optimal dengan peningkatan performa komputasi AI Vision terbaru.",
+    },
+  ];
+
   const AUDIENCE_OPTIONS = [
     {
       value: "all" as const,
-      label: "📢 Semua Akun",
-      desc: "Terkirim ke semua pengguna terdaftar",
+      label: "Semua Akun",
+      desc: "Terkirim ke seluruh pengguna yang terdaftar",
+      icon: <Users size={16} />,
       color: "#38bdf8",
-      bg: "rgba(56,189,248,0.1)",
-      border: "rgba(56,189,248,0.4)",
+      bg: "rgba(56, 189, 248, 0.12)",
+      border: "rgba(56, 189, 248, 0.5)",
     },
     {
       value: "new_users" as const,
-      label: "🆕 Akun Baru",
-      desc: "Pengguna yang baru daftar ≤7 hari",
+      label: "Akun Baru",
+      desc: "Pengguna baru terdaftar dalam 7 hari terakhir",
+      icon: <UserPlus size={16} />,
       color: "#4ade80",
-      bg: "rgba(74,222,128,0.1)",
-      border: "rgba(74,222,128,0.4)",
+      bg: "rgba(74, 222, 128, 0.12)",
+      border: "rgba(74, 222, 128, 0.5)",
     },
     {
       value: "guests" as const,
-      label: "👤 Tamu (Belum Daftar)",
-      desc: "Pengunjung yang belum login",
+      label: "Tamu / Belum Login",
+      desc: "Pengunjung web yang belum membuat akun",
+      icon: <Globe size={16} />,
       color: "#fb923c",
-      bg: "rgba(251,146,60,0.1)",
-      border: "rgba(251,146,60,0.4)",
+      bg: "rgba(251, 146, 60, 0.12)",
+      border: "rgba(251, 146, 60, 0.5)",
     },
   ];
 
@@ -1708,12 +1735,18 @@ function SmartMessagePanel() {
     setLoadingMsgs(true);
     try {
       const res = await fetch("/api/admin/smart-message?view=log");
-      const data = await res.json() as { messages: SmartMsg[] };
+      const data = (await res.json()) as { messages: SmartMsg[] };
       setActiveMessages(data.messages ?? []);
-    } catch { /* silent */ } finally { setLoadingMsgs(false); }
+    } catch {
+      /* silent */
+    } finally {
+      setLoadingMsgs(false);
+    }
   };
 
-  useEffect(() => { void fetchActive(); }, []);
+  useEffect(() => {
+    void fetchActive();
+  }, []);
 
   const handleSend = async () => {
     if (!title.trim() || !body.trim()) {
@@ -1726,11 +1759,17 @@ function SmartMessagePanel() {
       const res = await fetch("/api/admin/smart-message", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "send", title: title.trim(), body: body.trim(), audience, ttlHours }),
+        body: JSON.stringify({
+          action: "send",
+          title: title.trim(),
+          body: body.trim(),
+          audience,
+          ttlHours,
+        }),
       });
-      const data = await res.json() as { ok?: boolean; error?: string; message?: string };
+      const data = (await res.json()) as { ok?: boolean; error?: string; message?: string };
       if (data.ok) {
-        setResult({ ok: true, msg: data.message ?? "✅ Smart Message terkirim!" });
+        setResult({ ok: true, msg: data.message ?? "✅ Smart Message berhasil dikirim!" });
         setTitle("");
         setBody("");
         void fetchActive();
@@ -1738,7 +1777,7 @@ function SmartMessagePanel() {
           window.dispatchEvent(new CustomEvent("smartmsg_refresh"));
         }
       } else {
-        setResult({ ok: false, msg: data.error ?? "Gagal mengirim" });
+        setResult({ ok: false, msg: data.error ?? "Gagal mengirim pesan" });
       }
     } catch {
       setResult({ ok: false, msg: "Gagal terhubung ke server" });
@@ -1748,7 +1787,7 @@ function SmartMessagePanel() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!window.confirm("Hapus Smart Message ini? Pesan akan langsung menghilang dari semua pengguna.")) return;
+    if (!window.confirm("Hapus Smart Message ini? Pesan akan langsung ditarik dari layar seluruh pengguna.")) return;
     setDeletingId(id);
     try {
       await fetch("/api/admin/smart-message", {
@@ -1760,40 +1799,105 @@ function SmartMessagePanel() {
       if (typeof window !== "undefined") {
         window.dispatchEvent(new CustomEvent("smartmsg_refresh"));
       }
-    } catch { /* silent */ } finally { setDeletingId(null); }
+    } catch {
+      /* silent */
+    } finally {
+      setDeletingId(null);
+    }
   };
 
   const now = Date.now();
   const activeLive = activeMessages.filter((m) => new Date(m.expiresAt).getTime() > now);
   const expired = activeMessages.filter((m) => new Date(m.expiresAt).getTime() <= now);
-
   const audienceOpt = AUDIENCE_OPTIONS.find((a) => a.value === audience)!;
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-
-      {/* Header Info */}
-      <div style={{
-        padding: "12px 14px",
-        background: "rgba(56,189,248,0.07)",
-        border: "1px solid rgba(56,189,248,0.2)",
-        borderRadius: 10,
-        fontSize: 12,
-        color: "#94a3b8",
-        lineHeight: 1.55,
-      }}>
-        <span style={{ fontWeight: 700, color: "#38bdf8" }}>📡 Smart Message</span> —
-        Kirim pesan <strong style={{ color: "#e2e8f0" }}>instant</strong> yang langsung muncul di layar pengguna
-        sebagai notifikasi kecil di pojok kanan atas. Pengguna dapat menutup dengan tombol <strong style={{ color: "#e2e8f0" }}>✕</strong> dan
-        pesan tidak akan muncul lagi secara permanen untuk akun tersebut.
+    <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+      {/* ── Top Header Banner ── */}
+      <div
+        style={{
+          padding: "16px 18px",
+          background: "linear-gradient(135deg, rgba(56, 189, 248, 0.08) 0%, rgba(99, 102, 241, 0.05) 100%)",
+          border: "1px solid rgba(56, 189, 248, 0.25)",
+          borderRadius: 14,
+          display: "flex",
+          alignItems: "flex-start",
+          gap: 14,
+        }}
+      >
+        <div
+          style={{
+            width: 36,
+            height: 36,
+            borderRadius: 10,
+            background: "linear-gradient(135deg, #0284c7, #2563eb)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            color: "#fff",
+            flexShrink: 0,
+            boxShadow: "0 4px 12px rgba(37, 99, 235, 0.25)",
+          }}
+        >
+          <Megaphone size={18} />
+        </div>
+        <div style={{ flex: 1 }}>
+          <div style={{ fontSize: 14, fontWeight: 800, color: "#f8fafc", marginBottom: 3 }}>
+            Pusat Pesan Pintar &amp; Broadcast Instan
+          </div>
+          <div style={{ fontSize: 12, color: "#94a3b8", lineHeight: 1.5 }}>
+            Kirim pesan langsung ke layar pengguna secara real-time. Pesan tampil sebagai notifikasi floating elegan di pojok kanan atas layar dengan tombol tutup permanen.
+          </div>
+        </div>
       </div>
 
-      {/* Audience Selector */}
+      {/* ── Quick Templates ── */}
       <div>
-        <div style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase" as const, letterSpacing: "0.07em", color: "var(--text-muted)", marginBottom: 10 }}>
-          Target Penerima
+        <div style={{ fontSize: 11.5, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "#94a3b8", marginBottom: 8, display: "flex", alignItems: "center", gap: 6 }}>
+          <Sparkles size={13} color="#38bdf8" />
+          <span>Template Cepat (Klik untuk Mengisi)</span>
         </div>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(140px,1fr))", gap: 8 }}>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          {QUICK_TEMPLATES.map((tmpl) => (
+            <button
+              key={tmpl.label}
+              type="button"
+              onClick={() => {
+                setTitle(tmpl.title);
+                setBody(tmpl.body);
+              }}
+              style={{
+                padding: "6px 12px",
+                borderRadius: 8,
+                border: "1px solid rgba(148, 163, 184, 0.25)",
+                background: "rgba(30, 41, 59, 0.6)",
+                color: "#cbd5e1",
+                fontSize: 11.5,
+                fontWeight: 600,
+                cursor: "pointer",
+                transition: "all 0.15s ease",
+              }}
+              onMouseEnter={(e) => {
+                (e.currentTarget as HTMLButtonElement).style.borderColor = "#38bdf8";
+                (e.currentTarget as HTMLButtonElement).style.color = "#38bdf8";
+              }}
+              onMouseLeave={(e) => {
+                (e.currentTarget as HTMLButtonElement).style.borderColor = "rgba(148, 163, 184, 0.25)";
+                (e.currentTarget as HTMLButtonElement).style.color = "#cbd5e1";
+              }}
+            >
+              {tmpl.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* ── Audience Selector ── */}
+      <div>
+        <div style={{ fontSize: 11.5, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "#94a3b8", marginBottom: 10 }}>
+          Pilih Sasaran Penerima
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(170px, 1fr))", gap: 10 }}>
           {AUDIENCE_OPTIONS.map((opt) => {
             const active = audience === opt.value;
             return (
@@ -1802,19 +1906,25 @@ function SmartMessagePanel() {
                 type="button"
                 onClick={() => setAudience(opt.value)}
                 style={{
-                  padding: "10px 12px",
-                  borderRadius: 10,
-                  border: `2px solid ${active ? opt.border : "var(--border)"}`,
-                  background: active ? opt.bg : "var(--bg-secondary)",
+                  padding: "12px 14px",
+                  borderRadius: 12,
+                  border: `2px solid ${active ? opt.border : "rgba(148, 163, 184, 0.18)"}`,
+                  background: active ? opt.bg : "rgba(15, 23, 42, 0.5)",
                   cursor: "pointer",
-                  textAlign: "left" as const,
-                  transition: "all 0.18s",
+                  textAlign: "left",
+                  transition: "all 0.18s ease",
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 6,
                 }}
               >
-                <div style={{ fontSize: 12, fontWeight: 800, color: active ? opt.color : "var(--text)", marginBottom: 2 }}>
-                  {opt.label}
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <div style={{ color: active ? opt.color : "#94a3b8" }}>{opt.icon}</div>
+                  <div style={{ fontSize: 12.5, fontWeight: 800, color: active ? opt.color : "#f1f5f9" }}>
+                    {opt.label}
+                  </div>
                 </div>
-                <div style={{ fontSize: 10.5, color: "var(--text-muted)", lineHeight: 1.35 }}>
+                <div style={{ fontSize: 11, color: "#94a3b8", lineHeight: 1.4 }}>
                   {opt.desc}
                 </div>
               </button>
@@ -1823,54 +1933,80 @@ function SmartMessagePanel() {
         </div>
       </div>
 
-      {/* Form */}
-      <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+      {/* ── Form Inputs ── */}
+      <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
         <div>
-          <div style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase" as const, letterSpacing: "0.07em", color: "var(--text-muted)", marginBottom: 6 }}>
-            Judul Pesan
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+            <span style={{ fontSize: 11.5, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "#94a3b8" }}>
+              Judul Pesan
+            </span>
+            <span style={{ fontSize: 11, color: title.length > 70 ? "#f87171" : "#64748b" }}>
+              {title.length}/80
+            </span>
           </div>
           <input
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            placeholder="Contoh: 🎉 Fitur baru telah hadir!"
+            placeholder="Contoh: 🚀 Fitur Baru: Background Processing Tersedia!"
             maxLength={80}
             style={{
-              width: "100%", padding: "10px 12px", background: "var(--bg-secondary)",
-              border: "1px solid var(--border)", borderRadius: 8, color: "var(--text)",
-              fontSize: 13, outline: "none", boxSizing: "border-box" as const,
+              width: "100%",
+              padding: "11px 14px",
+              background: "rgba(15, 23, 42, 0.6)",
+              border: "1px solid rgba(148, 163, 184, 0.25)",
+              borderRadius: 10,
+              color: "#f8fafc",
+              fontSize: 13.5,
+              fontWeight: 600,
+              outline: "none",
+              boxSizing: "border-box",
+              transition: "border-color 0.15s",
             }}
+            onFocus={(e) => { (e.currentTarget as HTMLInputElement).style.borderColor = "#38bdf8"; }}
+            onBlur={(e) => { (e.currentTarget as HTMLInputElement).style.borderColor = "rgba(148, 163, 184, 0.25)"; }}
           />
-          <div style={{ fontSize: 10, color: "var(--text-muted)", marginTop: 3, textAlign: "right" as const }}>
-            {title.length}/80
-          </div>
         </div>
 
         <div>
-          <div style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase" as const, letterSpacing: "0.07em", color: "var(--text-muted)", marginBottom: 6 }}>
-            Isi Pesan
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+            <span style={{ fontSize: 11.5, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "#94a3b8" }}>
+              Isi Pesan
+            </span>
+            <span style={{ fontSize: 11, color: body.length > 270 ? "#f87171" : "#64748b" }}>
+              {body.length}/300
+            </span>
           </div>
           <textarea
             value={body}
             onChange={(e) => setBody(e.target.value)}
-            placeholder="Tulis isi pesan singkat di sini..."
+            placeholder="Tuliskan pesan yang singkat, padat, dan jelas untuk pengguna..."
             rows={3}
             maxLength={300}
             style={{
-              width: "100%", padding: "10px 12px", background: "var(--bg-secondary)",
-              border: "1px solid var(--border)", borderRadius: 8, color: "var(--text)",
-              fontSize: 13, outline: "none", resize: "vertical", boxSizing: "border-box" as const,
-              fontFamily: "inherit", lineHeight: 1.5,
+              width: "100%",
+              padding: "11px 14px",
+              background: "rgba(15, 23, 42, 0.6)",
+              border: "1px solid rgba(148, 163, 184, 0.25)",
+              borderRadius: 10,
+              color: "#f8fafc",
+              fontSize: 13,
+              outline: "none",
+              resize: "vertical",
+              boxSizing: "border-box",
+              fontFamily: "inherit",
+              lineHeight: 1.5,
+              transition: "border-color 0.15s",
             }}
+            onFocus={(e) => { (e.currentTarget as HTMLTextAreaElement).style.borderColor = "#38bdf8"; }}
+            onBlur={(e) => { (e.currentTarget as HTMLTextAreaElement).style.borderColor = "rgba(148, 163, 184, 0.25)"; }}
           />
-          <div style={{ fontSize: 10, color: "var(--text-muted)", marginTop: 3, textAlign: "right" as const }}>
-            {body.length}/300
-          </div>
         </div>
 
-        {/* TTL */}
-        <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" as const }}>
-          <div style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase" as const, letterSpacing: "0.07em", color: "var(--text-muted)", whiteSpace: "nowrap" as const }}>
-            Durasi Aktif:
+        {/* TTL Selector */}
+        <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+          <div style={{ fontSize: 11.5, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "#94a3b8", display: "flex", alignItems: "center", gap: 5 }}>
+            <Clock size={13} color="#38bdf8" />
+            <span>Masa Aktif Pesan:</span>
           </div>
           {[
             { h: 6, label: "6 Jam" },
@@ -1883,11 +2019,15 @@ function SmartMessagePanel() {
               type="button"
               onClick={() => setTtlHours(opt.h)}
               style={{
-                padding: "5px 12px", borderRadius: 6,
-                border: `1px solid ${ttlHours === opt.h ? "#38bdf8" : "var(--border)"}`,
-                background: ttlHours === opt.h ? "rgba(56,189,248,0.12)" : "var(--bg-secondary)",
-                color: ttlHours === opt.h ? "#38bdf8" : "var(--text-muted)",
-                fontSize: 11, fontWeight: 700, cursor: "pointer", transition: "all 0.15s",
+                padding: "6px 14px",
+                borderRadius: 8,
+                border: `1px solid ${ttlHours === opt.h ? "#38bdf8" : "rgba(148, 163, 184, 0.25)"}`,
+                background: ttlHours === opt.h ? "rgba(56, 189, 248, 0.15)" : "rgba(15, 23, 42, 0.4)",
+                color: ttlHours === opt.h ? "#38bdf8" : "#94a3b8",
+                fontSize: 11.5,
+                fontWeight: 700,
+                cursor: "pointer",
+                transition: "all 0.15s",
               }}
             >
               {opt.label}
@@ -1896,93 +2036,167 @@ function SmartMessagePanel() {
         </div>
       </div>
 
-      {/* Preview mini card */}
-      {(title || body) && (
-        <div>
-          <div style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase" as const, letterSpacing: "0.07em", color: "var(--text-muted)", marginBottom: 8 }}>
-            Preview (tampilan di pengguna)
-          </div>
-          <div style={{
+      {/* ── Live Preview (Sleek Glassmorphic Card) ── */}
+      <div>
+        <div style={{ fontSize: 11.5, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "#94a3b8", marginBottom: 10, display: "flex", alignItems: "center", gap: 6 }}>
+          <Eye size={13} color="#38bdf8" />
+          <span>Live Preview (Tampilan Persis di Layar Pengguna)</span>
+        </div>
+        <div
+          style={{
             position: "relative",
-            background: "linear-gradient(135deg, rgba(30,41,59,0.97), rgba(15,23,42,0.97))",
-            border: "1px solid rgba(56,189,248,0.22)",
-            borderRadius: 10,
-            padding: "9px 36px 9px 11px",
-            maxWidth: 300,
-            boxShadow: "0 2px 12px rgba(0,0,0,0.35)",
-          }}>
-            <div style={{ position: "absolute", top: 6, right: 6, width: 20, height: 20, borderRadius: "50%", background: "rgba(148,163,184,0.15)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, color: "#94a3b8", fontWeight: 700 }}>✕</div>
-            <div style={{ fontSize: 11.5, fontWeight: 700, color: "#e2e8f0", marginBottom: 3 }}>{title || "Judul Pesan"}</div>
-            <div style={{ fontSize: 10.5, color: "#94a3b8", lineHeight: 1.45, marginBottom: 4 }}>{body || "Isi pesan akan tampil di sini..."}</div>
-            <div style={{ fontSize: 9.5, color: "#475569" }}>📢 baru saja</div>
+            background: "linear-gradient(135deg, rgba(15, 23, 42, 0.96) 0%, rgba(30, 41, 59, 0.94) 100%)",
+            border: "1px solid rgba(56, 189, 248, 0.3)",
+            borderRadius: 14,
+            padding: "12px 14px 10px 14px",
+            maxWidth: 320,
+            boxShadow: "0 10px 30px -4px rgba(0, 0, 0, 0.5), 0 0 16px rgba(56, 189, 248, 0.12)",
+            overflow: "hidden",
+          }}
+        >
+          <div
+            style={{
+              position: "absolute",
+              top: 0,
+              left: 0,
+              right: 0,
+              height: "2.5px",
+              background: "linear-gradient(90deg, #38bdf8 0%, #818cf8 50%, #c084fc 100%)",
+            }}
+          />
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8, gap: 8 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+              <div style={{ width: 22, height: 22, borderRadius: "50%", background: "rgba(56, 189, 248, 0.15)", border: "1px solid rgba(56, 189, 248, 0.3)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <Megaphone size={11} color="#38bdf8" />
+              </div>
+              <span style={{ fontSize: 9.5, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.06em", color: "#38bdf8" }}>
+                Pengumuman
+              </span>
+              <span style={{ fontSize: 9, color: "#64748b" }}>•</span>
+              <span style={{ fontSize: 10, color: "#94a3b8" }}>Baru saja</span>
+            </div>
+            <div style={{ width: 20, height: 20, borderRadius: "50%", background: "rgba(148, 163, 184, 0.15)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, color: "#94a3b8" }}>
+              <X size={10} strokeWidth={2.5} />
+            </div>
+          </div>
+          <div style={{ fontSize: 12.5, fontWeight: 700, color: "#f8fafc", lineHeight: 1.35, marginBottom: 4 }}>
+            {title.trim() || "Judul Pesan Anda"}
+          </div>
+          <div style={{ fontSize: 11.5, color: "#cbd5e1", lineHeight: 1.5, marginBottom: 6 }}>
+            {body.trim() || "Isi pesan singkat akan muncul di sini persis seperti yang akan dibaca pengguna..."}
+          </div>
+          <div style={{ borderTop: "1px solid rgba(148, 163, 184, 0.12)", paddingTop: 5, fontSize: 9.5, color: "#64748b" }}>
+            Klik ✕ untuk menandai sudah dibaca
           </div>
         </div>
-      )}
+      </div>
 
-      {/* Result feedback */}
+      {/* ── Status Result ── */}
       {result && (
-        <div style={{
-          padding: "10px 14px", borderRadius: 8, fontSize: 12, fontWeight: 600,
-          background: result.ok ? "rgba(74,222,128,0.1)" : "rgba(239,68,68,0.1)",
-          border: `1px solid ${result.ok ? "rgba(74,222,128,0.3)" : "rgba(239,68,68,0.3)"}`,
-          color: result.ok ? "#4ade80" : "#f87171",
-        }}>
-          {result.msg}
+        <div
+          style={{
+            padding: "12px 16px",
+            borderRadius: 10,
+            fontSize: 12.5,
+            fontWeight: 700,
+            background: result.ok ? "rgba(74, 222, 128, 0.12)" : "rgba(239, 68, 68, 0.12)",
+            border: `1px solid ${result.ok ? "rgba(74, 222, 128, 0.35)" : "rgba(239, 68, 68, 0.35)"}`,
+            color: result.ok ? "#4ade80" : "#f87171",
+            display: "flex",
+            alignItems: "center",
+            gap: 8,
+          }}
+        >
+          {result.ok ? <CheckCircle2 size={16} /> : <AlertTriangle size={16} />}
+          <span>{result.msg}</span>
         </div>
       )}
 
-      {/* Send button */}
+      {/* ── Send Action Button ── */}
       <button
         type="button"
         onClick={handleSend}
         disabled={sending || !title.trim() || !body.trim()}
         style={{
-          padding: "13px 20px",
-          borderRadius: 10,
+          padding: "14px 24px",
+          borderRadius: 12,
           border: "none",
-          background: sending || !title.trim() || !body.trim()
-            ? "#334155"
-            : `linear-gradient(135deg, ${audienceOpt.color}cc, ${audienceOpt.color}88)`,
+          background:
+            sending || !title.trim() || !body.trim()
+              ? "rgba(51, 65, 85, 0.5)"
+              : "linear-gradient(135deg, #0284c7 0%, #2563eb 100%)",
           color: sending || !title.trim() || !body.trim() ? "#64748b" : "#fff",
           fontWeight: 800,
-          fontSize: 13,
+          fontSize: 13.5,
           cursor: sending || !title.trim() || !body.trim() ? "not-allowed" : "pointer",
-          transition: "all 0.2s",
+          transition: "all 0.2s ease",
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
           gap: 8,
+          boxShadow: sending || !title.trim() || !body.trim() ? "none" : "0 4px 16px rgba(37, 99, 235, 0.3)",
         }}
       >
         {sending ? (
-          <>⏳ Mengirim...</>
+          <>
+            <RefreshCw size={16} className="animate-spin" />
+            <span>Sedang Mengirim Pesan...</span>
+          </>
         ) : (
-          <><Megaphone size={15} /> Kirim Smart Message {audienceOpt.label}</>
+          <>
+            <Send size={16} />
+            <span>Kirim Pesan Instant ke {audienceOpt.label}</span>
+          </>
         )}
       </button>
 
-      {/* Active Messages List */}
+      {/* ── Active Messages Section ── */}
       <div>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10, flexWrap: "wrap" as const, gap: 8 }}>
-          <div style={{ fontSize: 13, fontWeight: 800, color: "var(--text)" }}>
-            📡 Pesan Aktif ({activeLive.length})
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12, flexWrap: "wrap", gap: 8 }}>
+          <div style={{ fontSize: 13.5, fontWeight: 800, color: "#f8fafc", display: "flex", alignItems: "center", gap: 7 }}>
+            <Activity size={15} color="#38bdf8" />
+            <span>Daftar Pesan Aktif di Layar ({activeLive.length})</span>
           </div>
           <button
+            type="button"
             onClick={fetchActive}
             disabled={loadingMsgs}
-            style={{ padding: "5px 12px", borderRadius: 6, border: "1px solid var(--border)", background: "var(--bg-secondary)", color: "var(--text-muted)", fontSize: 11, fontWeight: 600, cursor: "pointer" }}
+            style={{
+              padding: "6px 12px",
+              borderRadius: 8,
+              border: "1px solid rgba(148, 163, 184, 0.2)",
+              background: "rgba(15, 23, 42, 0.5)",
+              color: "#94a3b8",
+              fontSize: 11.5,
+              fontWeight: 600,
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              gap: 5,
+            }}
           >
-            {loadingMsgs ? "⏳" : "🔄"} Refresh
+            <RefreshCw size={12} className={loadingMsgs ? "animate-spin" : ""} />
+            <span>Segarkan</span>
           </button>
         </div>
 
         {activeLive.length === 0 && (
-          <div style={{ textAlign: "center" as const, padding: "28px 20px", color: "var(--text-muted)", fontSize: 12, background: "var(--bg-secondary)", borderRadius: 10, border: "1px solid var(--border)" }}>
-            📭 Tidak ada Smart Message aktif saat ini.
+          <div
+            style={{
+              textAlign: "center",
+              padding: "32px 20px",
+              color: "#64748b",
+              fontSize: 12.5,
+              background: "rgba(15, 23, 42, 0.4)",
+              borderRadius: 12,
+              border: "1px dashed rgba(148, 163, 184, 0.2)",
+            }}
+          >
+            Belum ada Smart Message aktif. Kirim pesan di atas untuk menampilkannya ke pengguna.
           </div>
         )}
 
-        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           {activeLive.map((msg) => {
             const opt = AUDIENCE_OPTIONS.find((a) => a.value === msg.audience) ?? AUDIENCE_OPTIONS[0];
             const timeLeft = Math.max(0, Math.floor((new Date(msg.expiresAt).getTime() - now) / 3600000));
@@ -1990,57 +2204,110 @@ function SmartMessagePanel() {
               <div
                 key={msg.id}
                 style={{
-                  background: "var(--surface)",
+                  background: "rgba(15, 23, 42, 0.7)",
                   border: `1px solid ${opt.border}`,
-                  borderRadius: 10,
-                  padding: "12px 14px",
+                  borderRadius: 12,
+                  padding: "12px 16px",
                   display: "flex",
-                  gap: 10,
+                  gap: 12,
                   alignItems: "flex-start",
                 }}
               >
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" as const, marginBottom: 4 }}>
-                    <span style={{ fontSize: 10, fontWeight: 800, padding: "2px 7px", borderRadius: 5, background: opt.bg, color: opt.color }}>
-                      {opt.label}
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 6 }}>
+                    <span
+                      style={{
+                        fontSize: 10,
+                        fontWeight: 800,
+                        padding: "3px 8px",
+                        borderRadius: 6,
+                        background: opt.bg,
+                        color: opt.color,
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: 4,
+                      }}
+                    >
+                      {opt.icon}
+                      <span>{opt.label}</span>
                     </span>
-                    <span style={{ fontSize: 10, color: "#475569" }}>⏱ {timeLeft}j tersisa</span>
+                    <span style={{ fontSize: 10.5, color: "#94a3b8", display: "inline-flex", alignItems: "center", gap: 4 }}>
+                      <Clock size={11} />
+                      <span>{timeLeft} jam tersisa</span>
+                    </span>
                   </div>
-                  <div style={{ fontSize: 12, fontWeight: 700, color: "var(--text)", marginBottom: 2 }}>{msg.title}</div>
-                  <div style={{ fontSize: 11, color: "var(--text-muted)", lineHeight: 1.45 }}>{msg.body}</div>
-                  <div style={{ fontSize: 10, color: "#475569", marginTop: 4 }}>
-                    {new Date(msg.sentAt).toLocaleString("id-ID")}
+                  <div style={{ fontSize: 13, fontWeight: 700, color: "#f8fafc", marginBottom: 3 }}>
+                    {msg.title}
+                  </div>
+                  <div style={{ fontSize: 12, color: "#cbd5e1", lineHeight: 1.5 }}>
+                    {msg.body}
+                  </div>
+                  <div style={{ fontSize: 10, color: "#64748b", marginTop: 6 }}>
+                    Dikirim: {new Date(msg.sentAt).toLocaleString("id-ID")}
                   </div>
                 </div>
                 <button
                   type="button"
                   onClick={() => handleDelete(msg.id)}
                   disabled={deletingId === msg.id}
-                  title="Hapus pesan ini"
+                  title="Hapus pesan ini dari semua pengguna"
                   style={{
-                    padding: "5px 8px", borderRadius: 6, border: "none",
-                    background: "rgba(239,68,68,0.12)", color: "#f87171",
-                    fontSize: 11, fontWeight: 700, cursor: "pointer", flexShrink: 0,
+                    padding: "6px 10px",
+                    borderRadius: 8,
+                    border: "1px solid rgba(239, 68, 68, 0.3)",
+                    background: "rgba(239, 68, 68, 0.1)",
+                    color: "#f87171",
+                    fontSize: 11.5,
+                    fontWeight: 700,
+                    cursor: "pointer",
+                    flexShrink: 0,
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 4,
+                    transition: "all 0.15s ease",
+                  }}
+                  onMouseEnter={(e) => {
+                    (e.currentTarget as HTMLButtonElement).style.background = "rgba(239, 68, 68, 0.25)";
+                  }}
+                  onMouseLeave={(e) => {
+                    (e.currentTarget as HTMLButtonElement).style.background = "rgba(239, 68, 68, 0.1)";
                   }}
                 >
-                  {deletingId === msg.id ? "⏳" : "🗑️"}
+                  {deletingId === msg.id ? (
+                    <RefreshCw size={12} className="animate-spin" />
+                  ) : (
+                    <Trash2 size={12} />
+                  )}
+                  <span>Hapus</span>
                 </button>
               </div>
             );
           })}
         </div>
 
-        {/* Expired */}
+        {/* Expired list */}
         {expired.length > 0 && (
-          <div style={{ marginTop: 16 }}>
-            <div style={{ fontSize: 11, fontWeight: 700, color: "#475569", marginBottom: 8 }}>
-              ⏰ Kadaluarsa ({expired.length})
+          <div style={{ marginTop: 18 }}>
+            <div style={{ fontSize: 11, fontWeight: 700, color: "#64748b", marginBottom: 8, textTransform: "uppercase", letterSpacing: "0.06em" }}>
+              Riwayat Kadaluarsa ({expired.length})
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-              {expired.slice(0, 5).map((msg) => (
-                <div key={msg.id} style={{ padding: "8px 12px", borderRadius: 8, background: "var(--bg-secondary)", border: "1px solid var(--border)", opacity: 0.55 }}>
-                  <div style={{ fontSize: 11, fontWeight: 600, color: "var(--text-muted)" }}>{msg.title}</div>
-                  <div style={{ fontSize: 10, color: "#475569" }}>{new Date(msg.sentAt).toLocaleString("id-ID")}</div>
+              {expired.slice(0, 4).map((msg) => (
+                <div
+                  key={msg.id}
+                  style={{
+                    padding: "8px 12px",
+                    borderRadius: 8,
+                    background: "rgba(15, 23, 42, 0.35)",
+                    border: "1px solid rgba(148, 163, 184, 0.1)",
+                    opacity: 0.6,
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                  }}
+                >
+                  <div style={{ fontSize: 11.5, fontWeight: 600, color: "#94a3b8" }}>{msg.title}</div>
+                  <div style={{ fontSize: 10, color: "#64748b" }}>{new Date(msg.sentAt).toLocaleDateString("id-ID")}</div>
                 </div>
               ))}
             </div>
