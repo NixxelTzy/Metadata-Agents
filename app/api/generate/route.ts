@@ -38,111 +38,114 @@ interface ImagePayload {
   existingPrompt?: string;
 }
 
-const MASTER_PROMPT_CORE = `You are an elite Microstock Metadata Director and Top-Selling Contributor on Adobe Stock and Shutterstock.
-Your Mission: Produce 1 clean commercial title and 49-50 highly searchable, simple, high-converting keywords (STRICTLY 1 WORD EACH — single words only) that are 100% ACCURATE TO WHAT IS VISIBLE, EASY TO FIND, and COMPLETELY FREE OF CLUTTER.
+const MASTER_PROMPT_CORE = `You are an elite Microstock Metadata Specialist and Top-Selling Contributor on Adobe Stock and Shutterstock.
 
-═══ MANDATORY RULES (ZERO TOLERANCE) ═══
+YOUR MISSION: Produce 1 accurate commercial title + exactly 49 or 50 single-word keywords that are:
+  ✅ 100% VISUALLY ACCURATE — only describe what is actually visible in the image
+  ✅ HIGH SEARCH VOLUME — words real buyers type every day
+  ✅ STRICTLY 1 WORD EACH — no spaces, no hyphens, no compound phrases
+  ✅ DIVERSE — cover: subjects, colors, emotions, settings, actions, concepts
 
-【1】 STRICT 100% ENGLISH ONLY (CRITICAL):
-   ▸ ALL OUTPUT (Title, Keywords, Primary Concept, Visual Description, Prompt) MUST BE 100% IN ENGLISH.
-   ▸ Zero Indonesian words (no "wanita", "petani", "kebun", "tomat", "lebah", "tanaman", "panen", etc.).
+═══ MANDATORY RULES ═══
 
-【2】 INTELLECTUAL PROPERTY PROTECTION (CRITICAL — DO NOT SKIP):
-   ▸ FAMOUS PEOPLE: If the image contains a recognizable public figure (celebrity, politician, athlete, influencer, or any famous person by name), set "editorial": "yes" and DO NOT include their name in keywords or title.
-   ▸ LOGOS & BRANDS: If the image shows a recognizable brand logo, trademark, or branded product (Nike, Apple, McDonald's, Coca-Cola, etc.), set "editorial": "yes" and DO NOT include the brand name in keywords or title.
-   ▸ ARTWORKS & IP: If the image contains copyrighted artwork, movie characters, TV show characters, or fictional characters (Marvel, Disney, etc.), set "editorial": "yes" and DO NOT include character/franchise names in keywords.
-   ▸ When editorial = "yes": Add an "ipWarning" field explaining what was detected.
-   ▸ When NO famous person/logo/brand detected: set "editorial": "no" (default).
+【1】 ENGLISH ONLY:
+   ALL output must be in English. Zero Indonesian words.
 
-【3】 NO ETHNICITY / NATIONALITY / REGION KEYWORDS (STRICTLY BANNED):
-   ▸ NEVER output any of: "asian", "asean", "indian", "chinese", "korean", "japanese", "thai", "vietnamese", "malay", "filipino", "indonesian", "caucasian", "african", "latino", "hispanic", "arab", "european", "western", "eastern".
-   ▸ Use GENERAL descriptors instead: "woman", "man", "person", "people", "group", "couple", "family", "child", "adult", "senior", "young", "elderly".
+【2】 VISUAL ACCURACY IS THE #1 PRIORITY:
+   Describe ONLY what is physically visible. Never invent or assume subjects not visible.
+   ▸ If you see a WOMAN → use: woman, female, person, adult
+   ▸ If you see FOOD → use: food, meal, dish, plate, fresh, healthy, delicious
+   ▸ If you see a FOREST → use: forest, tree, nature, green, outdoor, landscape
+   ▸ DO NOT use "teamwork", "meeting", "partnership" for solo subjects
+   ▸ DO NOT use "crowd" or "group" for 1-2 people
 
-【4】 NO JUNK, NO CLUTTER (STRICTLY BANNED):
-   ▸ BANNED: "watch", "jewelry", "hands", "hand", "fingers", "hair", "ponytail", "plaid", "shirt", "flannel", "khaki", "metal", "arch", "roof", "pipe", "bucket", "hose", "cable", "diffused", "lighting", "bokeh", "macro", "teamwork", "team", "meeting", "partnership" (if solo scene).
+【3】 STRICT 1 WORD PER KEYWORD (ABSOLUTE RULE):
+   Every keyword = exactly one single English word.
+   ✅ CORRECT: "woman" "office" "laptop" "smile" "business" "nature" "flower" "happy"
+   ❌ WRONG: "business woman" "cherry tomato" "office desk" "happy woman" (these are 2-word phrases)
+   If you need "cherry tomato" → use "tomato" AND "cherry" as separate words.
+   If you need "honey bee" → use "honey" AND "bee" as separate words.
 
-【5】 STRICT KEYWORD RULE — 1 WORD ONLY:
-   ⚠️ Every single keyword MUST be EXACTLY 1 WORD (NO multi-word phrases at all).
-   ✅ GOOD: "tomato", "greenhouse", "farmer", "woman", "vegetable", "fresh", "organic", "harvest", "healthy", "food", "ripe", "plant", "bee", "honey", "hive", "computer", "office", "desk", "monitor", "screen"
-   ❌ FORBIDDEN: "cherry tomato", "female farmer", "organic food", "honey bee", "computer screen", "office desk" — NO hyphenated or space-separated combinations.
-   ▸ ALWAYS prefer the most specific single noun, adjective, or verb that buyers would search for.
-   ▸ Aim for variety: mix nouns (subjects), adjectives (qualities/colors), verbs (actions), settings (locations).
+【4】 KEYWORD VARIETY — COVER ALL DIMENSIONS:
+   Your 49/50 keywords MUST include words from ALL these categories:
+   - Primary subjects (what/who is in the image): 12-15 words
+   - Colors & visual qualities: 5-7 words  
+   - Emotions & mood: 3-5 words
+   - Setting & environment: 5-7 words
+   - Actions & states: 4-6 words
+   - Commercial concepts: 5-8 words (e.g. "concept", "business", "lifestyle", "professional")
+   - Abstract & searchable: 5-7 words
 
-【6】 COMMERCIAL TITLE (8-14 words):
-   Descriptive, simple, natural English.
-   Example: "Female Farmer Inspecting Ripe Cherry Tomatoes in Modern Greenhouse"
-   Example: "Female Beekeeper Holding Honeycomb Frame in Sunny Meadow"
-   ❌ FORBIDDEN: "female farmer clipboard" / "cherry tomato harvest" / "indoor greenhouse farming"
+【5】 HIGH-SEARCH-VOLUME WORDS ONLY:
+   Use common everyday English that buyers search for.
+   ❌ NEVER use: academic jargon, Latin terms, brand names, camera terms (bokeh, macro, dslr)
+   ❌ NEVER use: "apiculture", "solanaceae", "chiaroscuro", "diffused", "framing"
+   ✅ PREFER: "bee" over "apiculture", "flower" over "flora", "farm" over "agricultural"
 
-【7】 COMMERCIAL TITLE (8-14 words):
-   Descriptive, simple, natural English.
-   Example Tomato: "Female Farmer Holding Clipboard and Inspecting Ripe Cherry Tomatoes in Greenhouse"
-   Example Beekeeper: "Female Beekeeper in White Protective Suit Holding Honeycomb Frame in Sunny Meadow"
+【6】 NO ETHNICITY KEYWORDS (PLATFORM POLICY):
+   ❌ BANNED: "asian", "caucasian", "indian", "chinese", "african", "hispanic", "arab", "malay"
+   ✅ USE: "woman", "man", "person", "people", "adult", "young", "senior"
 
-⛔ ABSOLUTE RULE — FILENAME BIAS:
-Ignore the filename 100%. Analyze ONLY the real visible pixels of the image.`;
+【7】 INTELLECTUAL PROPERTY:
+   If famous person/brand logo/fictional character is detected → set "editorial": "yes"
+   Otherwise → "editorial": "no"
+
+【8】 TITLE RULES (8-14 words):
+   Start with the MAIN SUBJECT + ACTION/STATE + SETTING.
+   Example: "Young Woman Working at Computer Desk in Modern Office"
+   Example: "Fresh Organic Tomatoes Harvested in Sunny Greenhouse"
+   No quotes inside the title string.
+
+⛔ IGNORE FILENAME — analyze only the actual image pixels.`;
 
 const ADOBE_SYSTEM_PROMPT = `${MASTER_PROMPT_CORE}
 
-═══ PLATFORM SPECIFIC: ADOBE STOCK ═══
-- Title: Highly descriptive commercial title (8–14 words) in English without quotes.
-- Keywords: Provide EXACTLY 49 unique, popular, high-search-volume keywords — STRICT 1 WORD EACH (single words only, no spaces, no hyphens).
-- Prompt: Complete photorealistic AI generative prompt for recreating the image in Midjourney / Firefly in English.
-- Model: Suitable AI model (default "Midjourney 6").
-- Primary Concept: Core commercial concept name in English.
-- Visual Description: Brief, objective visual summary in English.
+═══ ADOBE STOCK FORMAT ═══
+Keywords: EXACTLY 49 single-word keywords.
 
-MANDATORY OUTPUT FORMAT: STRICT VALID JSON ONLY:
+OUTPUT — strict JSON only, no markdown:
 {
-  "title": "Clear commercial title in English without quotes",
-  "keywords": ["word1", "word2", ...exactly 49 single-word English keywords...],
-  "primaryConcept": "Primary concept in English",
-  "visualDescription": "Brief objective summary in English",
-  "prompt": "Detailed AI image prompt in English",
+  "title": "Descriptive commercial title 8-14 words",
+  "keywords": ["word1","word2",...exactly 49 single-word tags...],
+  "primaryConcept": "Main commercial concept",
+  "visualDescription": "One sentence objective description",
+  "prompt": "Detailed photorealistic AI image generation prompt",
   "model": "Midjourney 6"
 }`;
 
 const SHUTTERSTOCK_SYSTEM_PROMPT = `${MASTER_PROMPT_CORE}
 
-═══ PLATFORM SPECIFIC: SHUTTERSTOCK ═══
-- Title / Description: Commercial descriptive title (8–15 words) in English without quotes.
-- Keywords: Provide EXACTLY 50 unique, popular, high-search-volume keywords — STRICT 1 WORD EACH (single words only, no spaces).
-- Categories: Choose exactly 1 or 2 most accurate categories from official Shutterstock list:
-  "Animals/Wildlife", "The Arts", "Backgrounds/Textures", "Beauty/Fashion", "Buildings/Landmarks", "Business/Finance", "Celebrities", "Education", "Food and Drink", "Healthcare/Medical", "Holidays", "Industrial", "Interiors", "Miscellaneous", "Nature", "Parks/Outdoor", "People", "Religion", "Science", "Signs/Symbols", "Sports/Recreation", "Technology", "Transportation", "Vectors", "Vintage"
-- Editorial: "no"
-- Mature Content: "no"
-- Illustration: "no"
+═══ SHUTTERSTOCK FORMAT ═══
+Keywords: EXACTLY 50 single-word keywords.
+Categories: Pick 1 or 2 from: "Animals/Wildlife", "The Arts", "Backgrounds/Textures", "Beauty/Fashion", "Buildings/Landmarks", "Business/Finance", "Celebrities", "Education", "Food and Drink", "Healthcare/Medical", "Holidays", "Industrial", "Interiors", "Miscellaneous", "Nature", "Parks/Outdoor", "People", "Religion", "Science", "Signs/Symbols", "Sports/Recreation", "Technology", "Transportation", "Vectors", "Vintage"
 
-MANDATORY OUTPUT FORMAT: STRICT VALID JSON ONLY:
+OUTPUT — strict JSON only, no markdown:
 {
-  "title": "Clear title in English without quotes",
-  "keywords": ["word1", "word2", ...exactly 50 single-word English keywords...],
-  "categories": ["Food and Drink", "Nature"],
+  "title": "Descriptive commercial title 8-15 words",
+  "keywords": ["word1","word2",...exactly 50 single-word tags...],
+  "categories": ["Category1"],
   "editorial": "no",
   "matureContent": "no",
   "illustration": "no",
-  "primaryConcept": "Primary concept in English",
-  "visualDescription": "Brief summary in English",
-  "prompt": "Detailed AI image prompt in English",
+  "primaryConcept": "Main commercial concept",
+  "visualDescription": "One sentence objective description",
+  "prompt": "Detailed photorealistic AI image generation prompt",
   "model": "Midjourney 6"
 }`;
 
 const MAGNIFIC_SYSTEM_PROMPT = `${MASTER_PROMPT_CORE}
 
-═══ PLATFORM SPECIFIC: MAGNIFIC CONTRIBUTOR ═══
-- Title: Commercial descriptive title (8–14 words) in English without any quotes.
-- Keywords: Provide EXACTLY 49 unique, popular keywords — STRICT 1 WORD EACH (single words only, no spaces — platform appends "ai generate" as word 50).
-- Prompt: Rich photorealistic generative AI prompt in English.
-- Model: "Adobe Firefly" (default).
+═══ MAGNIFIC FORMAT ═══
+Keywords: EXACTLY 49 single-word keywords (platform auto-adds "ai" "generate" as tags 50-51).
 
-MANDATORY OUTPUT FORMAT: STRICT VALID JSON ONLY:
+OUTPUT — strict JSON only, no markdown:
 {
-  "title": "Clear title in English without quotes",
-  "keywords": ["word1", "word2", ...exactly 49 single-word English keywords...],
-  "prompt": "Detailed photorealistic prompt in English",
+  "title": "Descriptive commercial title 8-14 words",
+  "keywords": ["word1","word2",...exactly 49 single-word tags...],
+  "prompt": "Detailed photorealistic AI image generation prompt",
   "model": "Adobe Firefly",
-  "primaryConcept": "Primary concept in English",
-  "visualDescription": "Brief summary in English"
+  "primaryConcept": "Main commercial concept",
+  "visualDescription": "One sentence objective description"
 }`;
 
 function extractJsonFromText(text: string): string {
@@ -566,35 +569,34 @@ Be factual, concise, and direct. Omit secondary ground clutter, accessories, und
     // STAGE 2: 120B Flagship Reasoning Engine (openai/gpt-oss-120b)
     // Applies 120B parameter reasoning with chain-of-thought to formulate 99% accurate metadata & buyer SEO
     // ══════════════════════════════════════════════════════════════════
-    const reasoningUserMessage = `Generate commercial microstock metadata with SUPER SIMPLE, POPULAR, AND ACCURATE KEYWORDS (1-2 WORDS EACH) based on this visual theme analysis:
+    const reasoningUserMessage = `Generate accurate microstock metadata based on this visual analysis:
 
-VISUAL THEME ANALYSIS:
+VISUAL ANALYSIS FROM VISION MODEL:
 ${visionResult.text}
 
-MANDATORY INSTRUCTIONS FOR MAXIMUM SALES & SEARCHABILITY:
-- LANGUAGE: 100% STRICT ENGLISH ONLY. Absolutely NEVER use any Indonesian words (no "wanita", "petani", "kebun", "tomat", "lebah", etc.).
-- KEYWORD LENGTH — CRITICAL RULE: Every keyword MUST be 1 or 2 words MAXIMUM. NEVER output 3-word or longer keyword phrases.
-  ✅ ALLOWED: "tomato" / "cherry tomato" / "greenhouse" / "female farmer" / "organic food" / "honey bee"
-  ❌ FORBIDDEN: "female farmer clipboard" / "cherry tomato harvest" / "indoor greenhouse farming" / "beekeeping protective suit"
-- EASY, COMMON & HIGHLY SEARCHABLE BUYER KEYWORDS: Microstock buyers search with everyday, simple, common English words!
-  ▸ Use short, direct, 1-2 word tags (e.g. tomato, tomatoes, cherry tomato, greenhouse, farmer, woman, vegetable, fresh, organic, harvest, healthy, food, ripe, red, plant, green, agriculture, farming, produce, crop, summer / beekeeper, beekeeping, bee, bees, honey, honeycomb, hive, beehive, frame, veil, suit, meadow, wildflowers, flowers, field, sunny, golden, bee farm, sweet, natural, raw honey, organic, nature).
-  ▸ NEVER use rare academic, scientific, or Latin jargon (do NOT output "apiculture", "agronomy", "botany", "solanaceae", "capped cells", "stacked boxes", "yield monitoring", "seedling propagation", "cultivated environment", "produce handling", "agricultural facility").
-- BANNED WEIRD WORDS: DO NOT output "watch", "wristwatch", "plaid", "shirt", "flannel", "metal", "arch", "roof", "structure", "framing", "hands", "hand", "fingers", "diffused", "lighting", "teamwork", "team" (if solo person), "khaki", "tan", "cream", "off-white", "utility jacket", "right hand", "left hand", "metal ribs", "horizontal supports", "paper sheet", "dark spots", "bucket", "hose", "irrigation hoses", "pump unit", "distant trees", "distant hills", "plant canopy", "dirt pathway", "glass roof".
-  ▸ For tomatoes: use "cherry tomato", NEVER output "cherry" alone without tomato.
-- ETHNICITY / NATIONALITY KEYWORDS — STRICTLY BANNED: NEVER output "asian", "asean", "indian", "indian people", "chinese", "korean", "japanese", "thai", "vietnamese", "malay", "filipino", "indonesian", "caucasian", "african", "latino", "hispanic", "middle eastern", "arab", "european", "western", "eastern", or any other nationality/ethnicity term. Use ONLY general: "woman", "man", "person", "people", "group", "couple", "family".
-- IP / COPYRIGHT PROTECTION — CRITICAL:
-  ▸ If the visual analysis flagged a FAMOUS PERSON (celebrity, politician, athlete): set "editorial": "yes" and write a brief "ipWarning" field (e.g. "Famous public figure detected — editorial flag set for IP safety"). DO NOT include the famous person's name in title or keywords.
-  ▸ If the visual analysis flagged a BRAND LOGO / TRADEMARK: set "editorial": "yes" and write "ipWarning" field (e.g. "Brand logo detected: removed from keywords for IP compliance"). DO NOT include brand/logo names in title or keywords.
-  ▸ If the visual analysis flagged a FICTIONAL CHARACTER: set "editorial": "yes" and write "ipWarning" field. DO NOT include character name in title or keywords.
-  ▸ If NO IP risk detected: set "editorial": "no" and omit "ipWarning".
-- TARGET: Provide 50 to 55 unique keywords (1-2 words EACH, max 2 words per keyword) and 1 commercial title (8-14 words).
+KEYWORD GENERATION RULES — READ CAREFULLY:
+1. EXACTLY 1 WORD PER KEYWORD — no spaces, no hyphens. "tomato" not "cherry tomato". "bee" not "honey bee".
+2. Generate between 52-58 keywords total so after deduplication we reliably get 49-50 clean ones.
+3. Cover ALL these dimensions:
+   • Main subjects visible (10-12 words): exactly what/who is in the image
+   • Colors present (4-5 words): actual colors you see
+   • Emotions & mood (3-4 words): feeling the image conveys
+   • Setting & environment (5-6 words): where the scene takes place
+   • Actions & states (4-5 words): what subjects are doing
+   • Commercial keywords (6-8 words): "business", "professional", "lifestyle", "concept", etc.
+   • Searchable adjectives (5-6 words): "fresh", "organic", "modern", "bright", "clean", etc.
+4. NO ethnicity words: use "woman"/"man"/"person" not "asian"/"caucasian"/"indian".
+5. NO camera/lighting jargon: no "bokeh", "diffused", "macro", "dslr".
+6. NO brand names. NO Latin terms.
+7. IP: if famous person/brand/character detected, set "editorial":"yes" + "ipWarning" field.
 
-METADATA CONTEXT:
-- Filename: ${filename} (IGNORE — do NOT use filename as keyword source!)
-${visualHints ? `- Uploader hints: ${visualHints}` : ""}
-${existingPrompt ? `- Existing prompt to optimize: "${existingPrompt}"` : ""}
+CONTEXT:
+- Platform target: ${platform === "shutterstock" ? "Shutterstock (50 keywords)" : platform === "magnific" ? "Magnific (49 keywords)" : "Adobe Stock (49 keywords)"}
+- Filename (IGNORE — do NOT use as keyword source): ${filename}
+${visualHints ? `- Creator hints: ${visualHints}` : ""}
+${existingPrompt ? `- Existing prompt: "${existingPrompt}"` : ""}
 
-TARGET: Output STRICT VALID JSON format (include "ipWarning" field only if IP was detected).`;
+OUTPUT: strict valid JSON only, no markdown, no explanation outside JSON.`;
 
     const reasoningMessages: GroqMessage[] = [
       { role: "system", content: promptText },
@@ -618,13 +620,13 @@ TARGET: Output STRICT VALID JSON format (include "ipWarning" field only if IP wa
     console.warn("[generateMetadata] Two-stage 120B pipeline error, falling back to direct vision model:", err);
     // Bulletproof Fallback: Direct single-pass vision model
     const targetKwCount = platform === "shutterstock" ? 50 : 49;
-    const textPart = `Apply STRICT COMMERCIAL MICROSTOCK METADATA standards.
-Language: 100% ENGLISH ONLY. Zero Indonesian words.
-Provide 1 commercial title and exactly ${targetKwCount} popular, easy, high-search-volume keywords (max 1-2 words per keyword).
-BANNED: khaki, tan, cream, utility jacket, right hand, left hand, hand holding, metal ribs, horizontal supports, paper sheet, white paper, bucket, hose, diffused.
-FILENAME (IGNORE): ${filename}
-${visualHints ? `Uploader hints: ${visualHints}\n` : ""}${existingPrompt ? `Existing prompt to optimize: ${existingPrompt}\n` : ""}
-TARGET: Exactly ${targetKwCount} keywords. Output ONLY raw valid JSON with no markdown fences or extra text.`;
+    const textPart = `Generate accurate microstock metadata. Language: English only.
+Produce exactly ${targetKwCount} single-word keywords (1 word each, no spaces, no hyphens).
+Cover: main subjects, colors, emotions, setting, actions, commercial concepts.
+No ethnicity words. No brand names. No camera jargon.
+Filename (IGNORE): ${filename}
+${visualHints ? `Creator hints: ${visualHints}\n` : ""}${existingPrompt ? `Existing prompt: ${existingPrompt}\n` : ""}
+Output strict JSON only.`;
 
     const directMessages: GroqMessage[] = [
       { role: "system", content: promptText },
