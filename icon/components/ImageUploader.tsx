@@ -112,9 +112,6 @@ export default function ImageUploader({ onTokensUpdated, userEmail, userRole, is
           const job = data.job;
           if (Array.isArray(job.results) && job.results.length > 0) {
             setResults(job.results);
-            try {
-              localStorage.setItem("stock_last_results", JSON.stringify(job.results));
-            } catch {}
           }
           setProgress(`⚡ Background AI: Memproses ${job.progress}/${job.total} file (${Math.round((job.progress / (job.total || 1)) * 100)}%)...`);
 
@@ -184,17 +181,9 @@ export default function ImageUploader({ onTokensUpdated, userEmail, userRole, is
 
   useEffect(() => {
     try {
-      // On mount: if there's an orphaned job ID from a previous session,
-      // just clear it — the new architecture processes inline, not via polling
+      // On mount: clear any orphaned job from previous session.
+      // Results are stored in server history — user accesses them from there.
       localStorage.removeItem("active_metadata_job_id");
-
-      const cached = localStorage.getItem("stock_last_results");
-      if (cached) {
-        const parsed = JSON.parse(cached);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          setResults(parsed);
-        }
-      }
     } catch {}
 
     return () => {
@@ -312,7 +301,6 @@ export default function ImageUploader({ onTokensUpdated, userEmail, userRole, is
     setProgress("");
     setLoading(false);
     try {
-      localStorage.removeItem("stock_last_results");
       localStorage.removeItem("active_metadata_job_id");
     } catch {}
   };
@@ -574,11 +562,6 @@ export default function ImageUploader({ onTokensUpdated, userEmail, userRole, is
               localResults[i] = processData.result as MetadataResult;
               // Update results incrementally so user sees progress
               setResults([...localResults].filter(Boolean) as MetadataResult[]);
-              try {
-                localStorage.setItem("stock_last_results", JSON.stringify(
-                  localResults.filter(Boolean)
-                ));
-              } catch {}
             }
           }
         } catch (imgErr) {
