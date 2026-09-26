@@ -2,12 +2,12 @@
 
 import { useEffect, useState } from "react";
 import {
-  Tag, ZoomIn, Eraser, Search, Sparkles, Bot,
-  Clapperboard, MessageSquare, ArrowRight, Zap,
-  TrendingUp, Clock, Shield, Star, ChevronRight,
-  ImageIcon, FileText, Layers, Power, Radio,
+  Tag, ZoomIn, MessageSquare, ArrowRight, Zap,
+  TrendingUp, Clock, Shield, ChevronRight,
+  FileText, Layers, Power, Radio,
   ShieldCheck, Mail, Lock, Megaphone, Database,
-  ShieldAlert, UserCheck, Crown, Gift, Trophy, Flame
+  ShieldAlert, Crown, Gift, Trophy, Flame, Sparkles,
+  Star, BarChart2, Image as ImageIcon, History
 } from "lucide-react";
 
 interface FeatureCard {
@@ -16,167 +16,76 @@ interface FeatureCard {
   title: string;
   desc: string;
   badge?: string;
-  color: string;
-  glow: string;
+  badgeColor?: string;
+  accentColor: string;
   adminOnly?: boolean;
 }
-
-const ICON_COLOR = "#38bdf8";
-const ICON_GLOW = "rgba(56,189,248,0.25)";
 
 const CREATOR_FEATURES: FeatureCard[] = [
   {
     id: "metadata",
-    icon: <Tag size={24} color={ICON_COLOR} />,
-    title: "Metadata Generator",
-    desc: "Generate judul, keyword, dan kategori siap pakai untuk Adobe Stock, Shutterstock, & Magnific secara otomatis dengan AI.",
-    badge: "Paling Populer",
-    color: ICON_COLOR,
-    glow: ICON_GLOW,
+    icon: <Tag size={22} />,
+    title: "Metadata AI",
+    desc: "Generate title, keyword & kategori untuk Adobe Stock, Shutterstock, dan Magnific secara otomatis.",
+    badge: "Populer",
+    badgeColor: "#3b82f6",
+    accentColor: "#3b82f6",
   },
   {
     id: "history",
-    icon: <Clock size={24} color="#10b981" />,
-    title: "Riwayat & Background Cloud",
-    desc: "Hasil proses metadata otomatis tersimpan permanen di database cloud. Buka kapan saja dan unduh ulang CSV.",
-    badge: "Cloud DB",
-    color: "#10b981",
-    glow: "rgba(16,185,129,0.25)",
-  },
-  {
-    id: "leaderboard",
-    icon: <Trophy size={24} color="#f59e0b" />,
-    title: "Leaderboard & Stats Live",
-    desc: "Pantau counter total foto diproses hari ini dan peringkat kontributor teraktif komunitas microstock.",
-    badge: "Live Rank",
-    color: "#f59e0b",
-    glow: "rgba(245,158,11,0.25)",
+    icon: <History size={22} />,
+    title: "Riwayat Cloud",
+    desc: "Semua hasil metadata tersimpan permanen di database cloud. Akses dan unduh CSV kapan saja.",
+    badge: "Cloud",
+    badgeColor: "#10b981",
+    accentColor: "#10b981",
   },
   {
     id: "upscale",
-    icon: <ZoomIn size={24} color={ICON_COLOR} />,
-    title: "AI Upscaler (2K / 4K / 8K)",
-    desc: "Tingkatkan resolusi gambar hingga 4× tanpa kehilangan detail. Cocok untuk foto stok, ilustrasi, dan aset digital.",
-    color: ICON_COLOR,
-    glow: ICON_GLOW,
+    icon: <ZoomIn size={22} />,
+    title: "AI Upscaler",
+    desc: "Tingkatkan resolusi gambar hingga 8K menggunakan Sharp Lanczos3 dan multi-pass neural pipeline.",
+    badge: "Sharp",
+    badgeColor: "#6366f1",
+    accentColor: "#6366f1",
+  },
+  {
+    id: "leaderboard",
+    icon: <Trophy size={22} />,
+    title: "Leaderboard",
+    desc: "Pantau statistik proses foto harian dan peringkat kontributor teraktif komunitas microstock.",
+    badge: "Live",
+    badgeColor: "#f59e0b",
+    accentColor: "#f59e0b",
   },
   {
     id: "google-flow",
-    icon: <Sparkles size={24} color="#6366f1" />,
-    title: "Google Flow (Gemini AI)",
-    desc: "Studio kreatif resmi dari Google berbasis Gemini untuk generasi foto, video, dan tool kustom dengan unlimited token tanpa batas.",
-    badge: "⚡ Unlimited",
-    color: "#6366f1",
-    glow: "rgba(99,102,241,0.25)",
+    icon: <Sparkles size={22} />,
+    title: "Google Flow AI",
+    desc: "Studio kreatif Gemini untuk generasi foto, video, dan tool kustom unlimited tanpa batas.",
+    badge: "Unlimited",
+    badgeColor: "#8b5cf6",
+    accentColor: "#8b5cf6",
   },
   {
     id: "feedback",
-    icon: <MessageSquare size={24} color={ICON_COLOR} />,
+    icon: <MessageSquare size={22} />,
     title: "Laporan & Saran",
-    desc: "Temukan bug? Punya ide fitur baru? Kirim laporan langsung ke tim pengembang dan pantau statusnya.",
-    color: ICON_COLOR,
-    glow: ICON_GLOW,
+    desc: "Kirim laporan bug atau ide fitur baru langsung ke tim pengembang.",
+    accentColor: "#64748b",
   },
 ];
 
 const ADMIN_FEATURES: FeatureCard[] = [
-  {
-    id: "shutdown",
-    icon: <Power size={24} color="#f87171" />,
-    title: "Server Shutdown Control",
-    desc: "Kontrol darurat penutupan server & mode pemeliharaan (maintenance) untuk memblokir/membuka akses publik.",
-    badge: "Kontrol Akses",
-    color: "#f87171",
-    glow: "rgba(239,68,68,0.25)",
-    adminOnly: true,
-  },
-  {
-    id: "monitor",
-    icon: <Radio size={24} color="#38bdf8" />,
-    title: "Server Monitor",
-    desc: "Dashboard real-time SSE untuk memantau performa CPU, memori, request rate, dan status microservice.",
-    badge: "Real-time SSE",
-    color: ICON_COLOR,
-    glow: ICON_GLOW,
-    adminOnly: true,
-  },
-  {
-    id: "accounts",
-    icon: <ShieldCheck size={24} color="#38bdf8" />,
-    title: "Account Checker",
-    desc: "Lihat daftar akun terdaftar, status user online/offline secara live, dan kelola otentikasi pengguna.",
-    badge: "Manajemen Akun",
-    color: ICON_COLOR,
-    glow: ICON_GLOW,
-    adminOnly: true,
-  },
-  {
-    id: "messageweb",
-    icon: <Mail size={24} color="#38bdf8" />,
-    title: "Message Web Broadcast",
-    desc: "Kirim pesan popup, perintah refresh paksa, atau pemblokiran sementara ke layar pengguna aktif.",
-    badge: "Broadcast",
-    color: ICON_COLOR,
-    glow: ICON_GLOW,
-    adminOnly: true,
-  },
-  {
-    id: "closing",
-    icon: <Lock size={24} color="#38bdf8" />,
-    title: "Closing Features Panel",
-    desc: "Tutup akses ke fitur tertentu secara spesifik tanpa harus menutup keseluruhan server.",
-    badge: "Fitur Lock",
-    color: ICON_COLOR,
-    glow: ICON_GLOW,
-    adminOnly: true,
-  },
-  {
-    id: "admin-messages",
-    icon: <Megaphone size={24} color="#38bdf8" />,
-    title: "Broadcast & Mass Email",
-    desc: "Kelola pesan feedback dari pengguna serta kirimkan mass email notifikasi via SMTP.",
-    badge: "Email Hub",
-    color: ICON_COLOR,
-    glow: ICON_GLOW,
-    adminOnly: true,
-  },
-  {
-    id: "storage",
-    icon: <Database size={24} color="#38bdf8" />,
-    title: "Storage Redis Monitor",
-    desc: "Pantau penggunaan memori Redis Upstash, total keys, client connection, dan statistik database.",
-    badge: "Database",
-    color: ICON_COLOR,
-    glow: ICON_GLOW,
-    adminOnly: true,
-  },
-  {
-    id: "prem_access",
-    icon: <Crown size={24} color="#facc15" />,
-    title: "Prem Access",
-    desc: "Command Center untuk pemberian & pencabutan akses premium (prem / unprem / list prem) dengan auto-expiry pencabutan otomatis.",
-    badge: "Premium Engine",
-    color: "#facc15",
-    glow: "rgba(250, 204, 21, 0.25)",
-    adminOnly: true,
-  },
-  {
-    id: "giveaway",
-    icon: <Gift size={24} color="#ec4899" />,
-    title: "Giveaway Platform",
-    desc: "Platform giveaway token unlimited 1 minggu otomatis dengan tombol ON/OFF, rasio hoki dinamis, notifikasi in-app, dan email laporan ke admin.",
-    badge: "Auto Hoki",
-    color: "#ec4899",
-    glow: "rgba(236, 72, 153, 0.25)",
-    adminOnly: true,
-  },
-];
-
-const STATS = [
-  { icon: <Zap size={18} color="#38bdf8" />, label: "AI Engine", value: "Groq & Vision AI" },
-  { icon: <Shield size={18} color="#38bdf8" />, label: "Target Pasar", value: "3 Platform Stok" },
-  { icon: <TrendingUp size={18} color="#38bdf8" />, label: "Format Output", value: "CSV Siap Pakai" },
-  { icon: <Clock size={18} color="#38bdf8" />, label: "Waktu Proses", value: "< 10 Detik" },
+  { id: "shutdown",      icon: <Power size={20} />,      title: "Server Control",      desc: "Kontrol shutdown server dan mode maintenance.",         badge: "Critical",  badgeColor: "#ef4444", accentColor: "#ef4444", adminOnly: true },
+  { id: "monitor",       icon: <Radio size={20} />,       title: "Server Monitor",      desc: "Real-time CPU, memori, request rate & microservice.",   badge: "SSE",       badgeColor: "#3b82f6", accentColor: "#3b82f6", adminOnly: true },
+  { id: "accounts",      icon: <ShieldCheck size={20} />, title: "Account Manager",     desc: "Daftar akun, status online live, dan autentikasi.",      badge: "Users",     badgeColor: "#3b82f6", accentColor: "#3b82f6", adminOnly: true },
+  { id: "messageweb",    icon: <Mail size={20} />,        title: "Broadcast Web",       desc: "Kirim pesan popup atau perintah refresh ke semua user.", badge: "Push",      badgeColor: "#3b82f6", accentColor: "#3b82f6", adminOnly: true },
+  { id: "closing",       icon: <Lock size={20} />,        title: "Feature Lock",        desc: "Tutup akses fitur tertentu tanpa menutup server.",       badge: "Control",   badgeColor: "#3b82f6", accentColor: "#3b82f6", adminOnly: true },
+  { id: "admin-messages",icon: <Megaphone size={20} />,   title: "Mass Email Hub",      desc: "Kelola feedback pengguna dan kirim mass email SMTP.",    badge: "Email",     badgeColor: "#3b82f6", accentColor: "#3b82f6", adminOnly: true },
+  { id: "storage",       icon: <Database size={20} />,    title: "Redis Monitor",       desc: "Pantau memori Redis, keys, dan statistik database.",     badge: "DB",        badgeColor: "#3b82f6", accentColor: "#3b82f6", adminOnly: true },
+  { id: "prem_access",   icon: <Crown size={20} />,       title: "Premium Engine",      desc: "Kelola akses premium dengan auto-expiry otomatis.",      badge: "Premium",   badgeColor: "#f59e0b", accentColor: "#f59e0b", adminOnly: true },
+  { id: "giveaway",      icon: <Gift size={20} />,        title: "Giveaway Platform",   desc: "Platform giveaway otomatis dengan rasio hoki dinamis.",  badge: "Auto",      badgeColor: "#ec4899", accentColor: "#ec4899", adminOnly: true },
 ];
 
 interface Props {
@@ -186,15 +95,13 @@ interface Props {
 }
 
 export default function Dashboard({ onNavigate, username, isAdmin = false }: Props) {
+  const [todayPhotos, setTodayPhotos] = useState(0);
   const [hovered, setHovered] = useState<string | null>(null);
-  const [todayPhotos, setTodayPhotos] = useState<number>(0);
 
   useEffect(() => {
     fetch("/api/stats")
-      .then((r) => r.json())
-      .then((data) => {
-        if (data && typeof data.todayCount === "number") setTodayPhotos(data.todayCount);
-      })
+      .then(r => r.json())
+      .then(d => { if (typeof d?.todayCount === "number") setTodayPhotos(d.todayCount); })
       .catch(() => {});
   }, []);
 
@@ -202,504 +109,295 @@ export default function Dashboard({ onNavigate, username, isAdmin = false }: Pro
   const greeting = hour < 12 ? "Selamat pagi" : hour < 17 ? "Selamat siang" : "Selamat malam";
 
   return (
-    <div className="dash-root">
+    <div style={{ minHeight: "100%", padding: "28px 20px 80px", maxWidth: 1080, margin: "0 auto", fontFamily: "inherit" }}>
       <style>{`
-        .dash-root {
-          min-height: 100%;
-          padding: 24px 18px 60px;
-          max-width: 1100px;
-          margin: 0 auto;
-          font-family: var(--font);
-        }
-        @keyframes dashFadeUp {
-          from { opacity: 0; transform: translateY(14px); }
+        @keyframes fadeUp {
+          from { opacity: 0; transform: translateY(12px); }
           to   { opacity: 1; transform: translateY(0); }
         }
-        .dash-hero { animation: dashFadeUp 0.4s cubic-bezier(0.16,1,0.3,1) both; }
-        .dash-stats { animation: dashFadeUp 0.45s 0.06s cubic-bezier(0.16,1,0.3,1) both; }
-        .dash-features { animation: dashFadeUp 0.5s 0.12s cubic-bezier(0.16,1,0.3,1) both; }
-        .dash-admin { animation: dashFadeUp 0.55s 0.18s cubic-bezier(0.16,1,0.3,1) both; }
+        .db-section { animation: fadeUp 0.4s cubic-bezier(0.16,1,0.3,1) both; }
+        .db-section:nth-child(2) { animation-delay: 0.06s; }
+        .db-section:nth-child(3) { animation-delay: 0.12s; }
+        .db-section:nth-child(4) { animation-delay: 0.18s; }
 
-        .feat-card {
+        .db-card {
           position: relative;
           display: flex;
           flex-direction: column;
-          gap: 12px;
-          padding: 22px 20px;
-          background: rgba(255, 255, 255, 0.7);
-          backdrop-filter: blur(16px);
-          -webkit-backdrop-filter: blur(16px);
-          border: 1px solid rgba(147, 197, 253, 0.45);
-          border-radius: 16px;
+          gap: 14px;
+          padding: 20px;
+          background: #ffffff;
+          border: 1px solid #e2e8f0;
+          border-radius: 14px;
           cursor: pointer;
-          transition: all 0.25s cubic-bezier(0.16,1,0.3,1);
-          overflow: hidden;
+          transition: all 0.2s cubic-bezier(0.16,1,0.3,1);
           text-align: left;
-          box-shadow: 0 4px 16px rgba(59, 130, 246, 0.08), 0 1px 3px rgba(0,0,0,0.03);
+          box-shadow: 0 1px 3px rgba(0,0,0,0.04), 0 1px 2px rgba(0,0,0,0.03);
         }
-        .feat-card:hover {
-          transform: translateY(-4px);
-          border-color: rgba(59, 130, 246, 0.6);
-          background: rgba(255, 255, 255, 0.92);
-          box-shadow: 0 14px 36px rgba(59, 130, 246, 0.18), 0 0 0 1px rgba(59, 130, 246, 0.25) inset;
+        .db-card:hover {
+          border-color: #cbd5e1;
+          box-shadow: 0 8px 24px rgba(0,0,0,0.08), 0 2px 8px rgba(0,0,0,0.04);
+          transform: translateY(-2px);
         }
-        .feat-card--admin {
-          background: rgba(255, 255, 255, 0.65);
-          border-color: rgba(252, 165, 165, 0.5);
+        .db-card-accent {
+          position: absolute;
+          top: 0; left: 0; right: 0;
+          height: 2px;
+          border-radius: 14px 14px 0 0;
+          opacity: 0;
+          transition: opacity 0.2s;
         }
-        .feat-card--admin:hover {
-          border-color: rgba(239, 68, 68, 0.6);
-          background: rgba(254, 242, 242, 0.9);
-          box-shadow: 0 14px 36px rgba(239, 68, 68, 0.16), 0 0 0 1px rgba(239, 68, 68, 0.2) inset;
-        }
+        .db-card:hover .db-card-accent { opacity: 1; }
 
-        .feat-icon-wrap {
-          width: 48px; height: 48px;
-          border-radius: 12px;
+        .db-icon {
+          width: 44px; height: 44px;
+          border-radius: 10px;
           display: flex; align-items: center; justify-content: center;
           flex-shrink: 0;
-          background: rgba(219, 234, 254, 0.7);
-          border: 1px solid rgba(147, 197, 253, 0.5);
-          box-shadow: 0 4px 12px rgba(59, 130, 246, 0.15);
           transition: transform 0.2s;
         }
-        .feat-icon-wrap--admin {
-          background: rgba(254, 226, 226, 0.7);
-          border: 1px solid rgba(252, 165, 165, 0.5);
-          box-shadow: 0 4px 12px rgba(239, 68, 68, 0.15);
+        .db-card:hover .db-icon { transform: scale(1.05); }
+
+        .db-cta {
+          display: flex; align-items: center; gap: 5px;
+          font-size: 12px; font-weight: 600; color: #64748b;
+          margin-top: auto;
+          transition: color 0.2s, gap 0.2s;
         }
-        .feat-card:hover .feat-icon-wrap {
-          transform: scale(1.08);
-          box-shadow: 0 6px 18px rgba(59, 130, 246, 0.3);
-          background: rgba(191, 219, 254, 0.85);
-        }
-        .feat-card--admin:hover .feat-icon-wrap--admin {
-          box-shadow: 0 6px 18px rgba(239, 68, 68, 0.3);
-          background: rgba(254, 202, 202, 0.85);
+        .db-card:hover .db-cta { color: #0f172a; gap: 8px; }
+
+        .db-badge {
+          display: inline-flex; align-items: center;
+          padding: 2px 8px; border-radius: 999px;
+          font-size: 10px; font-weight: 700;
+          letter-spacing: 0.03em;
         }
 
-        .feat-cta-arrow {
-          transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
-        }
-        .feat-card:hover .feat-cta-arrow {
-          transform: translateX(4px);
+        .db-quick-btn {
+          display: inline-flex; align-items: center; gap: 7px;
+          padding: 9px 16px; border-radius: 9px; border: none;
+          font-size: 13px; font-weight: 600;
+          cursor: pointer; font-family: inherit;
+          transition: all 0.18s;
+          white-space: nowrap;
         }
 
-        .stat-card {
-          display: flex;
-          align-items: center;
-          gap: 12px;
+        .db-stat {
+          display: flex; align-items: center; gap: 12px;
           padding: 14px 16px;
-          background: rgba(255, 255, 255, 0.65);
-          backdrop-filter: blur(12px);
-          -webkit-backdrop-filter: blur(12px);
-          border: 1px solid rgba(147, 197, 253, 0.45);
-          border-radius: 14px;
-          box-shadow: 0 2px 10px rgba(59, 130, 246, 0.06);
-        }
-
-        .quick-btn {
-          display: inline-flex;
-          align-items: center;
-          gap: 8px;
-          padding: 11px 20px;
+          background: #ffffff;
+          border: 1px solid #e2e8f0;
           border-radius: 12px;
-          border: none;
-          cursor: pointer;
-          font-size: 13px;
-          font-weight: 700;
-          font-family: var(--font);
-          transition: all 0.2s;
-        }
-        .quick-btn--primary {
-          background: linear-gradient(135deg, #3b82f6, #2563eb);
-          color: white;
-          box-shadow: 0 4px 16px rgba(59,130,246,0.35);
-        }
-        .quick-btn--primary:hover {
-          transform: translateY(-2px);
-          box-shadow: 0 8px 24px rgba(59,130,246,0.45);
-        }
-        .quick-btn--secondary {
-          background: rgba(255, 255, 255, 0.75);
-          color: #1e40af;
-          border: 1px solid rgba(147, 197, 253, 0.5);
-          backdrop-filter: blur(8px);
-        }
-        .quick-btn--secondary:hover {
-          background: rgba(255, 255, 255, 0.95);
-          border-color: rgba(59, 130, 246, 0.6);
-          color: #1d4ed8;
-          transform: translateY(-2px);
-          box-shadow: 0 4px 16px rgba(59, 130, 246, 0.12);
-        }
-
-        .badge-popular {
-          display: inline-flex; align-items: center; gap: 4px;
-          padding: 3px 8px; border-radius: 999px;
-          font-size: 9px; font-weight: 800; letter-spacing: 0.04em;
-          text-transform: uppercase;
-          background: rgba(219, 234, 254, 0.7);
-          color: #1e40af;
-          border: 1px solid rgba(147, 197, 253, 0.5);
-        }
-        .badge-admin {
-          display: inline-flex; align-items: center; gap: 4px;
-          padding: 3px 8px; border-radius: 999px;
-          font-size: 9px; font-weight: 800; letter-spacing: 0.04em;
-          text-transform: uppercase;
-          background: rgba(254, 226, 226, 0.7);
-          color: #dc2626;
-          border: 1px solid rgba(252, 165, 165, 0.5);
-        }
-
-        .section-label {
-          font-size: 11px;
-          font-weight: 800;
-          letter-spacing: 0.08em;
-          text-transform: uppercase;
-          color: #1e40af;
-          margin-bottom: 14px;
+          box-shadow: 0 1px 3px rgba(0,0,0,0.04);
         }
 
         @media (max-width: 640px) {
-          .dash-root { padding: 16px 12px 60px !important; }
-          .dash-hero { margin-bottom: 22px !important; }
-          .dash-grid { grid-template-columns: 1fr !important; gap: 10px !important; }
-          .feat-card { padding: 16px 14px !important; border-radius: 14px !important; gap: 10px !important; }
-          .feat-icon-wrap { width: 40px !important; height: 40px !important; border-radius: 10px !important; }
-          .dash-stats-grid { grid-template-columns: 1fr 1fr !important; gap: 8px !important; }
-          .stat-card { padding: 10px 12px !important; gap: 8px !important; border-radius: 12px !important; }
-          .dash-hero-actions { flex-direction: column; gap: 8px !important; }
-          .dash-hero-actions .quick-btn { width: 100%; justify-content: center; padding: 12px !important; }
-        }
-        @media (max-width: 360px) {
-          .dash-stats-grid { grid-template-columns: 1fr !important; }
+          .db-grid-creator { grid-template-columns: 1fr !important; }
+          .db-grid-admin   { grid-template-columns: 1fr !important; }
+          .db-grid-stats   { grid-template-columns: 1fr 1fr !important; }
+          .db-hero-btns    { flex-wrap: wrap !important; }
+          .db-hero-btns .db-quick-btn { flex: 1 1 auto; justify-content: center; }
         }
       `}</style>
 
-      {/* ── Hero ── */}
-      <div className="dash-hero" style={{ marginBottom: 32 }}>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 10, marginBottom: 12 }}>
+      {/* ── HERO ────────────────────────────────────────────────────────── */}
+      <div className="db-section" style={{ marginBottom: 36 }}>
+        {/* Top bar */}
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 24, flexWrap: "wrap", gap: 12 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <div style={{
-              width: 38, height: 38, borderRadius: 12,
-              background: "linear-gradient(135deg,#3b82f6,#2563eb)",
-              display: "flex", alignItems: "center", justifyContent: "center",
-              boxShadow: "0 4px 16px rgba(59,130,246,0.35)",
-            }}>
-              <Layers size={19} color="#ffffff" />
+            <div style={{ width: 36, height: 36, borderRadius: 9, background: "#0f172a", display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <Layers size={18} color="#ffffff" />
             </div>
             <div>
-              <div style={{ fontSize: 12, color: "#2563eb", fontWeight: 700 }}>Stock AI Studio</div>
-              <div style={{ fontSize: 10, color: "#64748b" }}>Creative Suite &amp; Microstock Toolkit</div>
+              <div style={{ fontSize: 13, fontWeight: 700, color: "#0f172a", lineHeight: 1 }}>Stock AI Studio</div>
+              <div style={{ fontSize: 11, color: "#94a3b8", marginTop: 2 }}>Microstock Metadata & Upscale Suite</div>
             </div>
           </div>
 
-          {/* Live Photo Counter Badge */}
-          <div
+          <button
+            type="button"
             onClick={() => onNavigate("leaderboard")}
             style={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: 7,
-              padding: "6px 14px",
-              borderRadius: 999,
-              background: "linear-gradient(135deg, rgba(220,252,231,0.95), rgba(187,247,208,0.8))",
-              border: "1px solid rgba(134,239,172,0.9)",
-              cursor: "pointer",
-              boxShadow: "0 2px 10px rgba(22,163,74,0.12)",
-              transition: "transform 0.15s ease"
+              display: "inline-flex", alignItems: "center", gap: 6,
+              padding: "7px 14px", borderRadius: 8, border: "1px solid #dcfce7",
+              background: "#f0fdf4", cursor: "pointer", transition: "all 0.15s",
             }}
-            title="Klik untuk lihat Leaderboard & Statistik Lengkap"
           >
-            <Flame size={14} color="#16a34a" />
-            <span style={{ fontSize: 11.5, fontWeight: 800, color: "#15803d" }}>
-              Total Foto Hari Ini: <strong>{todayPhotos.toLocaleString("id-ID")}</strong>
+            <Flame size={13} color="#16a34a" />
+            <span style={{ fontSize: 12, fontWeight: 700, color: "#15803d" }}>
+              {todayPhotos.toLocaleString("id-ID")} foto hari ini
             </span>
-            <ChevronRight size={13} color="#16a34a" />
-          </div>
+            <ChevronRight size={12} color="#16a34a" />
+          </button>
         </div>
 
-        <h1 style={{
-          fontSize: "clamp(22px, 4vw, 32px)",
-          fontWeight: 800,
-          color: "#0f172a",
-          lineHeight: 1.2,
-          marginBottom: 10,
-          letterSpacing: "-0.02em",
-        }}>
-          {greeting},{" "}
-          <span style={{
-            background: "linear-gradient(90deg,#2563eb,#38bdf8)",
-            WebkitBackgroundClip: "text",
-            WebkitTextFillColor: "transparent",
-          }}>
-            {username ?? "Kreator"}
-          </span>
-          {isAdmin && (
-            <span style={{
-              marginLeft: 10,
-              fontSize: 11,
-              padding: "3px 8px",
-              borderRadius: 6,
-              background: "rgba(239,68,68,0.12)",
-              border: "1px solid rgba(239,68,68,0.3)",
-              color: "#dc2626",
-              verticalAlign: "middle",
-              fontWeight: 800,
-              letterSpacing: "0.04em",
-              textTransform: "uppercase"
-            }}>
-              Admin
-            </span>
-          )}
-        </h1>
-        <p style={{
-          fontSize: 13,
-          color: "#64748b",
-          maxWidth: 580,
-          lineHeight: 1.7,
-          marginBottom: 22,
-        }}>
-          Pilih salah satu platform tool di bawah untuk mulai bekerja. Di setiap tool tersedia tombol kembali di bagian atas untuk kembali ke dashboard kapan saja.
-        </p>
+        {/* Greeting */}
+        <div style={{ marginBottom: 20 }}>
+          <h1 style={{ fontSize: "clamp(24px, 4vw, 34px)", fontWeight: 800, color: "#0f172a", lineHeight: 1.15, letterSpacing: "-0.025em", margin: 0, marginBottom: 8 }}>
+            {greeting},{" "}
+            <span style={{ color: "#2563eb" }}>{username ?? "Kreator"}</span>
+            {isAdmin && (
+              <span style={{ marginLeft: 10, fontSize: 11, padding: "3px 9px", borderRadius: 6, background: "#fef2f2", border: "1px solid #fecaca", color: "#dc2626", fontWeight: 700, verticalAlign: "middle" }}>
+                Admin
+              </span>
+            )}
+          </h1>
+          <p style={{ fontSize: 14, color: "#64748b", lineHeight: 1.7, margin: 0, maxWidth: 520 }}>
+            Pilih tool yang ingin digunakan. Semua hasil proses tersimpan otomatis di cloud dan bisa diakses kapan saja.
+          </p>
+        </div>
 
-        <div className="dash-hero-actions" style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-          <button
-            type="button"
-            className="quick-btn quick-btn--primary"
-            onClick={() => onNavigate("metadata")}
-          >
-            <Tag size={15} />
-            Mulai Metadata
-            <ArrowRight size={15} />
+        {/* Quick action buttons */}
+        <div className="db-hero-btns" style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <button type="button" className="db-quick-btn" onClick={() => onNavigate("metadata")}
+            style={{ background: "#0f172a", color: "#fff", boxShadow: "0 2px 8px rgba(15,23,42,0.2)" }}>
+            <Tag size={14} />
+            Buka Metadata AI
+            <ArrowRight size={13} />
           </button>
-          <button
-            type="button"
-            className="quick-btn quick-btn--secondary"
-            onClick={() => onNavigate("history")}
-          >
-            <Clock size={15} color="#10b981" />
-            Riwayat Cloud
+          <button type="button" className="db-quick-btn" onClick={() => onNavigate("history")}
+            style={{ background: "#f8fafc", color: "#374151", border: "1px solid #e2e8f0" }}>
+            <History size={14} color="#10b981" />
+            Riwayat
           </button>
-          <button
-            type="button"
-            className="quick-btn quick-btn--secondary"
-            onClick={() => onNavigate("leaderboard")}
-          >
-            <Trophy size={15} color="#f59e0b" />
-            Leaderboard
-          </button>
-          <button
-            type="button"
-            className="quick-btn quick-btn--secondary"
-            onClick={() => onNavigate("upscale")}
-          >
-            <ZoomIn size={15} color="#2563eb" />
+          <button type="button" className="db-quick-btn" onClick={() => onNavigate("upscale")}
+            style={{ background: "#f8fafc", color: "#374151", border: "1px solid #e2e8f0" }}>
+            <ZoomIn size={14} color="#6366f1" />
             AI Upscaler
           </button>
-          <button
-            type="button"
-            className="quick-btn quick-btn--secondary"
-            onClick={() => onNavigate("google-flow")}
-            style={{
-              background: "linear-gradient(135deg, rgba(238,242,255,0.9), rgba(224,231,255,0.8))",
-              border: "1px solid rgba(99,102,241,0.35)",
-              color: "#4338ca",
-              fontWeight: 800
-            }}
-          >
-            <Sparkles size={15} color="#4f46e5" />
-            Google Flow (Gemini AI)
+          <button type="button" className="db-quick-btn" onClick={() => onNavigate("google-flow")}
+            style={{ background: "#faf5ff", color: "#5b21b6", border: "1px solid #e9d5ff", fontWeight: 700 }}>
+            <Sparkles size={14} />
+            Google Flow
           </button>
           {!isAdmin && (
-            <button
-              type="button"
-              className="quick-btn"
-              onClick={() => {
-                if (typeof window !== "undefined") {
-                  window.dispatchEvent(new CustomEvent("open_premium_pricing_modal"));
-                }
-              }}
-              style={{
-                background: "linear-gradient(135deg, rgba(219,234,254,0.7), rgba(254,243,199,0.7))",
-                border: "1px solid rgba(245, 158, 11, 0.4)",
-                color: "#92400e",
-                backdropFilter: "blur(8px)",
-              }}
-            >
-              <Crown size={15} color="#d97706" />
-              Paket Premium (Unlimited)
+            <button type="button" className="db-quick-btn"
+              onClick={() => window.dispatchEvent(new CustomEvent("open_premium_pricing_modal"))}
+              style={{ background: "#fffbeb", color: "#92400e", border: "1px solid #fde68a" }}>
+              <Crown size={14} color="#d97706" />
+              Premium
             </button>
           )}
         </div>
       </div>
 
-      {/* ── Stats Row ── */}
-      <div className="dash-stats" style={{ marginBottom: 36 }}>
-        <div className="section-label">Ringkasan Platform</div>
-        <div
-          className="dash-stats-grid"
-          style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 10 }}
-        >
-          {STATS.map((s) => (
-            <div key={s.label} className="stat-card">
-              <div style={{
-                width: 36, height: 36, borderRadius: 10,
-                background: "rgba(219, 234, 254, 0.7)",
-                border: "1px solid rgba(147, 197, 253, 0.5)",
-                display: "flex", alignItems: "center", justifyContent: "center",
-                flexShrink: 0,
-              }}>
+      {/* ── STATS ───────────────────────────────────────────────────────── */}
+      <div className="db-section" style={{ marginBottom: 36 }}>
+        <div style={{ fontSize: 11, fontWeight: 700, color: "#94a3b8", letterSpacing: "0.07em", textTransform: "uppercase", marginBottom: 12 }}>
+          Platform Overview
+        </div>
+        <div className="db-grid-stats" style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 10 }}>
+          {[
+            { icon: <Zap size={16} color="#3b82f6" />, label: "AI Engine", value: "Groq 120B + Vision", bg: "#eff6ff" },
+            { icon: <Shield size={16} color="#10b981" />, label: "Platform", value: "3 Microstock", bg: "#f0fdf4" },
+            { icon: <TrendingUp size={16} color="#f59e0b" />, label: "Output", value: "CSV Siap Upload", bg: "#fffbeb" },
+            { icon: <Clock size={16} color="#8b5cf6" />, label: "Proses", value: "< 15 Detik/Foto", bg: "#faf5ff" },
+          ].map(s => (
+            <div key={s.label} className="db-stat">
+              <div style={{ width: 34, height: 34, borderRadius: 8, background: s.bg, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
                 {s.icon}
               </div>
               <div>
                 <div style={{ fontSize: 13, fontWeight: 700, color: "#0f172a", lineHeight: 1.2 }}>{s.value}</div>
-                <div style={{ fontSize: 10, color: "#64748b", marginTop: 2 }}>{s.label}</div>
+                <div style={{ fontSize: 10.5, color: "#94a3b8", marginTop: 2 }}>{s.label}</div>
               </div>
             </div>
           ))}
         </div>
       </div>
 
-      {/* ── Feature Cards (Creator Tools) ── */}
-      <div className="dash-features" style={{ marginBottom: isAdmin ? 44 : 0 }}>
+      {/* ── CREATOR TOOLS ──────────────────────────────────────────────── */}
+      <div className="db-section" style={{ marginBottom: isAdmin ? 48 : 0 }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
-          <div className="section-label" style={{ marginBottom: 0 }}>Fitur &amp; Tools Kreator</div>
-          <div style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 11, color: "#2563eb", fontWeight: 600 }}>
-            <Sparkles size={12} />
-            <span>4 Tools Utama Siap Pakai</span>
+          <div style={{ fontSize: 11, fontWeight: 700, color: "#94a3b8", letterSpacing: "0.07em", textTransform: "uppercase" }}>
+            Creator Tools
           </div>
+          <span style={{ fontSize: 11.5, color: "#64748b" }}>{CREATOR_FEATURES.length} tools tersedia</span>
         </div>
-
-        <div
-          className="dash-grid"
-          style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(250px, 1fr))", gap: 14 }}
-        >
-          {CREATOR_FEATURES.map((f) => (
+        <div className="db-grid-creator" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))", gap: 12 }}>
+          {CREATOR_FEATURES.map(f => (
             <button
               key={f.id}
               type="button"
-              className="feat-card"
+              className="db-card"
               onMouseEnter={() => setHovered(f.id)}
               onMouseLeave={() => setHovered(null)}
               onClick={() => onNavigate(f.id)}
             >
-              <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 10, position: "relative" }}>
-                <div className="feat-icon-wrap">
+              <div className="db-card-accent" style={{ background: f.accentColor }} />
+
+              <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 8 }}>
+                <div className="db-icon" style={{ background: hovered === f.id ? f.accentColor + "15" : "#f8fafc", color: f.accentColor }}>
                   {f.icon}
                 </div>
                 {f.badge && (
-                  <span className="badge-popular">
-                    <Star size={9} fill="#3b82f6" />
+                  <span className="db-badge" style={{ background: f.badgeColor + "15", color: f.badgeColor }}>
                     {f.badge}
                   </span>
                 )}
               </div>
 
-              <div style={{ position: "relative" }}>
-                <div style={{ fontSize: 14, fontWeight: 700, color: "#0f172a", marginBottom: 6, lineHeight: 1.3 }}>
-                  {f.title}
-                </div>
-                <div style={{ fontSize: 12, color: "#64748b", lineHeight: 1.6 }}>
-                  {f.desc}
-                </div>
+              <div>
+                <div style={{ fontSize: 14, fontWeight: 700, color: "#0f172a", marginBottom: 5, lineHeight: 1.3 }}>{f.title}</div>
+                <div style={{ fontSize: 12, color: "#64748b", lineHeight: 1.6 }}>{f.desc}</div>
               </div>
 
-              <div className="feat-cta" style={{
-                display: "flex", alignItems: "center", gap: 6,
-                fontSize: 12, fontWeight: 700, color: "#2563eb",
-                marginTop: "auto",
-                position: "relative",
-              }}>
-                <span>Buka Tool</span>
-                <ArrowRight size={14} className="feat-cta-arrow" />
+              <div className="db-cta">
+                Buka
+                <ArrowRight size={13} />
               </div>
             </button>
           ))}
         </div>
       </div>
 
-      {/* ── ADMIN ONLY SECTION ── */}
+      {/* ── ADMIN TOOLS ────────────────────────────────────────────────── */}
       {isAdmin && (
-        <div className="dash-admin" style={{ marginTop: 44 }}>
+        <div className="db-section">
           <div style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
+            display: "flex", alignItems: "center", gap: 10,
+            padding: "12px 16px", borderRadius: 10,
+            background: "#fef2f2", border: "1px solid #fecaca",
             marginBottom: 16,
-            paddingBottom: 12,
-            borderBottom: "1px solid rgba(239,68,68,0.2)"
           }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <div style={{
-                width: 28, height: 28, borderRadius: 8,
-                background: "rgba(254, 226, 226, 0.7)",
-                border: "1px solid rgba(252, 165, 165, 0.5)",
-                display: "flex", alignItems: "center", justifyContent: "center"
-              }}>
-                <ShieldAlert size={16} color="#ef4444" />
-              </div>
-              <div>
-                <div style={{ fontSize: 13, fontWeight: 800, color: "#dc2626", letterSpacing: "0.02em" }}>
-                  Platform Khusus Administrator
-                </div>
-                <div style={{ fontSize: 10, color: "#64748b" }}>
-                  Akses khusus manajemen server, database, dan kontrol keamanan
-                </div>
-              </div>
+            <ShieldAlert size={16} color="#dc2626" />
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: 13, fontWeight: 700, color: "#dc2626" }}>Admin Control Panel</div>
+              <div style={{ fontSize: 11, color: "#9f1239" }}>Akses khusus manajemen server, database, dan keamanan</div>
             </div>
-            <span style={{
-              fontSize: 10, fontWeight: 800, color: "#dc2626",
-              background: "rgba(254, 226, 226, 0.7)", padding: "3px 8px", borderRadius: 999,
-              border: "1px solid rgba(252, 165, 165, 0.5)"
-            }}>
-              7 Admin Modules
+            <span style={{ fontSize: 10, fontWeight: 700, color: "#dc2626", background: "#fee2e2", padding: "3px 8px", borderRadius: 999 }}>
+              {ADMIN_FEATURES.length} modules
             </span>
           </div>
-
-          <div
-            className="dash-grid"
-            style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(250px, 1fr))", gap: 14 }}
-          >
-            {ADMIN_FEATURES.map((f) => (
+          <div className="db-grid-admin" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: 10 }}>
+            {ADMIN_FEATURES.map(f => (
               <button
                 key={f.id}
                 type="button"
-                className="feat-card feat-card--admin"
+                className="db-card"
                 onMouseEnter={() => setHovered(f.id)}
                 onMouseLeave={() => setHovered(null)}
                 onClick={() => onNavigate(f.id)}
+                style={{ border: "1px solid #fee2e2" }}
               >
-                <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 10, position: "relative" }}>
-                  <div className="feat-icon-wrap feat-icon-wrap--admin">
+                <div className="db-card-accent" style={{ background: f.accentColor }} />
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                  <div className="db-icon" style={{ background: f.accentColor + "12", color: f.accentColor }}>
                     {f.icon}
                   </div>
                   {f.badge && (
-                    <span className="badge-admin">
+                    <span className="db-badge" style={{ background: f.badgeColor + "15", color: f.badgeColor }}>
                       {f.badge}
                     </span>
                   )}
                 </div>
-
-                <div style={{ position: "relative" }}>
-                  <div style={{ fontSize: 14, fontWeight: 700, color: "#0f172a", marginBottom: 6, lineHeight: 1.3 }}>
-                    {f.title}
-                  </div>
-                  <div style={{ fontSize: 12, color: "#64748b", lineHeight: 1.6 }}>
-                    {f.desc}
-                  </div>
+                <div>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: "#0f172a", marginBottom: 4 }}>{f.title}</div>
+                  <div style={{ fontSize: 11.5, color: "#64748b", lineHeight: 1.55 }}>{f.desc}</div>
                 </div>
-
-                <div className="feat-cta" style={{
-                  display: "flex", alignItems: "center", gap: 6,
-                  fontSize: 12, fontWeight: 700, color: f.id === "shutdown" ? "#dc2626" : "#2563eb",
-                  marginTop: "auto",
-                  position: "relative",
-                }}>
-                  <span>Buka Panel Admin</span>
-                  <ArrowRight size={14} className="feat-cta-arrow" />
+                <div className="db-cta" style={{ fontSize: 11 }}>
+                  Buka Panel
+                  <ArrowRight size={12} />
                 </div>
               </button>
             ))}
@@ -707,40 +405,26 @@ export default function Dashboard({ onNavigate, username, isAdmin = false }: Pro
         </div>
       )}
 
-      {/* ── Bottom CTA Tips ── */}
+      {/* ── FOOTER TIP ─────────────────────────────────────────────────── */}
       <div style={{
-        marginTop: 40,
-        padding: "24px 28px",
-        background: "rgba(255, 255, 255, 0.7)",
-        backdropFilter: "blur(16px)",
-        WebkitBackdropFilter: "blur(16px)",
-        border: "1px solid rgba(147, 197, 253, 0.45)",
-        borderRadius: 18,
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "space-between",
-        gap: 20,
-        flexWrap: "wrap",
-        boxShadow: "0 4px 16px rgba(59, 130, 246, 0.08)",
+        marginTop: 44,
+        padding: "18px 22px",
+        background: "#f8fafc",
+        border: "1px solid #e2e8f0",
+        borderRadius: 12,
+        display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, flexWrap: "wrap",
       }}>
-        <div>
-          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
-            <FileText size={16} color="#2563eb" />
-            <span style={{ fontSize: 13, fontWeight: 700, color: "#0f172a" }}>Navigasi Satu Pintu</span>
-          </div>
-          <p style={{ fontSize: 12, color: "#64748b", lineHeight: 1.65, maxWidth: 480 }}>
-            Klik tool mana saja untuk membuka halaman kerja. Gunakan tombol <strong style={{ color: "#2563eb" }}>← Kembali ke Dashboard</strong> di bar bagian atas untuk kembali ke menu utama kapan saja.
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <FileText size={15} color="#64748b" />
+          <p style={{ fontSize: 12.5, color: "#64748b", lineHeight: 1.6, margin: 0 }}>
+            Gunakan tombol <strong style={{ color: "#0f172a" }}>← Kembali</strong> di bagian atas untuk kembali ke dashboard kapan saja.
           </p>
         </div>
-        <button
-          type="button"
-          className="quick-btn quick-btn--primary"
-          onClick={() => onNavigate("metadata")}
-          style={{ flexShrink: 0 }}
-        >
-          <Tag size={14} />
-          Buka Metadata
-          <ArrowRight size={14} />
+        <button type="button" className="db-quick-btn" onClick={() => onNavigate("metadata")}
+          style={{ background: "#0f172a", color: "#fff", flexShrink: 0 }}>
+          <Tag size={13} />
+          Mulai Sekarang
+          <ArrowRight size={13} />
         </button>
       </div>
     </div>
