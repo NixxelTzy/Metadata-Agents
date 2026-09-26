@@ -602,11 +602,14 @@ export async function appendPhotoToUserHistory(
 
 /**
  * Materializes all photos from the atomic buffer hash into the history list.
- * Call this once after all photos are processed (or from GET history to auto-rebuild).
+ *
+ * @param deleteBuffer - if true, removes the buffer keys after flushing (call on job complete)
+ *                       if false, keeps buffer alive for future photos (call on each photo)
  */
 export async function flushJobBufferToHistory(
   userId: string,
   sessionId: string,
+  deleteBuffer = false,
 ): Promise<void> {
   try {
     const bufferKey = `job-buffer:${userId}:${sessionId}`;
@@ -628,40 +631,50 @@ export async function flushJobBufferToHistory(
     items.sort((a, b) => (a.filename || "").localeCompare(b.filename || ""));
 
     const validItems = items.filter((i) => i.filename && (i.title || i.error));
-
     if (validItems.length === 0) return;
 
-    const key = `history:metadata:${userId}`;
-    const raw = await redis.lrange(key, 0, 99);
+    const histKey = `history:metadata:${userId}`;
+
+    // Use a per-session dedicated key for history entry instead of list position
+    // This avoids the lset index-shift race condition
+    const entryKey = `history-entry:${userId}:${sessionId}`;
+    const existingEntry = await redis.get<MetadataHistoryEntry>(entryKey);
+
+    const updatedEntry: MetadataHistoryEntry = {
+      id: sessionId,
+      jobId: sessionId,
+      platform,
+      photoCount: validItems.length,
+      createdAt: existingEntry?.createdAt || createdAt,
+      items: validItems,
+    };
+
+    // Save the entry in its own key (atomic, no race condition)
+    await redis.set(entryKey, updatedEntry, { ex: 86400 * 90 });
+
+    // Also maintain the history list for ordering/display
+    // Only add to list if not already there
+    const raw = await redis.lrange(histKey, 0, 99);
     const entries: MetadataHistoryEntry[] = raw.map((r) =>
       typeof r === "string" ? JSON.parse(r) : (r as MetadataHistoryEntry)
     );
+    const existingListIdx = entries.findIndex((e) => e.id === sessionId || e.jobId === sessionId);
 
-    const existingIdx = entries.findIndex((e) => e.id === sessionId || e.jobId === sessionId);
-
-    if (existingIdx !== -1 && entries[existingIdx]) {
-      // Update existing entry with all items
-      entries[existingIdx]!.items = validItems;
-      entries[existingIdx]!.photoCount = validItems.length;
-      await redis.lset(key, existingIdx, JSON.stringify(entries[existingIdx]));
+    if (existingListIdx !== -1) {
+      // Update in-place using lset
+      await redis.lset(histKey, existingListIdx, JSON.stringify(updatedEntry));
     } else {
-      // Create new entry
-      const newEntry: MetadataHistoryEntry = {
-        id: sessionId,
-        jobId: sessionId,
-        platform,
-        photoCount: validItems.length,
-        createdAt,
-        items: validItems,
-      };
-      await redis.lpush(key, JSON.stringify(newEntry));
-      await redis.ltrim(key, 0, 99);
-      await redis.expire(key, 86400 * 90);
+      // New entry — prepend to list
+      await redis.lpush(histKey, JSON.stringify(updatedEntry));
+      await redis.ltrim(histKey, 0, 99);
+      await redis.expire(histKey, 86400 * 90);
     }
 
-    // Hapus buffer dari Redis agar tidak re-appear setelah user hapus history
-    await redis.del(bufferKey);
-    await redis.del(metaKey);
+    // Only delete buffer when explicitly requested (job complete)
+    if (deleteBuffer) {
+      await redis.del(bufferKey);
+      await redis.del(metaKey);
+    }
   } catch (err) {
     console.error("flushJobBufferToHistory error:", err);
   }
@@ -712,31 +725,51 @@ export async function getUserMetadataHistory(
   limit = 100
 ): Promise<MetadataHistoryEntry[]> {
   try {
-    // Auto-flush semua session buffer yang pending (akibat Vercel timeout di tengah proses)
-    // Dengan ini, foto yang sudah diproses sebelum timeout tetap muncul di history
+    const histKey = `history:metadata:${userId}`;
+
+    // Auto-flush pending buffers (handles browser close mid-session)
     try {
       const bufferKeys = await redis.keys(`job-buffer:${userId}:*`);
       if (bufferKeys && bufferKeys.length > 0) {
         await Promise.all(
           bufferKeys.map(async (key) => {
             const sessionId = key.replace(`job-buffer:${userId}:`, "");
-            await flushJobBufferToHistory(userId, sessionId);
+            await flushJobBufferToHistory(userId, sessionId, false);
           })
         );
       }
     } catch {
-      // Jangan gagalkan history read kalau auto-flush error
+      // Don't fail history read if auto-flush errors
     }
 
-    const key = `history:metadata:${userId}`;
-    const raw = await redis.lrange(key, 0, limit - 1);
+    // Read history list
+    const raw = await redis.lrange(histKey, 0, limit - 1);
     if (!raw || raw.length === 0) return [];
-    const parsed = raw.map((item) => (typeof item === "string" ? JSON.parse(item) : item));
 
-    // Deduplicate by entry id / jobId to prevent duplicate cards
+    const parsed: MetadataHistoryEntry[] = raw.map((item) =>
+      typeof item === "string" ? JSON.parse(item) : item
+    );
+
+    // For each entry, check if there's a newer version in the dedicated entry key
+    // (written by flushJobBufferToHistory with more items than what's in the list)
+    const enriched = await Promise.all(
+      parsed.map(async (entry) => {
+        try {
+          const sessionId = entry.id || entry.jobId;
+          if (!sessionId) return entry;
+          const fresh = await redis.get<MetadataHistoryEntry>(`history-entry:${userId}:${sessionId}`);
+          if (fresh && fresh.photoCount >= entry.photoCount) {
+            return fresh;
+          }
+        } catch {}
+        return entry;
+      })
+    );
+
+    // Deduplicate by id
     const seen = new Set<string>();
     const deduped: MetadataHistoryEntry[] = [];
-    for (const entry of parsed) {
+    for (const entry of enriched) {
       const idKey = entry.id || entry.jobId;
       if (idKey && !seen.has(idKey)) {
         seen.add(idKey);
@@ -745,6 +778,7 @@ export async function getUserMetadataHistory(
         deduped.push(entry);
       }
     }
+
     return deduped;
   } catch (err) {
     console.error("getUserMetadataHistory error:", err);
@@ -772,6 +806,7 @@ export async function deleteUserMetadataHistory(
     // Hapus buffer terkait entry yang dihapus agar tidak re-appear saat refresh
     await redis.del(`job-buffer:${userId}:${entryId}`);
     await redis.del(`job-meta:${userId}:${entryId}`);
+    await redis.del(`history-entry:${userId}:${entryId}`);
   } catch (err) {
     console.error("deleteUserMetadataHistory error:", err);
   }

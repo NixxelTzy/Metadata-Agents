@@ -172,8 +172,9 @@ export async function POST(request: NextRequest) {
           result
         );
 
-        // After every photo, flush entire buffer to history list (latest state)
-        await flushJobBufferToHistory(payload.userId, jobId);
+        // After every photo: flush buffer to history list (keep buffer alive for more photos)
+        const isJobComplete = updatedJob.status === "completed";
+        await flushJobBufferToHistory(payload.userId, jobId, isJobComplete);
       }
 
       // Record processing count on success
