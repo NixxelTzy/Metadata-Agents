@@ -4,7 +4,7 @@ import { callGroq, type GroqMessage, REASONING_MODEL } from "@/lib/groq";
 import { inspect, getClientIp, recordIpError } from "@/lib/security/core";
 import { validateAndSanitize } from "@/lib/stock-compliance";
 import { verifyToken } from "@/lib/auth";
-import { appendActivityEvent, recordPhotoProcessing, appendPhotoToUserHistory } from "@/lib/db";
+import { appendActivityEvent, recordPhotoProcessing } from "@/lib/db";
 
 export const runtime = "nodejs"; // Required for Redis (security core)
 export const maxDuration = 60; // Vercel Hobby max = 60s
@@ -858,33 +858,34 @@ export async function POST(request: NextRequest) {
           const successCount = successResults.length;
 
           if (successCount > 0) {
-            // 1. Immediately increment photo counter & leaderboard on server
-            void recordPhotoProcessing(
+            // 1. Increment photo counter & leaderboard
+            await recordPhotoProcessing(
               tokenPayload.userId,
               tokenPayload.username || "Kreator",
               successCount
             );
 
-            // 2. Immediately append to user's history in Redis
-            const activeSessionId = body.sessionId || `session-${new Date().toISOString().slice(0, 10)}`;
-            for (const item of successResults) {
-              void appendPhotoToUserHistory(
-                tokenPayload.userId,
-                activeSessionId,
-                platform,
-                {
-                  filename: item.filename,
-                  title: item.title,
-                  keywords: item.keywords,
-                  categories: item.categories,
-                  prompt: item.prompt,
-                  model: item.model,
-                  editorial: item.editorial,
-                  matureContent: item.matureContent,
-                  illustration: item.illustration,
-                }
-              );
-            }
+            // 2. Simpan SEMUA foto sekaligus dalam satu history entry — tidak ada race condition
+            const { saveUserMetadataHistory } = await import("@/lib/db");
+            const entryId = `hist-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+            await saveUserMetadataHistory(tokenPayload.userId, {
+              id: entryId,
+              jobId: body.sessionId || entryId,
+              platform,
+              photoCount: successCount,
+              createdAt: new Date().toISOString(),
+              items: successResults.map((item) => ({
+                filename: item.filename,
+                title: item.title,
+                keywords: item.keywords,
+                categories: item.categories,
+                prompt: item.prompt,
+                model: item.model,
+                editorial: item.editorial,
+                matureContent: item.matureContent,
+                illustration: item.illustration,
+              })),
+            });
           }
 
           void appendActivityEvent(
@@ -899,6 +900,7 @@ export async function POST(request: NextRequest) {
     } catch (err) {
       console.error("[generate] Failed to persist to Redis:", err);
     }
+
 
     return NextResponse.json({ results, stabilized, totalUsage: {
       promptTokens: results.reduce((s, r) => s + (r.usage?.promptTokens || 0), 0),

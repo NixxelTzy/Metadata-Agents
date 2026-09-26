@@ -580,47 +580,86 @@ export async function appendPhotoToUserHistory(
   item: MetadataJobItem
 ): Promise<void> {
   try {
-    const key = `history:metadata:${userId}`;
+    // Store each photo atomically in a Redis Hash keyed by filename.
+    // This is race-condition-proof because hset is atomic —
+    // concurrent serverless invocations won't overwrite each other.
+    const bufferKey = `job-buffer:${userId}:${sessionId}`;
+    const fieldKey = item.filename || `item-${Date.now()}`;
+    await redis.hset(bufferKey, { [fieldKey]: JSON.stringify(item) });
+    await redis.expire(bufferKey, 86400 * 7); // 7 days TTL
 
-    // Read all existing entries (up to 100)
-    const raw = await redis.lrange(key, 0, 99);
-    let entries: MetadataHistoryEntry[] = [];
-    if (raw && raw.length > 0) {
-      entries = raw.map((r) => (typeof r === "string" ? JSON.parse(r) : r) as MetadataHistoryEntry);
+    // Also update the history list entry so partial results show up immediately.
+    // Use a separate key to track metadata about this session.
+    const metaKey = `job-meta:${userId}:${sessionId}`;
+    const existingMeta = await redis.get<{ platform: string; createdAt: string; total?: number }>(metaKey);
+    if (!existingMeta) {
+      await redis.set(metaKey, { platform, createdAt: new Date().toISOString() }, { ex: 86400 * 7 });
     }
+  } catch (err) {
+    console.error("appendPhotoToUserHistory error:", err);
+  }
+}
 
-    // Find existing entry for this session
-    const existingIdx = entries.findIndex(
-      (e) => e.id === sessionId || e.jobId === sessionId
+/**
+ * Materializes all photos from the atomic buffer hash into the history list.
+ * Call this once after all photos are processed (or from GET history to auto-rebuild).
+ */
+export async function flushJobBufferToHistory(
+  userId: string,
+  sessionId: string,
+): Promise<void> {
+  try {
+    const bufferKey = `job-buffer:${userId}:${sessionId}`;
+    const metaKey = `job-meta:${userId}:${sessionId}`;
+
+    // Read all items from the hash buffer
+    const hashData = await redis.hgetall(bufferKey);
+    if (!hashData || Object.keys(hashData).length === 0) return;
+
+    const meta = await redis.get<{ platform: string; createdAt: string }>(metaKey);
+    const platform = meta?.platform || "adobe_stock";
+    const createdAt = meta?.createdAt || new Date().toISOString();
+
+    const items: MetadataJobItem[] = Object.values(hashData).map((v) =>
+      typeof v === "string" ? JSON.parse(v) : (v as MetadataJobItem)
     );
 
+    // Sort by filename for consistent ordering
+    items.sort((a, b) => (a.filename || "").localeCompare(b.filename || ""));
+
+    const validItems = items.filter((i) => i.filename && (i.title || i.error));
+
+    if (validItems.length === 0) return;
+
+    const key = `history:metadata:${userId}`;
+    const raw = await redis.lrange(key, 0, 99);
+    const entries: MetadataHistoryEntry[] = raw.map((r) =>
+      typeof r === "string" ? JSON.parse(r) : (r as MetadataHistoryEntry)
+    );
+
+    const existingIdx = entries.findIndex((e) => e.id === sessionId || e.jobId === sessionId);
+
     if (existingIdx !== -1 && entries[existingIdx]) {
-      // Append to existing entry
-      const existing = entries[existingIdx]!;
-      // Avoid duplicate filenames
-      const alreadyExists = existing.items.some((i) => i.filename === item.filename);
-      if (!alreadyExists) {
-        existing.items.push(item);
-        existing.photoCount = existing.items.length;
-        // Update the entry in Redis using lset
-        await redis.lset(key, existingIdx, JSON.stringify(existing));
-      }
+      // Update existing entry with all items
+      entries[existingIdx]!.items = validItems;
+      entries[existingIdx]!.photoCount = validItems.length;
+      await redis.lset(key, existingIdx, JSON.stringify(entries[existingIdx]));
     } else {
-      // Create new entry for this session
+      // Create new entry
       const newEntry: MetadataHistoryEntry = {
         id: sessionId,
         jobId: sessionId,
         platform,
-        photoCount: 1,
-        createdAt: new Date().toISOString(),
-        items: [item],
+        photoCount: validItems.length,
+        createdAt,
+        items: validItems,
       };
       await redis.lpush(key, JSON.stringify(newEntry));
       await redis.ltrim(key, 0, 99);
       await redis.expire(key, 86400 * 90);
     }
   } catch (err) {
-    console.error("appendPhotoToUserHistory error:", err);
+    console.error("flushJobBufferToHistory error:", err);
   }
 }
 
