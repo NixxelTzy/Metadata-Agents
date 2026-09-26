@@ -8,6 +8,7 @@ import {
   RESOLUTION_PRESETS,
   DEFAULT_PRESET_INDEX,
   runUpscalePipeline,
+  runServerUpscalePipeline,
   calcTargetDimensions,
   applyBilateralDenoise,
   applyUnsharpMask,
@@ -821,20 +822,39 @@ export default function ImageUpscaler() {
 
           setProgress(`(${i + 1}/${images.length}) Memproses: ${media.name} (${srcW}×${srcH} → ${targetW}×${targetH})`);
 
-          const dataUrl = await runUpscalePipeline(
-            imgEl,
-            srcW,
-            srcH,
-            targetW,
-            targetH,
-            engine,
-            (step) =>
-              setImages((p) =>
-                p.map((item, idx) =>
-                  idx === i ? { ...item, processingStep: step } : item
+          // Try server-side Sharp pipeline first (Lanczos3, much sharper)
+          // Fall back to browser Canvas pipeline if server unavailable
+          let dataUrl: string;
+          try {
+            dataUrl = await runServerUpscalePipeline(
+              media.preview,
+              targetW,
+              targetH,
+              engine,
+              (step) =>
+                setImages((p) =>
+                  p.map((item, idx) =>
+                    idx === i ? { ...item, processingStep: step } : item
+                  )
                 )
-              )
-          );
+            );
+          } catch {
+            // Fallback: browser canvas pipeline
+            dataUrl = await runUpscalePipeline(
+              imgEl,
+              srcW,
+              srcH,
+              targetW,
+              targetH,
+              engine,
+              (step) =>
+                setImages((p) =>
+                  p.map((item, idx) =>
+                    idx === i ? { ...item, processingStep: step } : item
+                  )
+                )
+            );
+          }
 
           setImages((p) =>
             p.map((item, idx) =>

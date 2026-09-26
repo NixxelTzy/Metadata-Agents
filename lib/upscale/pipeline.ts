@@ -202,3 +202,41 @@ export async function runUpscalePipeline(
     return canvas.toDataURL("image/jpeg", profile.quality / 100);
   }
 }
+
+// ─── Server-Side Sharp Upscale ────────────────────────────────────────────────
+// Calls the /api/upscale endpoint which uses Sharp (Node.js) for Lanczos3
+// resampling — significantly sharper than browser Canvas API.
+// Falls back to browser pipeline if server returns error.
+
+export async function runServerUpscalePipeline(
+  dataUrl: string,
+  targetW: number,
+  targetH: number,
+  engine: UpscaleEngine,
+  onStep: (msg: string) => void
+): Promise<string> {
+  onStep(`Server upscale: Kirim ke Sharp engine (${targetW}×${targetH}px)...`);
+
+  try {
+    const res = await fetch("/api/upscale", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ dataUrl, targetWidth: targetW, targetHeight: targetH, engine }),
+    });
+
+    if (!res.ok) {
+      const errData = await res.json().catch(() => ({})) as { error?: string };
+      throw new Error(errData.error || `Server error ${res.status}`);
+    }
+
+    const result = await res.json() as { dataUrl: string; width: number; height: number; sizeKb: number };
+    onStep(`✅ Server upscale selesai: ${result.width}×${result.height}px (${result.sizeKb}KB)`);
+    return result.dataUrl;
+
+  } catch (err) {
+    console.warn("[runServerUpscalePipeline] Fallback ke browser pipeline:", err);
+    onStep("⚠️ Server tidak tersedia, fallback ke browser pipeline...");
+    // Can't call browser pipeline here without HTMLImageElement — caller handles fallback
+    throw err;
+  }
+}
