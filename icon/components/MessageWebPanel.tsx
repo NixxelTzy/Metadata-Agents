@@ -2318,8 +2318,90 @@ function SmartMessagePanel() {
   );
 }
 
-// ─── Shared Styles ────────────────────────────────────────────────────────────
+function UnifiedMessagePanel({ users, onSent }: { users: AccountUser[]; onSent: () => void }) {
+  const [panelMode, setPanelMode] = useState<"smart" | "broadcast">("smart");
 
+  return (
+    <div>
+      {/* ── Mode Switcher Tabs ── */}
+      <div
+        style={{
+          display: "flex",
+          gap: "8px",
+          padding: "5px",
+          background: "rgba(15, 23, 42, 0.4)",
+          border: "1px solid var(--border)",
+          borderRadius: "14px",
+          marginBottom: "24px",
+        }}
+      >
+        <button
+          type="button"
+          onClick={() => setPanelMode("smart")}
+          style={{
+            flex: 1,
+            padding: "11px 16px",
+            borderRadius: "10px",
+            border: "none",
+            background:
+              panelMode === "smart"
+                ? "linear-gradient(135deg, rgba(56, 189, 248, 0.25), rgba(37, 99, 235, 0.25))"
+                : "transparent",
+            color: panelMode === "smart" ? "#38bdf8" : "var(--text-muted)",
+            fontWeight: panelMode === "smart" ? "800" : "600",
+            fontSize: "13px",
+            cursor: "pointer",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: "8px",
+            boxShadow: panelMode === "smart" ? "0 2px 12px rgba(56, 189, 248, 0.2)" : "none",
+            transition: "all 0.18s ease",
+          }}
+        >
+          <Megaphone size={15} />
+          <span>📡 Smart Message (Pop-up Layar Instan)</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setPanelMode("broadcast")}
+          style={{
+            flex: 1,
+            padding: "11px 16px",
+            borderRadius: "10px",
+            border: "none",
+            background:
+              panelMode === "broadcast"
+                ? "linear-gradient(135deg, rgba(168, 85, 247, 0.25), rgba(124, 58, 237, 0.25))"
+                : "transparent",
+            color: panelMode === "broadcast" ? "#c084fc" : "var(--text-muted)",
+            fontWeight: panelMode === "broadcast" ? "800" : "600",
+            fontSize: "13px",
+            cursor: "pointer",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: "8px",
+            boxShadow: panelMode === "broadcast" ? "0 2px 12px rgba(168, 85, 247, 0.2)" : "none",
+            transition: "all 0.18s ease",
+          }}
+        >
+          <Mail size={15} />
+          <span>📨 Broadcast / Kirim Akun (Kotak Masuk User)</span>
+        </button>
+      </div>
+
+      {panelMode === "smart" ? (
+        <SmartMessagePanel />
+      ) : (
+        <ComposePanelForm users={users} onSent={onSent} />
+      )}
+    </div>
+  );
+}
+
+// ─── Shared Styles ────────────────────────────────────────────────────────────
 
 const labelStyle: React.CSSProperties = {
   display: "block",
@@ -2347,7 +2429,7 @@ const inputStyle: React.CSSProperties = {
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 export default function MessageWebPanel() {
-  const [activeView, setActiveView] = useState<"compose" | "log" | "receipts" | "errors" | "health" | "maintenance" | "templates" | "activity" | "debug" | "smart">("compose");
+  const [activeView, setActiveView] = useState<"compose" | "log" | "receipts" | "errors" | "health" | "maintenance" | "templates" | "activity" | "debug">("compose");
   const [users, setUsers] = useState<AccountUser[]>([]);
   const [sentMessages, setSentMessages] = useState<SentMessage[]>([]);
   const [loadingLog, setLoadingLog] = useState(false);
@@ -2498,8 +2580,7 @@ export default function MessageWebPanel() {
         flexWrap: "nowrap",
       }}>
         {([
-          { id: "compose", icon: <FileEdit size={14} />, label: "Tulis Pesan" },
-          { id: "smart", icon: <Megaphone size={14} />, label: "Smart Message" },
+          { id: "compose", icon: <Megaphone size={14} />, label: "Tulis & Smart Message" },
           { id: "log", icon: <ClipboardList size={14} />, label: `Riwayat (${sentMessages.length})` },
           { id: "receipts", icon: <Eye size={14} />, label: "Tanda Terima" },
           { id: "errors", icon: <AlertTriangle size={14} />, label: "Error Logs" },
@@ -2555,7 +2636,7 @@ export default function MessageWebPanel() {
           padding: "20px 24px",
           borderBottom: "1px solid var(--border)",
           background: activeView === "compose"
-            ? "linear-gradient(135deg, rgba(124,58,237,0.1), rgba(236,72,153,0.06))"
+            ? "linear-gradient(135deg, rgba(56,189,248,0.08), rgba(124,58,237,0.06))"
             : "linear-gradient(135deg, rgba(14,165,233,0.08), rgba(124,58,237,0.06))",
           display: "flex",
           alignItems: "center",
@@ -2565,11 +2646,11 @@ export default function MessageWebPanel() {
         }}>
           <div>
             <div style={{ fontWeight: "800", fontSize: "16px", color: "var(--text)" }}>
-              {activeView === "compose" ? "Tulis & Kirim Pesan" : activeView === "log" ? "Riwayat Pesan Terkirim" : "Debug Log — Status & Diagnosa Real-Time"}
+              {activeView === "compose" ? "Tulis & Kirim Pesan (Smart Message & Broadcast)" : activeView === "log" ? "Riwayat Pesan Terkirim" : "Debug Log — Status & Diagnosa Real-Time"}
             </div>
             <div style={{ fontSize: "12px", color: "var(--text-muted)", marginTop: "3px" }}>
               {activeView === "compose"
-                ? "Pilih tipe, target, dan isi pesan untuk dikirim ke pengguna"
+                ? "Pilih mode pengiriman: Smart Message (Pop-up Layar Instan) atau Broadcast (Kotak Masuk Pengguna)"
                 : activeView === "log"
                 ? "Semua pesan yang pernah dikirim admin · diurutkan terbaru"
                 : "Periksa Redis key, status terbaca, log error, dan status aktif per akun"}
@@ -2602,9 +2683,7 @@ export default function MessageWebPanel() {
         {/* Card Body */}
         <div style={{ padding: activeView !== "log" ? "24px" : "0" }}>
           {activeView === "compose" ? (
-            <ComposePanelForm users={users} onSent={fetchLog} />
-          ) : activeView === "smart" ? (
-            <SmartMessagePanel />
+            <UnifiedMessagePanel users={users} onSent={fetchLog} />
           ) : activeView === "receipts" ? (
             <ReadReceiptsPanel />
           ) : activeView === "errors" ? (

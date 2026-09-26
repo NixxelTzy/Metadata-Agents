@@ -179,18 +179,20 @@ export default function ImageUploader({ onTokensUpdated, userEmail, userRole, is
     }, 2500);
   }, [autoRestartFailed]);
 
+  // Clear orphaned job ONLY on initial mount (never during active processing)
   useEffect(() => {
     try {
-      // On mount: clear any orphaned job from previous session.
       localStorage.removeItem("active_metadata_job_id");
     } catch {}
+  }, []);
 
+  // Warn user before accidental tab close or page reload while generating
+  useEffect(() => {
+    if (!loading) return;
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
-      if (loading) {
-        e.preventDefault();
-        e.returnValue = "Proses metadata AI sedang berjalan. Jika Anda me-refresh atau menutup tab, proses akan terhenti.";
-        return e.returnValue;
-      }
+      e.preventDefault();
+      e.returnValue = "Proses metadata AI sedang berjalan. Jika Anda me-refresh atau menutup tab, proses akan terhenti.";
+      return e.returnValue;
     };
     window.addEventListener("beforeunload", handleBeforeUnload);
 
@@ -199,7 +201,7 @@ export default function ImageUploader({ onTokensUpdated, userEmail, userRole, is
       if (pollingIntervalRef.current) clearInterval(pollingIntervalRef.current);
       if (pollingTimeoutRef.current) clearTimeout(pollingTimeoutRef.current);
     };
-  }, [loading, pollJobProgress]);
+  }, [loading]);
 
   const handleGlobalModelChange = (model: string) => {
     setGlobalMagnificModel(model);
