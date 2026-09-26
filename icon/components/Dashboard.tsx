@@ -2,12 +2,12 @@
 
 import { useEffect, useState } from "react";
 import {
-  Tag, ZoomIn, MessageSquare, ArrowUpRight,
+  Tag, ZoomIn, MessageSquare, ArrowRight,
   Clock, Shield, ChevronRight,
   Power, Radio, ShieldCheck, Mail, Lock,
   Megaphone, Database, Crown, Gift, Trophy,
   Flame, Sparkles, History, Zap, TrendingUp,
-  ShieldAlert, ArrowRight, Layers
+  ShieldAlert
 } from "lucide-react";
 
 /* ─── Types ─────────────────────────────────────────────────────────────────── */
@@ -18,75 +18,76 @@ interface Tool {
   desc: string;
   tag?: string;
   tagColor?: string;
-  accentBg?: string;
+  iconBg?: string;
 }
 
 /* ─── Data ───────────────────────────────────────────────────────────────────── */
 const TOOLS: Tool[] = [
   {
     id: "metadata",
-    icon: <Tag size={18} strokeWidth={2} />,
+    icon: <Tag size={20} strokeWidth={2} />,
     label: "Metadata AI",
-    desc: "Generate title, keyword & kategori untuk Adobe Stock, Shutterstock, dan Magnific secara otomatis.",
+    desc: "Generate title, keyword & kategori untuk Adobe Stock, Shutterstock, dan Magnific.",
     tag: "Populer",
     tagColor: "#2563eb",
-    accentBg: "#eff6ff",
+    iconBg: "#eff6ff",
   },
   {
     id: "history",
-    icon: <History size={18} strokeWidth={2} />,
+    icon: <History size={20} strokeWidth={2} />,
     label: "Riwayat Cloud",
     desc: "Semua hasil metadata tersimpan di database cloud. Akses dan unduh CSV kapan saja.",
     tag: "Cloud",
     tagColor: "#059669",
-    accentBg: "#ecfdf5",
+    iconBg: "#ecfdf5",
   },
   {
     id: "upscale",
-    icon: <ZoomIn size={18} strokeWidth={2} />,
+    icon: <ZoomIn size={20} strokeWidth={2} />,
     label: "AI Upscaler",
     desc: "Tingkatkan resolusi gambar hingga 8K menggunakan Sharp Lanczos3 server-side.",
     tag: "Sharp",
     tagColor: "#7c3aed",
-    accentBg: "#faf5ff",
+    iconBg: "#faf5ff",
   },
   {
     id: "leaderboard",
-    icon: <Trophy size={18} strokeWidth={2} />,
+    icon: <Trophy size={20} strokeWidth={2} />,
     label: "Leaderboard",
-    desc: "Statistik proses foto harian dan peringkat kontributor komunitas microstock.",
+    desc: "Statistik proses foto harian dan peringkat kontributor komunitas.",
     tag: "Live",
     tagColor: "#d97706",
-    accentBg: "#fffbeb",
+    iconBg: "#fffbeb",
   },
   {
     id: "google-flow",
-    icon: <Sparkles size={18} strokeWidth={2} />,
+    icon: <Sparkles size={20} strokeWidth={2} />,
     label: "Google Flow AI",
     desc: "Studio kreatif Gemini untuk generasi foto, video, dan tool kustom unlimited.",
     tag: "Unlimited",
     tagColor: "#7c3aed",
-    accentBg: "#faf5ff",
+    iconBg: "#faf5ff",
   },
   {
     id: "feedback",
-    icon: <MessageSquare size={18} strokeWidth={2} />,
+    icon: <MessageSquare size={20} strokeWidth={2} />,
     label: "Laporan & Saran",
     desc: "Kirim laporan bug atau ide fitur langsung ke tim pengembang.",
-    accentBg: "#f9fafb",
+    tagColor: "#64748b",
+    iconBg: "#f8fafc",
   },
 ];
 
 const ADMIN_TOOLS: Tool[] = [
-  { id: "shutdown",       icon: <Power size={16} />,       label: "Server Control",  desc: "Shutdown server dan mode maintenance.",          tagColor: "#dc2626", accentBg: "#fff5f5" },
-  { id: "monitor",        icon: <Radio size={16} />,        label: "Server Monitor",  desc: "Real-time CPU, memori, dan request rate.",       tagColor: "#2563eb", accentBg: "#eff6ff" },
-  { id: "accounts",       icon: <ShieldCheck size={16} />,  label: "Accounts",        desc: "Daftar akun dan status online live.",            tagColor: "#2563eb", accentBg: "#eff6ff" },
-  { id: "messageweb",     icon: <Mail size={16} />,         label: "Broadcast",       desc: "Kirim pesan atau perintah ke semua user.",       tagColor: "#2563eb", accentBg: "#eff6ff" },
-  { id: "closing",        icon: <Lock size={16} />,         label: "Feature Lock",    desc: "Tutup akses fitur tertentu.",                   tagColor: "#2563eb", accentBg: "#eff6ff" },
-  { id: "admin-messages", icon: <Megaphone size={16} />,    label: "Mass Email",      desc: "Kelola feedback dan kirim mass email.",         tagColor: "#2563eb", accentBg: "#eff6ff" },
-  { id: "storage",        icon: <Database size={16} />,     label: "Redis Monitor",   desc: "Pantau memori dan statistik database.",         tagColor: "#2563eb", accentBg: "#eff6ff" },
-  { id: "prem_access",    icon: <Crown size={16} />,        label: "Premium Engine",  desc: "Kelola akses premium dan auto-expiry.",          tagColor: "#d97706", accentBg: "#fffbeb" },
-  { id: "giveaway",       icon: <Gift size={16} />,         label: "Giveaway",        desc: "Platform giveaway otomatis.",                   tagColor: "#db2777", accentBg: "#fdf2f8" },
+  { id: "shutdown",       icon: <Power size={17} />,       label: "Server Control",  desc: "Shutdown server & mode maintenance.",  tagColor: "#dc2626", iconBg: "#fff5f5" },
+  { id: "monitor",        icon: <Radio size={17} />,        label: "Server Monitor",  desc: "Real-time CPU, memori & request.",       tagColor: "#2563eb", iconBg: "#eff6ff" },
+  { id: "accounts",       icon: <ShieldCheck size={17} />,  label: "Accounts",        desc: "Daftar akun & status online live.",      tagColor: "#2563eb", iconBg: "#eff6ff" },
+  { id: "messageweb",     icon: <Mail size={17} />,         label: "Broadcast",       desc: "Kirim pesan ke semua user.",             tagColor: "#2563eb", iconBg: "#eff6ff" },
+  { id: "closing",        icon: <Lock size={17} />,         label: "Feature Lock",    desc: "Tutup akses fitur tertentu.",            tagColor: "#2563eb", iconBg: "#eff6ff" },
+  { id: "admin-messages", icon: <Megaphone size={17} />,    label: "Mass Email",      desc: "Kelola feedback & kirim mass email.",    tagColor: "#2563eb", iconBg: "#eff6ff" },
+  { id: "storage",        icon: <Database size={17} />,     label: "Redis Monitor",   desc: "Pantau memori & statistik database.",   tagColor: "#2563eb", iconBg: "#eff6ff" },
+  { id: "prem_access",    icon: <Crown size={17} />,        label: "Premium Engine",  desc: "Kelola akses premium & auto-expiry.",    tagColor: "#d97706", iconBg: "#fffbeb" },
+  { id: "giveaway",       icon: <Gift size={17} />,         label: "Giveaway",        desc: "Platform giveaway otomatis.",            tagColor: "#db2777", iconBg: "#fdf2f8" },
 ];
 
 interface Props {
@@ -95,7 +96,6 @@ interface Props {
   isAdmin?: boolean;
 }
 
-/* ─── Main Component ────────────────────────────────────────────────────────── */
 export default function Dashboard({ onNavigate, username, isAdmin = false }: Props) {
   const [todayPhotos, setTodayPhotos] = useState(0);
 
@@ -110,73 +110,159 @@ export default function Dashboard({ onNavigate, username, isAdmin = false }: Pro
   const greeting = hour < 12 ? "Selamat pagi" : hour < 17 ? "Selamat siang" : "Selamat malam";
 
   return (
-    <div style={{ width: "100%", minHeight: "100%", padding: "0 0 80px", fontFamily: "inherit" }}>
+    <div style={{ width: "100%", fontFamily: "inherit" }}>
       <style>{`
-        .db-wrap { max-width: 1200px; margin: 0 auto; padding: 32px 28px; }
-        .db-layout { display: grid; grid-template-columns: 300px 1fr; gap: 28px; align-items: start; }
-        .db-tool-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-        .db-admin-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
-        .db-card {
-          display: flex; flex-direction: column; gap: 10px;
-          padding: 18px; border-radius: 12px;
+        /* ── Reset overflow ── */
+        .db-root { padding: 24px 0 80px; }
+
+        /* ── Inner wrapper — penuh di mobile, max di desktop ── */
+        .db-inner {
+          width: 100%;
+          max-width: 1200px;
+          margin: 0 auto;
+          padding: 0 16px;
+          box-sizing: border-box;
+        }
+
+        /* ── Tool grid: 1 kolom mobile, 2 kolom tablet, 3 kolom desktop ── */
+        .db-tool-grid {
+          display: grid;
+          grid-template-columns: 1fr;
+          gap: 10px;
+        }
+        @media (min-width: 600px) {
+          .db-tool-grid { grid-template-columns: 1fr 1fr; }
+          .db-inner { padding: 0 20px; }
+        }
+        @media (min-width: 960px) {
+          .db-tool-grid { grid-template-columns: 1fr 1fr 1fr; }
+          .db-inner { padding: 0 28px; }
+        }
+
+        /* ── Admin grid ── */
+        .db-admin-grid {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 8px;
+        }
+        @media (min-width: 600px) {
+          .db-admin-grid { grid-template-columns: 1fr 1fr 1fr; }
+        }
+        @media (min-width: 960px) {
+          .db-admin-grid { grid-template-columns: repeat(4, 1fr); }
+        }
+
+        /* ── Stats grid ── */
+        .db-stats-grid {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 8px;
+        }
+        @media (min-width: 600px) {
+          .db-stats-grid { grid-template-columns: repeat(4, 1fr); }
+        }
+
+        /* ── Quick buttons ── */
+        .db-quick-row {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 8px;
+        }
+
+        /* ── Tool card ── */
+        .db-tool-card {
+          display: flex;
+          flex-direction: column;
+          gap: 12px;
+          padding: 18px;
+          background: #ffffff;
           border: 1px solid #e5e7eb;
-          background: #fff;
-          cursor: pointer; text-align: left;
+          border-radius: 14px;
+          cursor: pointer;
+          text-align: left;
           transition: box-shadow 0.15s, border-color 0.15s, transform 0.15s;
           font-family: inherit;
+          width: 100%;
+          box-sizing: border-box;
         }
-        .db-card:hover {
-          border-color: #c7d2fe;
-          box-shadow: 0 4px 16px rgba(0,0,0,0.07);
-          transform: translateY(-1px);
+        .db-tool-card:hover {
+          border-color: #bfdbfe;
+          box-shadow: 0 6px 20px rgba(0,0,0,0.08);
+          transform: translateY(-2px);
         }
+        .db-tool-card:active { transform: translateY(0); }
+
+        /* ── Admin card ── */
         .db-admin-card {
-          display: flex; flex-direction: column; gap: 8px;
-          padding: 14px 16px; border-radius: 10px;
+          display: flex;
+          flex-direction: column;
+          gap: 6px;
+          padding: 14px;
+          background: #ffffff;
           border: 1px solid #fee2e2;
-          background: #fff;
-          cursor: pointer; text-align: left;
-          transition: box-shadow 0.15s, background 0.15s;
+          border-radius: 12px;
+          cursor: pointer;
+          text-align: left;
+          transition: background 0.12s, box-shadow 0.12s;
           font-family: inherit;
+          width: 100%;
+          box-sizing: border-box;
         }
-        .db-admin-card:hover { background: #fff5f5; box-shadow: 0 2px 10px rgba(220,38,38,0.08); }
-        .db-pill {
-          display: inline-flex; align-items: center; gap: 6px;
-          padding: 7px 14px; border-radius: 7px;
-          font-size: 12.5px; font-weight: 600; cursor: pointer;
-          border: 1px solid #e5e7eb; background: #fff;
-          color: #374151; transition: background 0.12s, border-color 0.12s;
-          font-family: inherit; white-space: nowrap;
+        .db-admin-card:hover {
+          background: #fff5f5;
+          box-shadow: 0 2px 10px rgba(220,38,38,0.08);
         }
-        .db-pill:hover { background: #f9fafb; border-color: #d1d5db; }
-        .db-pill--primary {
-          background: #111827 !important; color: #fff !important;
+
+        /* ── Pill button ── */
+        .db-btn {
+          display: inline-flex;
+          align-items: center;
+          gap: 7px;
+          padding: 9px 16px;
+          border-radius: 9px;
+          border: 1px solid #e5e7eb;
+          background: #fff;
+          color: #374151;
+          font-size: 13px;
+          font-weight: 600;
+          cursor: pointer;
+          font-family: inherit;
+          white-space: nowrap;
+          transition: background 0.12s, border-color 0.12s;
+          box-sizing: border-box;
+        }
+        .db-btn:hover { background: #f9fafb; border-color: #d1d5db; }
+        .db-btn--primary {
+          background: #111827 !important;
+          color: #fff !important;
           border-color: #111827 !important;
         }
-        .db-pill--primary:hover { background: #1f2937 !important; }
-        @media (max-width: 900px) {
-          .db-layout { grid-template-columns: 1fr !important; }
-          .db-tool-grid { grid-template-columns: 1fr !important; }
-          .db-admin-grid { grid-template-columns: 1fr 1fr !important; }
-          .db-wrap { padding: 20px 16px !important; }
-        }
-        @media (max-width: 540px) {
-          .db-admin-grid { grid-template-columns: 1fr !important; }
+        .db-btn--primary:hover { background: #1f2937 !important; }
+
+        /* ── Section label ── */
+        .db-section-label {
+          font-size: 10.5px;
+          font-weight: 700;
+          color: #9ca3af;
+          letter-spacing: 0.07em;
+          text-transform: uppercase;
+          margin-bottom: 12px;
         }
       `}</style>
 
-      <div className="db-wrap">
-        {/* ── Two-column layout ─────────────────────────────────────────── */}
-        <div className="db-layout">
+      <div className="db-root">
+        <div className="db-inner">
 
-          {/* ── LEFT COLUMN: Greeting + Stats + Quick Actions ─────────── */}
-          <div style={{ position: "sticky", top: 72 }}>
-            {/* Greeting */}
-            <div style={{ marginBottom: 24 }}>
+          {/* ── Greeting ──────────────────────────────────────────────── */}
+          <div style={{ marginBottom: 20 }}>
+            <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12, flexWrap: "wrap", marginBottom: 8 }}>
               <h1 style={{
-                fontSize: "clamp(20px, 2.5vw, 26px)",
-                fontWeight: 700, color: "#111827",
-                margin: "0 0 6px", letterSpacing: "-0.025em", lineHeight: 1.2,
+                fontSize: "clamp(20px, 5vw, 28px)",
+                fontWeight: 700,
+                color: "#111827",
+                margin: 0,
+                letterSpacing: "-0.025em",
+                lineHeight: 1.2,
               }}>
                 {greeting},{" "}
                 <span style={{ color: "#2563eb" }}>{username ?? "Kreator"}</span>
@@ -185,112 +271,109 @@ export default function Dashboard({ onNavigate, username, isAdmin = false }: Pro
                     marginLeft: 8, fontSize: 10, fontWeight: 700,
                     padding: "2px 7px", borderRadius: 4,
                     background: "#fee2e2", color: "#dc2626",
-                    verticalAlign: "middle", letterSpacing: "0.05em", textTransform: "uppercase",
+                    verticalAlign: "middle", letterSpacing: "0.05em",
+                    textTransform: "uppercase",
                   }}>Admin</span>
                 )}
               </h1>
-              <p style={{ fontSize: 13.5, color: "#6b7280", lineHeight: 1.6, margin: 0 }}>
-                Pilih tool yang ingin digunakan. Hasil proses tersimpan otomatis di cloud.
-              </p>
-            </div>
 
-            {/* Today badge */}
-            <button type="button" onClick={() => onNavigate("leaderboard")}
-              style={{
-                display: "inline-flex", alignItems: "center", gap: 7,
-                padding: "8px 14px", borderRadius: 8,
-                border: "1px solid #d1fae5", background: "#ecfdf5",
-                cursor: "pointer", fontSize: 12.5, fontWeight: 600, color: "#065f46",
-                fontFamily: "inherit", marginBottom: 20, width: "100%", justifyContent: "space-between",
-              }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
-                <Flame size={14} color="#059669" />
-                <span>Foto diproses hari ini</span>
-              </div>
-              <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
-                <strong style={{ fontSize: 15 }}>{todayPhotos.toLocaleString("id-ID")}</strong>
-                <ChevronRight size={13} color="#059669" />
-              </div>
-            </button>
-
-            {/* Stats */}
-            <div style={{ border: "1px solid #e5e7eb", borderRadius: 10, overflow: "hidden", marginBottom: 20 }}>
-              {[
-                { icon: <Zap size={13} color="#2563eb" />,       label: "AI Engine", value: "Groq 120B + Vision" },
-                { icon: <Shield size={13} color="#059669" />,     label: "Platform",  value: "Adobe · Shutterstock · Magnific" },
-                { icon: <TrendingUp size={13} color="#d97706" />, label: "Output",    value: "CSV Siap Upload" },
-                { icon: <Clock size={13} color="#7c3aed" />,      label: "Speed",     value: "~15 detik / foto" },
-              ].map((s, i, arr) => (
-                <div key={s.label} style={{
-                  display: "flex", alignItems: "center", gap: 10,
-                  padding: "11px 14px", background: "#fff",
-                  borderBottom: i < arr.length - 1 ? "1px solid #f3f4f6" : "none",
+              {/* Today badge */}
+              <button type="button" onClick={() => onNavigate("leaderboard")}
+                style={{
+                  display: "inline-flex", alignItems: "center", gap: 6,
+                  padding: "7px 12px", borderRadius: 20,
+                  border: "1px solid #d1fae5", background: "#ecfdf5",
+                  cursor: "pointer", fontSize: 12, fontWeight: 600, color: "#065f46",
+                  fontFamily: "inherit", flexShrink: 0,
                 }}>
-                  <div style={{ width: 28, height: 28, borderRadius: 7, background: "#f9fafb", border: "1px solid #e5e7eb", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                    {s.icon}
-                  </div>
-                  <div>
-                    <div style={{ fontSize: 9.5, color: "#9ca3af", textTransform: "uppercase", letterSpacing: "0.06em", fontWeight: 600 }}>{s.label}</div>
-                    <div style={{ fontSize: 12.5, fontWeight: 600, color: "#111827" }}>{s.value}</div>
-                  </div>
-                </div>
-              ))}
+                <Flame size={13} color="#059669" />
+                <strong>{todayPhotos.toLocaleString("id-ID")}</strong> foto
+                <ChevronRight size={12} color="#059669" />
+              </button>
             </div>
+
+            <p style={{ fontSize: 13.5, color: "#6b7280", margin: "0 0 18px", lineHeight: 1.55 }}>
+              Pilih tool yang ingin digunakan. Hasil proses tersimpan otomatis di cloud.
+            </p>
 
             {/* Quick actions */}
-            <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
-              <button className="db-pill db-pill--primary" type="button" onClick={() => onNavigate("metadata")}>
-                <Tag size={13} /> Mulai Metadata AI <ArrowRight size={13} style={{ marginLeft: "auto" }} />
+            <div className="db-quick-row">
+              <button className="db-btn db-btn--primary" type="button"
+                onClick={() => onNavigate("metadata")}
+                style={{ flex: "1 1 auto", justifyContent: "center" }}>
+                <Tag size={14} /> Mulai Metadata AI <ArrowRight size={14} />
               </button>
-              <div style={{ display: "flex", gap: 7 }}>
-                <button className="db-pill" type="button" onClick={() => onNavigate("upscale")} style={{ flex: 1 }}>
-                  <ZoomIn size={13} color="#7c3aed" /> Upscaler
-                </button>
-                <button className="db-pill" type="button" onClick={() => onNavigate("history")} style={{ flex: 1 }}>
-                  <History size={13} color="#059669" /> Riwayat
-                </button>
-              </div>
-              <button className="db-pill" type="button" onClick={() => onNavigate("google-flow")}
+              <button className="db-btn" type="button" onClick={() => onNavigate("upscale")}>
+                <ZoomIn size={14} color="#7c3aed" /> Upscaler
+              </button>
+              <button className="db-btn" type="button" onClick={() => onNavigate("history")}>
+                <History size={14} color="#059669" /> Riwayat
+              </button>
+              <button className="db-btn" type="button" onClick={() => onNavigate("google-flow")}
                 style={{ background: "#faf5ff", color: "#5b21b6", borderColor: "#e9d5ff" }}>
-                <Sparkles size={13} /> Google Flow AI
+                <Sparkles size={14} /> Google Flow
               </button>
               {!isAdmin && (
-                <button className="db-pill" type="button"
+                <button className="db-btn" type="button"
                   onClick={() => window.dispatchEvent(new CustomEvent("open_premium_pricing_modal"))}
                   style={{ background: "#fefce8", color: "#92400e", borderColor: "#fde68a" }}>
-                  <Crown size={13} color="#d97706" /> Upgrade ke Premium
+                  <Crown size={14} color="#d97706" /> Premium
                 </button>
               )}
             </div>
           </div>
 
-          {/* ── RIGHT COLUMN: Tool Cards ──────────────────────────────── */}
-          <div>
-            {/* Section label */}
-            <div style={{ fontSize: 10.5, fontWeight: 700, color: "#9ca3af", letterSpacing: "0.07em", textTransform: "uppercase", marginBottom: 14 }}>
-              Creator Tools
-            </div>
-
-            {/* Tool grid */}
-            <div className="db-tool-grid" style={{ marginBottom: isAdmin ? 32 : 0 }}>
-              {TOOLS.map(t => <ToolCard key={t.id} tool={t} onNavigate={onNavigate} />)}
-            </div>
-
-            {/* Admin */}
-            {isAdmin && (
-              <>
-                <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 14 }}>
-                  <ShieldAlert size={13} color="#dc2626" />
-                  <span style={{ fontSize: 10.5, fontWeight: 700, color: "#dc2626", letterSpacing: "0.07em", textTransform: "uppercase" }}>
-                    Admin Panel
+          {/* ── Stats bar ────────────────────────────────────────────── */}
+          <div className="db-stats-grid" style={{ marginBottom: 28 }}>
+            {[
+              { icon: <Zap size={14} color="#2563eb" />,       label: "AI Engine", value: "Groq 120B",      bg: "#eff6ff" },
+              { icon: <Shield size={14} color="#059669" />,     label: "Platform",  value: "3 Microstock",  bg: "#ecfdf5" },
+              { icon: <TrendingUp size={14} color="#d97706" />, label: "Output",    value: "CSV Ready",     bg: "#fffbeb" },
+              { icon: <Clock size={14} color="#7c3aed" />,      label: "Speed",     value: "~15s / foto",   bg: "#faf5ff" },
+            ].map(s => (
+              <div key={s.label} style={{
+                padding: "12px 14px",
+                background: "#fff",
+                border: "1px solid #e5e7eb",
+                borderRadius: 10,
+                boxSizing: "border-box",
+              }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 5, marginBottom: 4 }}>
+                  <div style={{ width: 24, height: 24, borderRadius: 6, background: s.bg, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    {s.icon}
+                  </div>
+                  <span style={{ fontSize: 9.5, color: "#9ca3af", textTransform: "uppercase", letterSpacing: "0.05em", fontWeight: 600 }}>
+                    {s.label}
                   </span>
                 </div>
-                <div className="db-admin-grid">
-                  {ADMIN_TOOLS.map(t => <AdminCard key={t.id} tool={t} onNavigate={onNavigate} />)}
-                </div>
-              </>
-            )}
+                <div style={{ fontSize: 13, fontWeight: 700, color: "#111827" }}>{s.value}</div>
+              </div>
+            ))}
           </div>
+
+          {/* ── Creator Tools ──────────────────────────────────────────── */}
+          <div style={{ marginBottom: isAdmin ? 32 : 0 }}>
+            <div className="db-section-label">Creator Tools</div>
+            <div className="db-tool-grid">
+              {TOOLS.map(t => <ToolCard key={t.id} tool={t} onNavigate={onNavigate} />)}
+            </div>
+          </div>
+
+          {/* ── Admin Tools ────────────────────────────────────────────── */}
+          {isAdmin && (
+            <div>
+              <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 12 }}>
+                <ShieldAlert size={13} color="#dc2626" />
+                <span className="db-section-label" style={{ color: "#dc2626", marginBottom: 0 }}>
+                  Admin Panel
+                </span>
+              </div>
+              <div className="db-admin-grid">
+                {ADMIN_TOOLS.map(t => <AdminCard key={t.id} tool={t} onNavigate={onNavigate} />)}
+              </div>
+            </div>
+          )}
+
         </div>
       </div>
     </div>
@@ -303,20 +386,20 @@ function ToolCard({ tool, onNavigate }: { tool: Tool; onNavigate: (id: string) =
   return (
     <button
       type="button"
-      className="db-card"
+      className="db-tool-card"
       onClick={() => onNavigate(tool.id)}
       onMouseEnter={() => setHov(true)}
       onMouseLeave={() => setHov(false)}
     >
-      {/* Icon + tag row */}
       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between" }}>
         <div style={{
-          width: 40, height: 40, borderRadius: 10,
-          background: hov ? (tool.accentBg ?? "#f9fafb") : "#f9fafb",
+          width: 44, height: 44, borderRadius: 11,
+          background: hov ? (tool.iconBg ?? "#f3f4f6") : (tool.iconBg ?? "#f9fafb"),
           border: "1px solid #e5e7eb",
           display: "flex", alignItems: "center", justifyContent: "center",
           color: tool.tagColor ?? "#374151",
           transition: "background 0.15s",
+          flexShrink: 0,
         }}>
           {tool.icon}
         </div>
@@ -324,27 +407,28 @@ function ToolCard({ tool, onNavigate }: { tool: Tool; onNavigate: (id: string) =
           <span style={{
             fontSize: 10, fontWeight: 700,
             padding: "2px 7px", borderRadius: 5,
-            background: (tool.tagColor ?? "#2563eb") + "15",
+            background: (tool.tagColor ?? "#2563eb") + "18",
             color: tool.tagColor ?? "#2563eb",
           }}>
             {tool.tag}
           </span>
         )}
       </div>
-
-      {/* Text */}
       <div>
-        <div style={{ fontSize: 14, fontWeight: 700, color: "#111827", marginBottom: 4 }}>{tool.label}</div>
-        <div style={{ fontSize: 12, color: "#6b7280", lineHeight: 1.55 }}>{tool.desc}</div>
+        <div style={{ fontSize: 14.5, fontWeight: 700, color: "#111827", marginBottom: 4, lineHeight: 1.3 }}>
+          {tool.label}
+        </div>
+        <div style={{ fontSize: 12.5, color: "#6b7280", lineHeight: 1.55 }}>
+          {tool.desc}
+        </div>
       </div>
-
-      {/* CTA */}
       <div style={{
-        display: "flex", alignItems: "center", gap: 5, marginTop: "auto",
-        fontSize: 12, fontWeight: 600, color: hov ? "#2563eb" : "#9ca3af",
+        display: "flex", alignItems: "center", gap: 5,
+        fontSize: 12.5, fontWeight: 600,
+        color: hov ? "#2563eb" : "#9ca3af",
         transition: "color 0.15s",
       }}>
-        Buka <ArrowUpRight size={13} />
+        Buka <ArrowRight size={13} />
       </div>
     </button>
   );
@@ -353,14 +437,10 @@ function ToolCard({ tool, onNavigate }: { tool: Tool; onNavigate: (id: string) =
 /* ─── Admin Card ────────────────────────────────────────────────────────────── */
 function AdminCard({ tool, onNavigate }: { tool: Tool; onNavigate: (id: string) => void }) {
   return (
-    <button
-      type="button"
-      className="db-admin-card"
-      onClick={() => onNavigate(tool.id)}
-    >
+    <button type="button" className="db-admin-card" onClick={() => onNavigate(tool.id)}>
       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
         <div style={{
-          width: 30, height: 30, borderRadius: 7,
+          width: 32, height: 32, borderRadius: 8, flexShrink: 0,
           background: (tool.tagColor ?? "#dc2626") + "12",
           border: "1px solid " + (tool.tagColor ?? "#dc2626") + "25",
           display: "flex", alignItems: "center", justifyContent: "center",
@@ -368,9 +448,13 @@ function AdminCard({ tool, onNavigate }: { tool: Tool; onNavigate: (id: string) 
         }}>
           {tool.icon}
         </div>
-        <span style={{ fontSize: 13, fontWeight: 600, color: "#111827" }}>{tool.label}</span>
+        <span style={{ fontSize: 13, fontWeight: 600, color: "#111827", textAlign: "left" }}>
+          {tool.label}
+        </span>
       </div>
-      <div style={{ fontSize: 11.5, color: "#6b7280", lineHeight: 1.5 }}>{tool.desc}</div>
+      <div style={{ fontSize: 11.5, color: "#6b7280", lineHeight: 1.5, textAlign: "left" }}>
+        {tool.desc}
+      </div>
     </button>
   );
 }
