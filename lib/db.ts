@@ -658,6 +658,10 @@ export async function flushJobBufferToHistory(
       await redis.ltrim(key, 0, 99);
       await redis.expire(key, 86400 * 90);
     }
+
+    // Hapus buffer dari Redis agar tidak re-appear setelah user hapus history
+    await redis.del(bufferKey);
+    await redis.del(metaKey);
   } catch (err) {
     console.error("flushJobBufferToHistory error:", err);
   }
@@ -671,7 +675,7 @@ export async function syncJobToUserHistory(
 ): Promise<void> {
   try {
     const key = `history:metadata:${userId}`;
-    const raw = await redis.lrange(key, 0, 49);
+    const raw = await redis.lrange(key, 0, -1);
     let foundIdx = -1;
     let entries: MetadataHistoryEntry[] = [];
 
@@ -764,6 +768,10 @@ export async function deleteUserMetadataHistory(
       await redis.lpush(key, JSON.stringify(filtered[i]));
     }
     await redis.expire(key, 86400 * 90);
+
+    // Hapus buffer terkait entry yang dihapus agar tidak re-appear saat refresh
+    await redis.del(`job-buffer:${userId}:${entryId}`);
+    await redis.del(`job-meta:${userId}:${entryId}`);
   } catch (err) {
     console.error("deleteUserMetadataHistory error:", err);
   }

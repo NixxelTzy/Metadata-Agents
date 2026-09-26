@@ -3,7 +3,7 @@ import { verifyToken } from "@/lib/auth";
 import {
   saveMetadataJob,
   getMetadataJob,
-  syncJobToUserHistory,
+  flushJobBufferToHistory,
   recordPhotoProcessing,
   appendPhotoToUserHistory,
   MetadataJob,
@@ -164,9 +164,7 @@ export async function POST(request: NextRequest) {
         updatedJob.updatedAt = new Date().toISOString();
         await saveMetadataJob(updatedJob);
 
-        // ── Save to history on EVERY photo, not just at the end ──────────
-        // This way if user closes browser mid-session, processed photos
-        // are already persisted in history immediately.
+        // ── Atomic per-photo save to buffer (race-condition-proof via Redis Hash) ──
         await appendPhotoToUserHistory(
           payload.userId,
           jobId,
@@ -174,13 +172,8 @@ export async function POST(request: NextRequest) {
           result
         );
 
-        // Sync to user history on EVERY photo so history panel always has up-to-date data!
-        const validResultsSoFar = updatedJob.results.filter(
-          (r): r is MetadataJobItem => !!(r && r.filename && (r.title || r.error))
-        );
-        if (validResultsSoFar.length > 0) {
-          await syncJobToUserHistory(payload.userId, jobId, platform, validResultsSoFar);
-        }
+        // After every photo, flush entire buffer to history list (latest state)
+        await flushJobBufferToHistory(payload.userId, jobId);
       }
 
       // Record processing count on success

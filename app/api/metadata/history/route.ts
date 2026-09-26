@@ -5,6 +5,7 @@ import {
   saveUserMetadataHistory,
   deleteUserMetadataHistory,
   recordPhotoProcessing,
+  flushJobBufferToHistory,
   MetadataHistoryEntry,
 } from "@/lib/db";
 
