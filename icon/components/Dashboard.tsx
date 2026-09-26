@@ -10,7 +10,7 @@ import {
   History, Zap, TrendingUp, ShieldAlert
 } from "lucide-react";
 
-/* ─── Types ─────────────────────────────────────────────────────────────────── */
+/* ─── Types ────────────────────────────────────────────────────────────────── */
 interface Tool {
   id: string;
   icon: React.ReactNode;
@@ -20,7 +20,7 @@ interface Tool {
   tagColor?: string;
 }
 
-/* ─── Data ───────────────────────────────────────────────────────────────────── */
+/* ─── Data ─────────────────────────────────────────────────────────────────── */
 const TOOLS: Tool[] = [
   {
     id: "metadata",
@@ -82,20 +82,14 @@ const ADMIN_TOOLS: Tool[] = [
   { id: "giveaway",       icon: <Gift size={15} strokeWidth={2} />,         label: "Giveaway",         desc: "Platform giveaway otomatis." },
 ];
 
-const STATS = [
-  { icon: <Zap size={14} />,         label: "AI Engine",   value: "Groq 120B",      color: "#2563eb" },
-  { icon: <Shield size={14} />,      label: "Platform",    value: "3 Microstock",   color: "#059669" },
-  { icon: <TrendingUp size={14} />,  label: "Output",      value: "CSV Ready",      color: "#d97706" },
-  { icon: <Clock size={14} />,       label: "Speed",       value: "~15s / foto",    color: "#7c3aed" },
-];
-
-/* ─── Component ──────────────────────────────────────────────────────────────── */
+/* ─── Props ────────────────────────────────────────────────────────────────── */
 interface Props {
   onNavigate: (tab: string) => void;
   username?: string;
   isAdmin?: boolean;
 }
 
+/* ─── Dashboard ────────────────────────────────────────────────────────────── */
 export default function Dashboard({ onNavigate, username, isAdmin = false }: Props) {
   const [todayPhotos, setTodayPhotos] = useState(0);
 
@@ -107,196 +101,250 @@ export default function Dashboard({ onNavigate, username, isAdmin = false }: Pro
   }, []);
 
   const hour = new Date().getHours();
-  const greeting = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
+  const greeting = hour < 12 ? "Selamat pagi" : hour < 17 ? "Selamat siang" : "Selamat malam";
 
   return (
-    <div style={{ maxWidth: 900, margin: "0 auto", padding: "40px 24px 100px", fontFamily: "inherit" }}>
-
-      {/* ── Wordmark ─────────────────────────────────────────────────── */}
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 48, flexWrap: "wrap", gap: 12 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <div style={{ width: 28, height: 28, background: "#111827", borderRadius: 7, display: "flex", alignItems: "center", justifyContent: "center" }}>
-            <Layers size={15} color="#fff" strokeWidth={2.2} />
-          </div>
-          <span style={{ fontSize: 14, fontWeight: 700, color: "#111827", letterSpacing: "-0.01em" }}>Stock AI Studio</span>
-        </div>
-
-        <button
-          type="button"
-          onClick={() => onNavigate("leaderboard")}
-          style={{
-            display: "inline-flex", alignItems: "center", gap: 6,
-            padding: "5px 12px", borderRadius: 6,
-            border: "1px solid #d1fae5", background: "#ecfdf5",
-            cursor: "pointer", fontSize: 12, fontWeight: 600, color: "#065f46",
-          }}
-        >
-          <Flame size={12} color="#059669" />
-          {todayPhotos.toLocaleString("id-ID")} foto hari ini
-          <ChevronRight size={11} color="#059669" />
-        </button>
-      </div>
+    <div style={{
+      maxWidth: 780,
+      margin: "0 auto",
+      padding: "32px 20px 80px",
+      fontFamily: "inherit",
+    }}>
 
       {/* ── Greeting ─────────────────────────────────────────────────── */}
-      <div style={{ marginBottom: 40 }}>
-        <h1 style={{ fontSize: "clamp(26px, 4vw, 36px)", fontWeight: 700, color: "#111827", margin: "0 0 10px", letterSpacing: "-0.03em", lineHeight: 1.1 }}>
-          {greeting},{" "}
-          <span style={{ color: "#2563eb" }}>{username ?? "Kreator"}</span>
-          {isAdmin && (
-            <span style={{ marginLeft: 8, fontSize: 10, fontWeight: 700, padding: "2px 7px", borderRadius: 4, background: "#fee2e2", color: "#dc2626", verticalAlign: "middle", letterSpacing: "0.05em", textTransform: "uppercase" }}>
-              Admin
-            </span>
-          )}
-        </h1>
-        <p style={{ fontSize: 15, color: "#6b7280", lineHeight: 1.65, margin: 0 }}>
-          Pilih tool yang ingin digunakan di bawah ini.
-        </p>
-      </div>
-
-      {/* ── Stats strip ──────────────────────────────────────────────── */}
-      <div style={{ display: "flex", gap: 0, marginBottom: 48, border: "1px solid #e5e7eb", borderRadius: 10, overflow: "hidden" }}>
-        {STATS.map((s, i) => (
-          <div key={s.label} style={{
-            flex: 1, padding: "14px 16px",
-            borderRight: i < STATS.length - 1 ? "1px solid #e5e7eb" : "none",
-            background: "#fff",
+      <div style={{ marginBottom: 32 }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 10, marginBottom: 14 }}>
+          <h1 style={{
+            fontSize: "clamp(22px, 3.5vw, 28px)",
+            fontWeight: 700,
+            color: "#111827",
+            margin: 0,
+            letterSpacing: "-0.025em",
+            lineHeight: 1.2,
           }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 5, color: s.color, marginBottom: 4 }}>
-              {s.icon}
-              <span style={{ fontSize: 10, fontWeight: 600, color: "#9ca3af", textTransform: "uppercase", letterSpacing: "0.05em" }}>{s.label}</span>
-            </div>
-            <div style={{ fontSize: 13.5, fontWeight: 700, color: "#111827" }}>{s.value}</div>
-          </div>
-        ))}
-      </div>
+            {greeting},{" "}
+            <span style={{ color: "#2563eb" }}>{username ?? "Kreator"}</span>
+            {isAdmin && (
+              <span style={{
+                marginLeft: 8,
+                fontSize: 10,
+                fontWeight: 700,
+                padding: "2px 7px",
+                borderRadius: 4,
+                background: "#fee2e2",
+                color: "#dc2626",
+                verticalAlign: "middle",
+                letterSpacing: "0.05em",
+                textTransform: "uppercase",
+              }}>
+                Admin
+              </span>
+            )}
+          </h1>
 
-      {/* ── Quick actions ─────────────────────────────────────────────── */}
-      <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 48 }}>
-        {[
-          { id: "metadata",    label: "Metadata AI",    icon: <Tag size={13} />,      primary: true  },
-          { id: "history",     label: "Riwayat",        icon: <History size={13} />,  primary: false },
-          { id: "upscale",     label: "Upscaler",       icon: <ZoomIn size={13} />,   primary: false },
-          { id: "google-flow", label: "Google Flow",    icon: <Sparkles size={13} />, primary: false },
-        ].map(b => (
-          <button key={b.id} type="button" onClick={() => onNavigate(b.id)} style={{
-            display: "inline-flex", alignItems: "center", gap: 6,
-            padding: "8px 16px", borderRadius: 7,
-            border: b.primary ? "none" : "1px solid #e5e7eb",
-            background: b.primary ? "#111827" : "#fff",
-            color: b.primary ? "#fff" : "#374151",
-            fontSize: 13, fontWeight: 600, cursor: "pointer",
-            transition: "opacity 0.15s",
-            fontFamily: "inherit",
-          }}>
-            {b.icon}
-            {b.label}
-          </button>
-        ))}
-        {!isAdmin && (
-          <button type="button"
-            onClick={() => window.dispatchEvent(new CustomEvent("open_premium_pricing_modal"))}
+          {/* Today counter */}
+          <button
+            type="button"
+            onClick={() => onNavigate("leaderboard")}
             style={{
               display: "inline-flex", alignItems: "center", gap: 6,
-              padding: "8px 16px", borderRadius: 7,
-              border: "1px solid #fde68a", background: "#fefce8",
-              color: "#92400e", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit",
-            }}>
-            <Crown size={13} color="#d97706" />
-            Premium
+              padding: "6px 12px", borderRadius: 20,
+              border: "1px solid #d1fae5", background: "#ecfdf5",
+              cursor: "pointer", fontSize: 12, fontWeight: 600, color: "#065f46",
+              fontFamily: "inherit",
+            }}
+          >
+            <Flame size={12} color="#059669" />
+            {todayPhotos.toLocaleString("id-ID")} foto hari ini
+            <ChevronRight size={11} color="#059669" />
           </button>
-        )}
+        </div>
+
+        <p style={{ fontSize: 14, color: "#6b7280", lineHeight: 1.6, margin: "0 0 20px" }}>
+          Pilih tool yang ingin digunakan. Hasil proses tersimpan otomatis di cloud.
+        </p>
+
+        {/* Quick action pills */}
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <button type="button" onClick={() => onNavigate("metadata")}
+            style={btnStyle(true)}>
+            <Tag size={13} />
+            Metadata AI
+          </button>
+          <button type="button" onClick={() => onNavigate("upscale")}
+            style={btnStyle()}>
+            <ZoomIn size={13} color="#7c3aed" />
+            AI Upscaler
+          </button>
+          <button type="button" onClick={() => onNavigate("history")}
+            style={btnStyle()}>
+            <History size={13} color="#059669" />
+            Riwayat
+          </button>
+          <button type="button" onClick={() => onNavigate("google-flow")}
+            style={{ ...btnStyle(), background: "#faf5ff", color: "#5b21b6", borderColor: "#e9d5ff" }}>
+            <Sparkles size={13} />
+            Google Flow
+          </button>
+          {!isAdmin && (
+            <button type="button"
+              onClick={() => window.dispatchEvent(new CustomEvent("open_premium_pricing_modal"))}
+              style={{ ...btnStyle(), background: "#fefce8", color: "#92400e", borderColor: "#fde68a" }}>
+              <Crown size={13} color="#d97706" />
+              Premium
+            </button>
+          )}
+        </div>
       </div>
 
-      {/* ── Tools section ─────────────────────────────────────────────── */}
-      <div style={{ marginBottom: 56 }}>
-        <div style={{ fontSize: 11, fontWeight: 600, color: "#9ca3af", letterSpacing: "0.07em", textTransform: "uppercase", marginBottom: 16 }}>
-          Creator Tools
-        </div>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: 1, border: "1px solid #e5e7eb", borderRadius: 12, overflow: "hidden" }}>
-          {TOOLS.map((t, i) => (
-            <ToolRow key={t.id} tool={t} onNavigate={onNavigate} hasBorder={i < TOOLS.length} />
-          ))}
-        </div>
+      {/* ── Stats bar ────────────────────────────────────────────────── */}
+      <div style={{
+        display: "grid",
+        gridTemplateColumns: "repeat(4, 1fr)",
+        border: "1px solid #e5e7eb",
+        borderRadius: 10,
+        overflow: "hidden",
+        marginBottom: 36,
+      }}>
+        {[
+          { icon: <Zap size={13} color="#2563eb" />,        label: "AI Engine", value: "Groq 120B" },
+          { icon: <Shield size={13} color="#059669" />,      label: "Platform",  value: "3 Microstock" },
+          { icon: <TrendingUp size={13} color="#d97706" />,  label: "Output",    value: "CSV Ready" },
+          { icon: <Clock size={13} color="#7c3aed" />,       label: "Speed",     value: "~15s / foto" },
+        ].map((s, i, arr) => (
+          <div key={s.label} style={{
+            padding: "12px 14px",
+            background: "#fff",
+            borderRight: i < arr.length - 1 ? "1px solid #e5e7eb" : "none",
+          }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 5, marginBottom: 4 }}>
+              {s.icon}
+              <span style={{ fontSize: 10, fontWeight: 600, color: "#9ca3af", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                {s.label}
+              </span>
+            </div>
+            <div style={{ fontSize: 13, fontWeight: 700, color: "#111827" }}>{s.value}</div>
+          </div>
+        ))}
       </div>
 
-      {/* ── Admin section ────────────────────────────────────────────── */}
+      {/* ── Creator Tools ─────────────────────────────────────────────── */}
+      <div style={{ marginBottom: isAdmin ? 40 : 0 }}>
+        <SectionLabel>Creator Tools</SectionLabel>
+        <ToolList tools={TOOLS} onNavigate={onNavigate} />
+      </div>
+
+      {/* ── Admin Tools ──────────────────────────────────────────────── */}
       {isAdmin && (
         <div>
-          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 14 }}>
             <ShieldAlert size={13} color="#dc2626" />
-            <span style={{ fontSize: 11, fontWeight: 600, color: "#dc2626", letterSpacing: "0.07em", textTransform: "uppercase" }}>
-              Admin Panel
-            </span>
+            <SectionLabel color="#dc2626">Admin Panel</SectionLabel>
           </div>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))", gap: 1, border: "1px solid #fee2e2", borderRadius: 12, overflow: "hidden" }}>
-            {ADMIN_TOOLS.map(t => (
-              <ToolRow key={t.id} tool={t} onNavigate={onNavigate} admin />
-            ))}
-          </div>
+          <ToolList tools={ADMIN_TOOLS} onNavigate={onNavigate} admin />
         </div>
       )}
 
-      {/* ── Footer tip ───────────────────────────────────────────────── */}
-      <div style={{ marginTop: 56, display: "flex", alignItems: "center", gap: 10 }}>
-        <FileText size={13} color="#9ca3af" />
+      {/* ── Footer ───────────────────────────────────────────────────── */}
+      <div style={{ marginTop: 40, display: "flex", alignItems: "center", gap: 8 }}>
+        <FileText size={12} color="#9ca3af" />
         <p style={{ fontSize: 12, color: "#9ca3af", margin: 0 }}>
-          Gunakan tombol <strong style={{ color: "#374151" }}>← Kembali</strong> di bagian atas untuk kembali ke dashboard kapan saja.
+          Gunakan tombol <strong style={{ color: "#6b7280" }}>← Dashboard</strong> di header untuk kembali kapan saja.
         </p>
       </div>
     </div>
   );
 }
 
-/* ─── Tool Row Component ─────────────────────────────────────────────────────── */
+/* ─── Helper: button style ─────────────────────────────────────────────────── */
+function btnStyle(primary = false): React.CSSProperties {
+  return {
+    display: "inline-flex", alignItems: "center", gap: 6,
+    padding: "7px 14px", borderRadius: 7,
+    border: primary ? "none" : "1px solid #e5e7eb",
+    background: primary ? "#111827" : "#ffffff",
+    color: primary ? "#fff" : "#374151",
+    fontSize: 12.5, fontWeight: 600, cursor: "pointer",
+    fontFamily: "inherit", whiteSpace: "nowrap" as const,
+  };
+}
+
+/* ─── Section label ────────────────────────────────────────────────────────── */
+function SectionLabel({ children, color = "#9ca3af" }: { children: React.ReactNode; color?: string }) {
+  return (
+    <div style={{
+      fontSize: 10.5, fontWeight: 700, color,
+      letterSpacing: "0.07em", textTransform: "uppercase" as const,
+      marginBottom: 12,
+    }}>
+      {children}
+    </div>
+  );
+}
+
+/* ─── Tool list ────────────────────────────────────────────────────────────── */
+function ToolList({ tools, onNavigate, admin = false }: { tools: Tool[]; onNavigate: (id: string) => void; admin?: boolean }) {
+  return (
+    <div style={{
+      border: "1px solid " + (admin ? "#fee2e2" : "#e5e7eb"),
+      borderRadius: 12,
+      overflow: "hidden",
+    }}>
+      {tools.map((t, i) => (
+        <ToolRow
+          key={t.id}
+          tool={t}
+          onNavigate={onNavigate}
+          admin={admin}
+          isLast={i === tools.length - 1}
+        />
+      ))}
+    </div>
+  );
+}
+
+/* ─── Tool row ─────────────────────────────────────────────────────────────── */
 function ToolRow({
-  tool,
-  onNavigate,
-  admin = false,
-  hasBorder = true,
+  tool, onNavigate, admin = false, isLast = false,
 }: {
   tool: Tool;
   onNavigate: (id: string) => void;
   admin?: boolean;
-  hasBorder?: boolean;
+  isLast?: boolean;
 }) {
-  const [hovered, setHovered] = useState(false);
-
+  const [hov, setHov] = useState(false);
   return (
     <button
       type="button"
       onClick={() => onNavigate(tool.id)}
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
+      onMouseEnter={() => setHov(true)}
+      onMouseLeave={() => setHov(false)}
       style={{
-        display: "flex",
-        alignItems: "center",
-        gap: 14,
-        padding: "16px 20px",
-        background: hovered ? (admin ? "#fff5f5" : "#f9fafb") : "#fff",
+        display: "flex", alignItems: "center", gap: 14,
+        padding: "14px 18px", width: "100%",
+        background: hov ? (admin ? "#fff5f5" : "#f9fafb") : "#ffffff",
         border: "none",
-        cursor: "pointer",
-        textAlign: "left",
-        transition: "background 0.12s",
+        borderBottom: isLast ? "none" : "1px solid " + (admin ? "#fee2e2" : "#f3f4f6"),
+        cursor: "pointer", textAlign: "left",
+        transition: "background 0.1s",
         fontFamily: "inherit",
-        borderBottom: hasBorder ? "1px solid " + (admin ? "#fee2e2" : "#e5e7eb") : "none",
-        width: "100%",
       }}
     >
       {/* Icon */}
       <div style={{
-        width: 34, height: 34, borderRadius: 8, flexShrink: 0,
-        background: hovered ? (admin ? "#fee2e2" : "#f3f4f6") : "#f9fafb",
+        width: 32, height: 32, borderRadius: 8, flexShrink: 0,
+        background: hov ? (admin ? "#fee2e2" : "#f3f4f6") : "#f9fafb",
         border: "1px solid " + (admin ? "#fecaca" : "#e5e7eb"),
         display: "flex", alignItems: "center", justifyContent: "center",
         color: admin ? "#dc2626" : "#374151",
-        transition: "background 0.12s, border-color 0.12s",
+        transition: "background 0.1s",
       }}>
         {tool.icon}
       </div>
 
       {/* Text */}
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 2 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 1 }}>
           <span style={{ fontSize: 13.5, fontWeight: 600, color: "#111827" }}>{tool.label}</span>
           {tool.tag && (
             <span style={{
@@ -304,13 +352,15 @@ function ToolRow({
               padding: "1px 6px", borderRadius: 4,
               background: (tool.tagColor ?? "#2563eb") + "14",
               color: tool.tagColor ?? "#2563eb",
-              letterSpacing: "0.02em",
             }}>
               {tool.tag}
             </span>
           )}
         </div>
-        <div style={{ fontSize: 12, color: "#6b7280", lineHeight: 1.5, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+        <div style={{
+          fontSize: 12, color: "#6b7280", lineHeight: 1.4,
+          overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+        }}>
           {tool.desc}
         </div>
       </div>
@@ -318,8 +368,8 @@ function ToolRow({
       {/* Arrow */}
       <ArrowUpRight
         size={14}
-        color={hovered ? (admin ? "#dc2626" : "#2563eb") : "#d1d5db"}
-        style={{ flexShrink: 0, transition: "color 0.12s" }}
+        color={hov ? (admin ? "#dc2626" : "#2563eb") : "#d1d5db"}
+        style={{ flexShrink: 0, transition: "color 0.1s" }}
       />
     </button>
   );
