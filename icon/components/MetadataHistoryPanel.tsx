@@ -117,7 +117,7 @@ export default function MetadataHistoryPanel({ onNavigate }: { onNavigate?: (tab
   };
 
   return (
-    <div style={{ maxWidth: 1000, margin: "0 auto", padding: "20px 14px 60px", fontFamily: "inherit" }}>
+    <div style={{ maxWidth: "100%", margin: "0", padding: "20px 14px 60px", fontFamily: "inherit" }}>
       {/* ── Header ── */}
       <div style={{ marginBottom: 24, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12 }}>
         <div>

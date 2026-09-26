@@ -95,8 +95,8 @@ export default function ServerShutdownPanel() {
 
   return (
     <div style={{
-      maxWidth: 960,
-      margin: "0 auto",
+      maxWidth: "100%",
+      margin: "0",
       padding: "24px 18px 60px",
       fontFamily: "var(--font)",
     }}>

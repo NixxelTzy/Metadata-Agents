@@ -261,8 +261,8 @@ export default function PremAccessPanel() {
   return (
     <div
       style={{
-        maxWidth: "1280px",
-        margin: "0 auto",
+        maxWidth: "100%",
+        margin: "0",
         padding: "24px 16px",
         fontFamily: "'Inter', system-ui, -apple-system, sans-serif",
         color: "#0f172a",

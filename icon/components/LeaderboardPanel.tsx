@@ -80,7 +80,7 @@ export default function LeaderboardPanel({ onNavigate }: { onNavigate?: (tab: st
   };
 
   return (
-    <div style={{ maxWidth: 1000, margin: "0 auto", padding: "20px 14px 60px", fontFamily: "inherit" }}>
+    <div style={{ maxWidth: "100%", margin: "0", padding: "20px 14px 60px", fontFamily: "inherit" }}>
       {/* ── Top Header ── */}
       <div style={{ marginBottom: 24, textAlign: "center" }}>
         <div style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "5px 14px", borderRadius: 999, background: "rgba(254, 243, 199, 0.8)", border: "1px solid rgba(245, 158, 11, 0.4)", color: "#b45309", fontSize: 11.5, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 10 }}>

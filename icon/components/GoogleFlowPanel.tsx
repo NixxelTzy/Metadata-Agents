@@ -25,8 +25,8 @@ export default function GoogleFlowPanel() {
     <div className="flow-root">
       <style>{`
         .flow-root {
-          max-width: 1000px;
-          margin: 0 auto;
+          max-width: 100%;
+          margin: 0;
           padding: 24px 18px 80px;
           font-family: inherit;
         }

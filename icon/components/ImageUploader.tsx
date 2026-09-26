@@ -843,8 +843,8 @@ export default function ImageUploader({ onTokensUpdated, userEmail, userRole, is
     <div className="uploader-root">
       <style>{`
         .uploader-root {
-          max-width: 1060px;
-          margin: 0 auto;
+          max-width: 100%;
+          margin: 0;
           padding: 24px 20px 60px;
           font-family: var(--font);
         }

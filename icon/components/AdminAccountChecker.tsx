@@ -728,7 +728,7 @@ export default function AdminAccountChecker() {
   const adminCount = (users || []).filter((u) => u && u.role === "admin").length;
 
   return (
-    <div style={{ minHeight: "100%", padding: "24px 20px 60px", maxWidth: 1200, margin: "0 auto", fontFamily: "var(--font)" }}>
+    <div style={{ minHeight: "100%", padding: "24px 20px 60px", maxWidth: "100%", margin: "0", fontFamily: "var(--font)" }}>
       <style>{`
         @keyframes pulse {
           0%, 100% { opacity: 1; box-shadow: 0 0 6px #4ade80; }

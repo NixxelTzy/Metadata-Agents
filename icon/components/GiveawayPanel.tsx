@@ -383,7 +383,7 @@ export default function GiveawayPanel() {
   }, [config.nextDrawAt]);
 
   return (
-    <div style={{ maxWidth: 1100, margin: "0 auto", padding: "20px 16px 80px", fontFamily: "var(--font)" }}>
+    <div style={{ maxWidth: "100%", margin: "0 auto", padding: "20px 16px 80px", fontFamily: "var(--font)" }}>
       <style>{`
         @keyframes pulseGlow {
           0%, 100% { box-shadow: 0 0 15px rgba(34, 197, 94, 0.4); }
