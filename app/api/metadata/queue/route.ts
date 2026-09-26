@@ -18,9 +18,12 @@ export const maxDuration = 60; // Vercel Hobby max = 60s per invocation
 interface QueueImage {
   filename: string;
   dataUrl: string;
+  thumbnailUrl?: string;   // small compressed thumbnail from client (max ~8KB base64)
   visualHints?: string;
   existingPrompt?: string;
 }
+
+/** Thumbnails are generated client-side and sent as thumbnailUrl in QueueImage */
 
 /**
  * POST /api/metadata/queue
@@ -51,7 +54,7 @@ export async function POST(request: NextRequest) {
       mode?: "init" | "process";
       jobId?: string;
       images?: QueueImage[];
-      image?: QueueImage;      // single image for process mode
+      image?: QueueImage;      // single image for process mode (includes thumbnailUrl)
       imageIndex?: number;     // index in the job for process mode
       platform?: "adobe_stock" | "shutterstock" | "magnific";
       complianceGuard?: boolean;
@@ -126,11 +129,16 @@ export async function POST(request: NextRequest) {
           complianceGuard,
           image.existingPrompt
         );
+        // Attach thumbnail from client so history can display the photo
+        if (image.thumbnailUrl) {
+          result.thumbnailUrl = image.thumbnailUrl;
+        }
       } catch (err) {
         result = {
           filename: image.filename,
           title: "",
           keywords: [],
+          thumbnailUrl: image.thumbnailUrl,
           error: err instanceof Error ? err.message : "Gagal memproses gambar",
         };
       }

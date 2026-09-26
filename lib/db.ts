@@ -513,6 +513,7 @@ export interface MetadataJobItem {
   editorial?: string;
   matureContent?: string;
   illustration?: string;
+  thumbnailUrl?: string;   // base64 compressed thumbnail for history display
   error?: string;
 }
 
@@ -580,17 +581,32 @@ export async function appendPhotoToUserHistory(
 ): Promise<void> {
   try {
     const key = `history:metadata:${userId}`;
-    const raw = await redis.lrange(key, 0, 0);
-    let topEntry: MetadataHistoryEntry | null = null;
+
+    // Read all existing entries (up to 100)
+    const raw = await redis.lrange(key, 0, 99);
+    let entries: MetadataHistoryEntry[] = [];
     if (raw && raw.length > 0) {
-      topEntry = typeof raw[0] === "string" ? JSON.parse(raw[0]) : raw[0];
+      entries = raw.map((r) => (typeof r === "string" ? JSON.parse(r) : r) as MetadataHistoryEntry);
     }
 
-    if (topEntry && (topEntry.id === sessionId || topEntry.jobId === sessionId)) {
-      topEntry.items.push(item);
-      topEntry.photoCount = topEntry.items.length;
-      await redis.lset(key, 0, JSON.stringify(topEntry));
+    // Find existing entry for this session
+    const existingIdx = entries.findIndex(
+      (e) => e.id === sessionId || e.jobId === sessionId
+    );
+
+    if (existingIdx !== -1 && entries[existingIdx]) {
+      // Append to existing entry
+      const existing = entries[existingIdx]!;
+      // Avoid duplicate filenames
+      const alreadyExists = existing.items.some((i) => i.filename === item.filename);
+      if (!alreadyExists) {
+        existing.items.push(item);
+        existing.photoCount = existing.items.length;
+        // Update the entry in Redis using lset
+        await redis.lset(key, existingIdx, JSON.stringify(existing));
+      }
     } else {
+      // Create new entry for this session
       const newEntry: MetadataHistoryEntry = {
         id: sessionId,
         jobId: sessionId,
@@ -600,7 +616,7 @@ export async function appendPhotoToUserHistory(
         items: [item],
       };
       await redis.lpush(key, JSON.stringify(newEntry));
-      await redis.ltrim(key, 0, 49);
+      await redis.ltrim(key, 0, 99);
       await redis.expire(key, 86400 * 90);
     }
   } catch (err) {

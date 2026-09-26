@@ -16,6 +16,7 @@ interface MetadataJobItem {
   editorial?: string;
   matureContent?: string;
   illustration?: string;
+  thumbnailUrl?: string;
   error?: string;
 }
 
@@ -230,13 +231,32 @@ export default function MetadataHistoryPanel({ onNavigate }: { onNavigate?: (tab
                   }}
                 >
                   <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                    <div style={{
-                      width: 40, height: 40, borderRadius: 12,
-                      background: entry.platform === "shutterstock" ? "linear-gradient(135deg, #ef4444, #b91c1c)" : entry.platform === "magnific" ? "linear-gradient(135deg, #8b5cf6, #6d28d9)" : "linear-gradient(135deg, #3b82f6, #1d4ed8)",
-                      display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontWeight: 900, fontSize: 13, flexShrink: 0
-                    }}>
-                      {entry.platform === "shutterstock" ? "Ss" : entry.platform === "magnific" ? "Mg" : "As"}
+                    {/* Thumbnail strip — first 5 photos */}
+                    <div style={{ display: "flex", gap: 3, flexShrink: 0 }}>
+                      {entry.items.slice(0, 5).map((item, ti) => (
+                        <div key={ti} style={{
+                          width: 36, height: 36, borderRadius: 8, overflow: "hidden",
+                          border: "1px solid rgba(147, 197, 253, 0.5)",
+                          background: "rgba(219, 234, 254, 0.4)",
+                          flexShrink: 0,
+                        }}>
+                          {item.thumbnailUrl && item.thumbnailUrl.startsWith("data:image") ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img src={item.thumbnailUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                          ) : (
+                            <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                              <Layers size={14} color="#93c5fd" />
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                      {entry.items.length > 5 && (
+                        <div style={{ width: 36, height: 36, borderRadius: 8, background: "rgba(219, 234, 254, 0.6)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, fontWeight: 800, color: "#1e40af", border: "1px solid rgba(147, 197, 253, 0.5)" }}>
+                          +{entry.items.length - 5}
+                        </div>
+                      )}
                     </div>
+
                     <div>
                       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                         <span style={{ fontSize: 14, fontWeight: 800, color: "#0f172a" }}>
@@ -292,43 +312,81 @@ export default function MetadataHistoryPanel({ onNavigate }: { onNavigate?: (tab
                             border: "1px solid rgba(147, 197, 253, 0.5)",
                             borderRadius: 12,
                             display: "flex",
-                            flexDirection: "column",
-                            gap: 8
+                            gap: 14,
+                            alignItems: "flex-start",
                           }}
                         >
-                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
-                            <div style={{ fontSize: 12.5, fontWeight: 800, color: "#0f172a" }}>
-                              {item.filename || `File #${itemIdx + 1}`}
-                            </div>
-                            <button
-                              type="button"
-                              onClick={() => copyMeta(item.title || "", item.keywords || [], copyKey)}
-                              style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "4px 10px", borderRadius: 6, border: "1px solid rgba(147, 197, 253, 0.6)", background: isCopied ? "rgba(220, 252, 231, 0.9)" : "rgba(219, 234, 254, 0.7)", color: isCopied ? "#15803d" : "#1e40af", fontSize: 11, fontWeight: 700, cursor: "pointer" }}
-                            >
-                              {isCopied ? <Check size={12} /> : <Copy size={12} />}
-                              <span>{isCopied ? "Tersalin!" : "Salin Meta"}</span>
-                            </button>
+                          {/* Thumbnail */}
+                          <div style={{
+                            width: 72, height: 72, borderRadius: 10, overflow: "hidden",
+                            flexShrink: 0, background: "rgba(219, 234, 254, 0.4)",
+                            border: "1px solid rgba(147, 197, 253, 0.4)",
+                            display: "flex", alignItems: "center", justifyContent: "center",
+                          }}>
+                            {item.thumbnailUrl && item.thumbnailUrl.startsWith("data:image") ? (
+                              // eslint-disable-next-line @next/next/no-img-element
+                              <img
+                                src={item.thumbnailUrl}
+                                alt={item.filename}
+                                style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                              />
+                            ) : (
+                              <div style={{ fontSize: 10, color: "#94a3b8", textAlign: "center", padding: 4, lineHeight: 1.3 }}>
+                                {item.filename.slice(0, 12)}
+                              </div>
+                            )}
                           </div>
 
-                          <div style={{ fontSize: 12.5, color: "#1e293b", fontWeight: 600 }}>
-                            <span style={{ color: "#64748b", fontWeight: 700 }}>Title: </span>
-                            {item.title}
-                          </div>
-
-                          {item.keywords && item.keywords.length > 0 && (
-                            <div>
-                              <div style={{ fontSize: 11, color: "#64748b", fontWeight: 700, marginBottom: 4 }}>
-                                Keywords ({item.keywords.length}):
+                          {/* Content */}
+                          <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 8 }}>
+                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 8 }}>
+                              <div style={{ fontSize: 12, fontWeight: 800, color: "#0f172a", wordBreak: "break-all" }}>
+                                {item.filename || `File #${itemIdx + 1}`}
                               </div>
-                              <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
-                                {item.keywords.map((kw, kwIdx) => (
-                                  <span key={kwIdx} style={{ fontSize: 10, padding: "2px 7px", borderRadius: 999, background: "rgba(219, 234, 254, 0.7)", color: "#1e40af", fontWeight: 600 }}>
-                                    {kw}
-                                  </span>
-                                ))}
-                              </div>
+                              <button
+                                type="button"
+                                onClick={() => copyMeta(item.title || "", item.keywords || [], copyKey)}
+                                style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "4px 10px", borderRadius: 6, border: "1px solid rgba(147, 197, 253, 0.6)", background: isCopied ? "rgba(220, 252, 231, 0.9)" : "rgba(219, 234, 254, 0.7)", color: isCopied ? "#15803d" : "#1e40af", fontSize: 11, fontWeight: 700, cursor: "pointer", flexShrink: 0 }}
+                              >
+                                {isCopied ? <Check size={12} /> : <Copy size={12} />}
+                                <span>{isCopied ? "Tersalin!" : "Salin Meta"}</span>
+                              </button>
                             </div>
-                          )}
+
+                            {item.error ? (
+                              <div style={{ fontSize: 11.5, color: "#dc2626", fontWeight: 600, display: "flex", alignItems: "center", gap: 5 }}>
+                                <AlertCircle size={13} />
+                                <span>Error: {item.error}</span>
+                              </div>
+                            ) : (
+                              <>
+                                <div style={{ fontSize: 12.5, color: "#1e293b", fontWeight: 600, lineHeight: 1.4 }}>
+                                  <span style={{ color: "#64748b", fontWeight: 700 }}>Title: </span>
+                                  {item.title}
+                                </div>
+
+                                {item.keywords && item.keywords.length > 0 && (
+                                  <div>
+                                    <div style={{ fontSize: 11, color: "#64748b", fontWeight: 700, marginBottom: 4 }}>
+                                      Keywords ({item.keywords.length}):
+                                    </div>
+                                    <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
+                                      {item.keywords.slice(0, 20).map((kw, kwIdx) => (
+                                        <span key={kwIdx} style={{ fontSize: 10, padding: "2px 7px", borderRadius: 999, background: "rgba(219, 234, 254, 0.7)", color: "#1e40af", fontWeight: 600 }}>
+                                          {kw}
+                                        </span>
+                                      ))}
+                                      {item.keywords.length > 20 && (
+                                        <span style={{ fontSize: 10, padding: "2px 7px", borderRadius: 999, background: "rgba(241, 245, 249, 0.9)", color: "#64748b", fontWeight: 600 }}>
+                                          +{item.keywords.length - 20} lagi
+                                        </span>
+                                      )}
+                                    </div>
+                                  </div>
+                                )}
+                              </>
+                            )}
+                          </div>
                         </div>
                       );
                     })}

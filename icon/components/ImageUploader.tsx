@@ -308,6 +308,34 @@ export default function ImageUploader({ onTokensUpdated, userEmail, userRole, is
 
   const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
 
+  /** Generate a tiny compressed thumbnail (max 120px, ~5-8KB base64) using canvas */
+  const generateThumbnail = (dataUrl: string): Promise<string> =>
+    new Promise((resolve) => {
+      try {
+        const img = new window.Image();
+        img.onload = () => {
+          const MAX = 120;
+          const scale = Math.min(MAX / img.width, MAX / img.height, 1);
+          const w = Math.round(img.width * scale);
+          const h = Math.round(img.height * scale);
+          const canvas = document.createElement("canvas");
+          canvas.width = w;
+          canvas.height = h;
+          const ctx = canvas.getContext("2d");
+          if (ctx) {
+            ctx.drawImage(img, 0, 0, w, h);
+            resolve(canvas.toDataURL("image/jpeg", 0.6));
+          } else {
+            resolve(dataUrl.slice(0, 300));
+          }
+        };
+        img.onerror = () => resolve(dataUrl.slice(0, 300));
+        img.src = dataUrl;
+      } catch {
+        resolve(dataUrl.slice(0, 300));
+      }
+    });
+
   // Helper to detect rate-limit error result
   const response_was_ratelimit = (r: MetadataResult | null) =>
     r?.error?.includes("429") || r?.error?.includes("rate limit") || r?.error?.includes("Rate limit");
@@ -498,16 +526,19 @@ export default function ImageUploader({ onTokensUpdated, userEmail, userRole, is
     setError("");
     setResults([]);
 
-    const queueImages = images.map((img) => ({
+    // Generate thumbnails for all images upfront (done client-side via canvas)
+    setProgress(`Menyiapkan ${images.length} file...`);
+    const queueImages = await Promise.all(images.map(async (img) => ({
       filename: img.file.name,
       dataUrl: img.preview,
+      thumbnailUrl: await generateThumbnail(img.preview),
       visualHints: [
         img.visualHints,
         img.customHints ? `User hints: ${img.customHints}` : "",
         magnificPrompts[img.id] ? `Existing prompt: ${magnificPrompts[img.id]}` : ""
       ].filter(Boolean).join(" | "),
       existingPrompt: magnificPrompts[img.id] || undefined,
-    }));
+    })));
 
     try {
       // ── STEP 1: Init job slot in Redis ────────────────────────────────
