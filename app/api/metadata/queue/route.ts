@@ -5,6 +5,7 @@ import {
   getMetadataJob,
   syncJobToUserHistory,
   recordPhotoProcessing,
+  appendPhotoToUserHistory,
   MetadataJob,
   MetadataJobItem,
 } from "@/lib/db";
@@ -155,10 +156,20 @@ export async function POST(request: NextRequest) {
         updatedJob.updatedAt = new Date().toISOString();
         await saveMetadataJob(updatedJob);
 
-        // Sync to history when complete
+        // ── Save to history on EVERY photo, not just at the end ──────────
+        // This way if user closes browser mid-session, processed photos
+        // are already persisted in history.
+        await appendPhotoToUserHistory(
+          payload.userId,
+          jobId,
+          platform,
+          result
+        );
+
+        // Sync full job to history when all photos are complete
         if (updatedJob.status === "completed") {
           const finalResults = updatedJob.results.filter(
-            (r): r is MetadataJobItem => r && r.filename !== ""
+            (r): r is MetadataJobItem => !!(r && r.filename)
           );
           await syncJobToUserHistory(payload.userId, jobId, platform, finalResults);
         }

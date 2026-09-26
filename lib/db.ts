@@ -586,13 +586,14 @@ export async function appendPhotoToUserHistory(
       topEntry = typeof raw[0] === "string" ? JSON.parse(raw[0]) : raw[0];
     }
 
-    if (topEntry && topEntry.id === sessionId) {
+    if (topEntry && (topEntry.id === sessionId || topEntry.jobId === sessionId)) {
       topEntry.items.push(item);
       topEntry.photoCount = topEntry.items.length;
       await redis.lset(key, 0, JSON.stringify(topEntry));
     } else {
       const newEntry: MetadataHistoryEntry = {
         id: sessionId,
+        jobId: sessionId,
         platform,
         photoCount: 1,
         createdAt: new Date().toISOString(),
