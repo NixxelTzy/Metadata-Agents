@@ -182,15 +182,24 @@ export default function ImageUploader({ onTokensUpdated, userEmail, userRole, is
   useEffect(() => {
     try {
       // On mount: clear any orphaned job from previous session.
-      // Results are stored in server history — user accesses them from there.
       localStorage.removeItem("active_metadata_job_id");
     } catch {}
 
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (loading) {
+        e.preventDefault();
+        e.returnValue = "Proses metadata AI sedang berjalan. Jika Anda me-refresh atau menutup tab, proses akan terhenti.";
+        return e.returnValue;
+      }
+    };
+    window.addEventListener("beforeunload", handleBeforeUnload);
+
     return () => {
+      window.removeEventListener("beforeunload", handleBeforeUnload);
       if (pollingIntervalRef.current) clearInterval(pollingIntervalRef.current);
       if (pollingTimeoutRef.current) clearTimeout(pollingTimeoutRef.current);
     };
-  }, [pollJobProgress]);
+  }, [loading, pollJobProgress]);
 
   const handleGlobalModelChange = (model: string) => {
     setGlobalMagnificModel(model);
@@ -549,21 +558,20 @@ export default function ImageUploader({ onTokensUpdated, userEmail, userRole, is
         body: JSON.stringify({
           mode: "init",
           jobId,
-          images: queueImages,
+          images: queueImages.map((img) => ({ filename: img.filename })),
           platform,
           complianceGuard,
         }),
       });
       if (!initRes.ok) {
         const errData = await initRes.json().catch(() => ({}));
-        throw new Error(errData.error || `Gagal mendaftarkan job (${initRes.status})`);
+        throw new Error(errData.error || `Gagal mendaftarkan antrian (${initRes.status})`);
       }
 
       setProgress(`⚡ AI Memproses 0/${images.length} file (0%)...`);
 
       // ── STEP 2: Process each image sequentially (1 per API call) ──────
-      // Each call fits within Vercel 60s limit.
-      // We track results locally AND in Redis via the server.
+      // Each call fits within Vercel 60s limit and updates history immediately.
       const localResults: MetadataResult[] = new Array(images.length).fill(null);
 
       for (let i = 0; i < queueImages.length; i++) {
@@ -571,44 +579,67 @@ export default function ImageUploader({ onTokensUpdated, userEmail, userRole, is
         const activeId = localStorage.getItem("active_metadata_job_id");
         if (!activeId || activeId !== jobId) break;
 
-        setProgress(`⚡ AI Memproses ${i}/${images.length} file (${Math.round((i / images.length) * 100)}%)...`);
+        const currentPct = Math.round((i / images.length) * 100);
+        setProgress(`⚡ AI Memproses ${i + 1}/${images.length} file (${currentPct}%)...`);
 
-        try {
-          const processRes = await fetch("/api/metadata/queue", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              mode: "process",
-              jobId,
-              image: queueImages[i],
-              imageIndex: i,
-              platform,
-              complianceGuard,
-            }),
-          });
+        let processResult: MetadataResult | null = null;
+        let lastErrorMsg = "";
 
-          if (processRes.ok) {
-            const processData = await processRes.json();
-            if (processData.result) {
-              localResults[i] = processData.result as MetadataResult;
-              // Update results incrementally so user sees progress
-              setResults([...localResults].filter(Boolean) as MetadataResult[]);
+        // Retry up to 3 attempts with exponential backoff on 429/504
+        for (let attempt = 1; attempt <= 3; attempt++) {
+          try {
+            const processRes = await fetch("/api/metadata/queue", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                mode: "process",
+                jobId,
+                image: queueImages[i],
+                imageIndex: i,
+                platform,
+                complianceGuard,
+              }),
+            });
+
+            if (processRes.ok) {
+              const processData = await processRes.json();
+              if (processData.result) {
+                processResult = processData.result as MetadataResult;
+                break;
+              }
+            } else {
+              const errData = await processRes.json().catch(() => ({}));
+              lastErrorMsg = errData.error || `Server status ${processRes.status}`;
+              if (attempt < 3 && (processRes.status === 429 || processRes.status >= 500)) {
+                setProgress(`⏳ Menunggu antrian AI untuk foto ${i + 1}/${images.length} (retrying ${attempt}/2)...`);
+                await new Promise((r) => setTimeout(r, 2000 * attempt));
+              }
+            }
+          } catch (netErr) {
+            lastErrorMsg = netErr instanceof Error ? netErr.message : "Network error";
+            if (attempt < 3) {
+              await new Promise((r) => setTimeout(r, 2000 * attempt));
             }
           }
-        } catch (imgErr) {
-          console.error(`[generate] Error processing image ${i}:`, imgErr);
+        }
+
+        if (processResult) {
+          localResults[i] = processResult;
+        } else {
           localResults[i] = {
             filename: queueImages[i]!.filename,
             title: "",
             keywords: [],
-            error: imgErr instanceof Error ? imgErr.message : "Gagal memproses",
+            error: lastErrorMsg || "Gagal memproses gambar",
           } as MetadataResult;
-          setResults([...localResults].filter(Boolean) as MetadataResult[]);
         }
 
-        // Small pause between images to avoid rate limits
+        // Update results incrementally so user sees progress immediately
+        setResults([...localResults].filter(Boolean) as MetadataResult[]);
+
+        // Small pause between images to avoid Groq rate limits
         if (i < queueImages.length - 1) {
-          await new Promise((r) => setTimeout(r, 400));
+          await new Promise((r) => setTimeout(r, 350));
         }
       }
 

@@ -708,6 +708,22 @@ export async function getUserMetadataHistory(
   limit = 100
 ): Promise<MetadataHistoryEntry[]> {
   try {
+    // Auto-flush semua session buffer yang pending (akibat Vercel timeout di tengah proses)
+    // Dengan ini, foto yang sudah diproses sebelum timeout tetap muncul di history
+    try {
+      const bufferKeys = await redis.keys(`job-buffer:${userId}:*`);
+      if (bufferKeys && bufferKeys.length > 0) {
+        await Promise.all(
+          bufferKeys.map(async (key) => {
+            const sessionId = key.replace(`job-buffer:${userId}:`, "");
+            await flushJobBufferToHistory(userId, sessionId);
+          })
+        );
+      }
+    } catch {
+      // Jangan gagalkan history read kalau auto-flush error
+    }
+
     const key = `history:metadata:${userId}`;
     const raw = await redis.lrange(key, 0, limit - 1);
     if (!raw || raw.length === 0) return [];
@@ -731,6 +747,7 @@ export async function getUserMetadataHistory(
     return [];
   }
 }
+
 
 export async function deleteUserMetadataHistory(
   userId: string,

@@ -683,7 +683,17 @@ export default function Home() {
         )}
 
         {/* ══ MAIN CONTENT ══ */}
-        <main className="app-main" key={activeTab}>
+        <main className="app-main">
+          {/* Keep ImageUploader mounted so background generation is NOT interrupted when switching to History/Dashboard/etc */}
+          <div style={{ display: activeTab === "metadata" ? "block" : "none" }}>
+            <ImageUploader
+              onTokensUpdated={refreshTokens}
+              userEmail={user?.email}
+              userRole={user?.role}
+              isUnlimited={isUnlimited}
+            />
+          </div>
+
           {activeTab === "dashboard" ? (
             <Dashboard onNavigate={(t: string) => handleTabChange(t as Tab)} username={user?.username} isAdmin={isAdmin} />
           ) : !isAdmin && closingMap[activeTab]?.closed ? (
@@ -701,14 +711,7 @@ export default function Home() {
           : activeTab === "history" ? <MetadataHistoryPanel onNavigate={(t: string) => handleTabChange(t as Tab)} />
           : activeTab === "leaderboard" ? <LeaderboardPanel onNavigate={(t: string) => handleTabChange(t as Tab)} />
           : activeTab === "google-flow" ? <GoogleFlowPanel />
-          : activeTab === "metadata" ? (
-            <ImageUploader
-              onTokensUpdated={refreshTokens}
-              userEmail={user?.email}
-              userRole={user?.role}
-              isUnlimited={isUnlimited}
-            />
-          )
+          : activeTab === "metadata" ? null
           : <ImageUpscaler />
           }
         </main>

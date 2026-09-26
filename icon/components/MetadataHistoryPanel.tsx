@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import {
   Clock, Download, Trash2, ChevronDown, ChevronUp, Copy,
-  Check, FileSpreadsheet, Sparkles, Layers, AlertCircle, ArrowRight
+  Check, FileSpreadsheet, Sparkles, Layers, AlertCircle, ArrowRight, RefreshCw
 } from "lucide-react";
 
 interface MetadataJobItem {
@@ -133,29 +133,54 @@ export default function MetadataHistoryPanel({ onNavigate }: { onNavigate?: (tab
           </p>
         </div>
 
-        {onNavigate && (
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <button
             type="button"
-            onClick={() => onNavigate("metadata")}
+            onClick={() => void fetchHistory()}
+            disabled={loading}
             style={{
-              padding: "10px 18px",
+              padding: "10px 14px",
               borderRadius: 12,
-              border: "none",
-              background: "linear-gradient(135deg, #3b82f6, #2563eb)",
-              color: "#fff",
+              border: "1px solid rgba(147, 197, 253, 0.7)",
+              background: "rgba(255, 255, 255, 0.9)",
+              color: "#1e40af",
               fontSize: 13,
-              fontWeight: 800,
-              cursor: "pointer",
+              fontWeight: 700,
+              cursor: loading ? "wait" : "pointer",
               display: "inline-flex",
               alignItems: "center",
               gap: 6,
-              boxShadow: "0 4px 14px rgba(37, 99, 235, 0.3)"
+              boxShadow: "0 2px 8px rgba(0, 0, 0, 0.04)"
             }}
           >
-            <Sparkles size={14} />
-            <span>Proses Foto Baru</span>
+            <RefreshCw size={14} className={loading ? "animate-spin" : ""} />
+            <span>Segarkan</span>
           </button>
-        )}
+
+          {onNavigate && (
+            <button
+              type="button"
+              onClick={() => onNavigate("metadata")}
+              style={{
+                padding: "10px 18px",
+                borderRadius: 12,
+                border: "none",
+                background: "linear-gradient(135deg, #3b82f6, #2563eb)",
+                color: "#fff",
+                fontSize: 13,
+                fontWeight: 800,
+                cursor: "pointer",
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 6,
+                boxShadow: "0 4px 14px rgba(37, 99, 235, 0.3)"
+              }}
+            >
+              <Sparkles size={14} />
+              <span>Proses Foto Baru</span>
+            </button>
+          )}
+        </div>
       </div>
 
       {/* ── History List ── */}

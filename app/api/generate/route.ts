@@ -4,7 +4,7 @@ import { callGroq, type GroqMessage, REASONING_MODEL } from "@/lib/groq";
 import { inspect, getClientIp, recordIpError } from "@/lib/security/core";
 import { validateAndSanitize } from "@/lib/stock-compliance";
 import { verifyToken } from "@/lib/auth";
-import { appendActivityEvent, recordPhotoProcessing } from "@/lib/db";
+import { appendActivityEvent, recordPhotoProcessing, appendPhotoToUserHistory, flushJobBufferToHistory } from "@/lib/db";
 
 export const runtime = "nodejs"; // Required for Redis (security core)
 export const maxDuration = 60; // Vercel Hobby max = 60s
@@ -824,6 +824,14 @@ export async function POST(request: NextRequest) {
     const platform = body.platform === "shutterstock" ? "shutterstock" : body.platform === "magnific" ? "magnific" : "adobe_stock";
     const complianceGuard = body.complianceGuard === true;
 
+    // ── Setup session untuk progressive history save ──
+    // SessionId dibuat sekarang supaya tiap foto bisa langsung disimpan ke buffer Redis
+    // tanpa perlu tunggu semua foto selesai. Kalau Vercel timeout, partial results tetap aman.
+    const authCookieVal = request.cookies.get("auth_token")?.value;
+    const tokenPayload = authCookieVal ? verifyToken(authCookieVal) : null;
+    const activeSessionId = body.sessionId || `hist-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+    let successCount = 0;
+
     for (let i = 0; i < images.length; i++) {
       const image = images[i];
       try {
@@ -836,6 +844,24 @@ export async function POST(request: NextRequest) {
           image!.existingPrompt
         );
         results.push({ ...result, stabilized });
+
+        // ── Simpan ke Redis buffer segera setelah foto ini selesai ──
+        // Ini penting: kalau Vercel timeout di tengah proses, foto yang sudah
+        // selesai tetap tersimpan di buffer dan akan muncul di history.
+        if (tokenPayload && !result.error && result.title) {
+          successCount++;
+          void appendPhotoToUserHistory(tokenPayload.userId, activeSessionId, platform, {
+            filename: result.filename,
+            title: result.title,
+            keywords: result.keywords,
+            categories: result.categories,
+            prompt: result.prompt,
+            model: result.model,
+            editorial: result.editorial,
+            matureContent: result.matureContent,
+            illustration: result.illustration,
+          });
+        }
       } catch (error) {
         results.push({
           filename: image!.filename,
@@ -848,65 +874,33 @@ export async function POST(request: NextRequest) {
       if (stabilized && i < images.length - 1) await sleep(DELAY_BETWEEN_IMAGES_MS);
     }
 
-    // ── Log activity, record photo processing & persist to DB history ──
+    // ── Flush buffer ke history list & catat activity ──
     try {
-      const authCookieVal = request.cookies.get("auth_token")?.value;
-      if (authCookieVal) {
-        const tokenPayload = verifyToken(authCookieVal);
-        if (tokenPayload) {
-          const successResults = results.filter((r) => !r.error && r.title);
-          const successCount = successResults.length;
+      if (tokenPayload && successCount > 0) {
+        // Flush semua foto dari buffer ke history list sekaligus
+        await flushJobBufferToHistory(tokenPayload.userId, activeSessionId);
 
-          if (successCount > 0) {
-            // 1. Increment photo counter & leaderboard
-            await recordPhotoProcessing(
-              tokenPayload.userId,
-              tokenPayload.username || "Kreator",
-              successCount
-            );
+        // Catat ke leaderboard & stats
+        void recordPhotoProcessing(tokenPayload.userId, tokenPayload.username || "Kreator", successCount);
 
-            // 2. Simpan SEMUA foto sekaligus dalam satu history entry — tidak ada race condition
-            const { saveUserMetadataHistory } = await import("@/lib/db");
-            const entryId = `hist-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
-            await saveUserMetadataHistory(tokenPayload.userId, {
-              id: entryId,
-              jobId: body.sessionId || entryId,
-              platform,
-              photoCount: successCount,
-              createdAt: new Date().toISOString(),
-              items: successResults.map((item) => ({
-                filename: item.filename,
-                title: item.title,
-                keywords: item.keywords,
-                categories: item.categories,
-                prompt: item.prompt,
-                model: item.model,
-                editorial: item.editorial,
-                matureContent: item.matureContent,
-                illustration: item.illustration,
-              })),
-            });
-          }
-
-          void appendActivityEvent(
-            tokenPayload.userId,
-            tokenPayload.email,
-            tokenPayload.username,
-            "metadata_upload",
-            `Generate metadata untuk ${images.length} foto · ${successCount} berhasil · Platform: ${platform.replace("_", " ")}`
-          );
-        }
+        void appendActivityEvent(
+          tokenPayload.userId,
+          tokenPayload.email,
+          tokenPayload.username,
+          "metadata_upload",
+          `Generate metadata untuk ${images.length} foto · ${successCount} berhasil · Platform: ${platform.replace("_", " ")}`
+        );
       }
     } catch (err) {
-      console.error("[generate] Failed to persist to Redis:", err);
+      console.error("[generate] Failed to flush history to Redis:", err);
     }
-
 
     return NextResponse.json({ results, stabilized, totalUsage: {
       promptTokens: results.reduce((s, r) => s + (r.usage?.promptTokens || 0), 0),
       completionTokens: results.reduce((s, r) => s + (r.usage?.completionTokens || 0), 0),
       totalTokens: results.reduce((s, r) => s + (r.usage?.totalTokens || 0), 0),
     }});
+
   } catch (error) {
     void recordIpError(ip);
     return NextResponse.json(

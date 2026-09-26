@@ -166,7 +166,7 @@ export async function POST(request: NextRequest) {
 
         // ── Save to history on EVERY photo, not just at the end ──────────
         // This way if user closes browser mid-session, processed photos
-        // are already persisted in history.
+        // are already persisted in history immediately.
         await appendPhotoToUserHistory(
           payload.userId,
           jobId,
@@ -174,12 +174,12 @@ export async function POST(request: NextRequest) {
           result
         );
 
-        // Sync full job to history when all photos are complete
-        if (updatedJob.status === "completed") {
-          const finalResults = updatedJob.results.filter(
-            (r): r is MetadataJobItem => !!(r && r.filename)
-          );
-          await syncJobToUserHistory(payload.userId, jobId, platform, finalResults);
+        // Sync to user history on EVERY photo so history panel always has up-to-date data!
+        const validResultsSoFar = updatedJob.results.filter(
+          (r): r is MetadataJobItem => !!(r && r.filename && (r.title || r.error))
+        );
+        if (validResultsSoFar.length > 0) {
+          await syncJobToUserHistory(payload.userId, jobId, platform, validResultsSoFar);
         }
       }
 
